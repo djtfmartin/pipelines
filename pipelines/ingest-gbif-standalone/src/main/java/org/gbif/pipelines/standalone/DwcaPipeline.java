@@ -2,17 +2,7 @@ package org.gbif.pipelines.standalone;
 
 import org.gbif.pipelines.ingest.options.DwcaPipelineOptions;
 import org.gbif.pipelines.ingest.options.PipelinesOptionsFactory;
-import org.gbif.pipelines.ingest.pipelines.DwcaToEsIndexPipeline;
-import org.gbif.pipelines.ingest.pipelines.DwcaToInterpretedPipeline;
-import org.gbif.pipelines.ingest.pipelines.DwcaToVerbatimPipeline;
-import org.gbif.pipelines.ingest.pipelines.InterpretedToEsIndexAmpPipeline;
-import org.gbif.pipelines.ingest.pipelines.InterpretedToEsIndexExtendedPipeline;
-import org.gbif.pipelines.ingest.pipelines.InterpretedToHdfsViewPipeline;
-import org.gbif.pipelines.ingest.pipelines.VerbatimToInterpretedAmpPipeline;
-import org.gbif.pipelines.ingest.pipelines.VerbatimToInterpretedPipeline;
-import org.gbif.pipelines.ingest.pipelines.XmlToEsIndexPipeline;
-import org.gbif.pipelines.ingest.pipelines.XmlToInterpretedPipeline;
-import org.gbif.pipelines.ingest.pipelines.XmlToVerbatimPipeline;
+import org.gbif.pipelines.ingest.pipelines.*;
 
 /**
  * The entry point for running one of the standalone pipelines
@@ -26,6 +16,9 @@ public class DwcaPipeline {
 
     switch (options.getPipelineStep()) {
       // From DwCA to ExtendedRecord *.avro file
+      case INTERPRETED_TO_SOLR_INDEX:
+        InterpretedToSolrIndexPipeline.run(options);
+        break;
       case DWCA_TO_VERBATIM:
         DwcaToVerbatimPipeline.run(options);
         break;

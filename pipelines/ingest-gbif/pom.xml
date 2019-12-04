@@ -171,6 +171,11 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-io-elasticsearch</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-solr</artifactId>
+      <version>2.15.0</version>
+    </dependency>
 
     <!-- Hadoop -->
     <dependency>

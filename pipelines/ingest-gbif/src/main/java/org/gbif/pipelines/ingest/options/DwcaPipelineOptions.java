@@ -8,6 +8,7 @@ import org.apache.beam.sdk.options.Validation;
 public interface DwcaPipelineOptions extends EsIndexingPipelineOptions, InterpretationPipelineOptions {
 
   enum PipelineStep {
+    INTERPRETED_TO_SOLR_INDEX,
     DWCA_TO_VERBATIM, // only reads a Dwca and converts it to an avro file
     DWCA_TO_INTERPRETED, // reads a Dwca and interprets it
     DWCA_TO_ES_INDEX, // reads a Dwca, interprets it and indexes it to ES
