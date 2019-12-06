@@ -48,6 +48,8 @@ public class ALASolrDocumentTransform implements Serializable {
     private final TupleTag<LocationRecord> lrTag;
     @NonNull
     private final TupleTag<TaxonRecord> txrTag;
+    @NonNull
+    private final TupleTag<ALATaxonRecord> atxrTag;
     // Extension
     @NonNull
     private final TupleTag<MultimediaRecord> mrTag;
@@ -79,6 +81,7 @@ public class ALASolrDocumentTransform implements Serializable {
                 TemporalRecord tr = v.getOnly(trTag, TemporalRecord.newBuilder().setId(k).build());
                 LocationRecord lr = v.getOnly(lrTag, LocationRecord.newBuilder().setId(k).build());
                 TaxonRecord txr = v.getOnly(txrTag, TaxonRecord.newBuilder().setId(k).build());
+                ALATaxonRecord atxr = v.getOnly(atxrTag, ALATaxonRecord.newBuilder().setId(k).build());
                 // Extension
                 MultimediaRecord mr = v.getOnly(mrTag, MultimediaRecord.newBuilder().setId(k).build());
                 ImageRecord ir = v.getOnly(irTag, ImageRecord.newBuilder().setId(k).build());
@@ -101,12 +104,12 @@ public class ALASolrDocumentTransform implements Serializable {
                 addToDoc(mdr, doc);
 
                 //add event date
-                if (tr.getEventDate() != null && tr.getEventDate().getGte() != null) {
-                    doc.setField("dwc_t_eventDateSingle", tr.getEventDate().getGte());
-                } else {
-                    TemporalUtils.getTemporal(tr.getYear(), tr.getMonth(), tr.getDay())
-                            .ifPresent(x -> doc.setField("dwc_t_eventDateSingle", x));
-                }
+//                if (tr.getEventDate() != null && tr.getEventDate().getGte() != null) {
+//                    doc.setField("dwc_t_eventDateSingle", tr.getEventDate().getGte());
+//                } else {
+//                    TemporalUtils.getTemporal(tr.getYear(), tr.getMonth(), tr.getDay())
+//                            .ifPresent(x -> doc.setField("dwc_t_eventDateSingle", x));
+//                }
 
                 //add the classification
                 List<RankedName> taxonomy = txr.getClassification();
@@ -149,9 +152,19 @@ public class ALASolrDocumentTransform implements Serializable {
                 //TODO assertions
                 //TODO
 
-
                 //first_loaded_date
 //                doc.setField("data_resource_uid", "dr1");
+                doc.setField("geospatial_kosher", true);
+                doc.setField("first_loaded_date", new Date());
+
+                if (atxr.getAcceptedLsid() != null){
+                    doc.setField("ala_i_lft", atxr.getLeft());
+                    doc.setField("ala_i_rgt", atxr.getRight());
+                    doc.setField("ala_s_taxonConceptID", atxr.getAcceptedLsid());
+                } else {
+                    System.out.println("No match for taxonomy");
+                }
+
                 doc.setField("geospatial_kosher", true);
                 doc.setField("first_loaded_date", new Date());
 

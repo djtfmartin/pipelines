@@ -62,6 +62,7 @@ public class InterpretedToSolrIndexPipeline {
         VerbatimTransform verbatimTransform = VerbatimTransform.create();
         TemporalTransform temporalTransform = TemporalTransform.create();
         TaxonomyTransform taxonomyTransform = TaxonomyTransform.create();
+        ALATaxonomyTransform alaTaxonomyTransform = ALATaxonomyTransform.create();
         LocationTransform locationTransform = LocationTransform.create();
         // Extension
         MeasurementOrFactTransform measurementOrFactTransform = MeasurementOrFactTransform.create();
@@ -94,6 +95,10 @@ public class InterpretedToSolrIndexPipeline {
                 p.apply("Read Taxon", taxonomyTransform.read(pathFn))
                         .apply("Map Taxon to KV", taxonomyTransform.toKv());
 
+        PCollection<KV<String, ALATaxonRecord>> alaTaxonCollection =
+                p.apply("Read Taxon", alaTaxonomyTransform.read(pathFn))
+                        .apply("Map Taxon to KV", alaTaxonomyTransform.toKv());
+
         PCollection<KV<String, MultimediaRecord>> multimediaCollection =
                 p.apply("Read Multimedia", multimediaTransform.read(pathFn))
                         .apply("Map Multimedia to KV", multimediaTransform.toKv());
@@ -114,7 +119,9 @@ public class InterpretedToSolrIndexPipeline {
         ParDo.SingleOutput<KV<String, CoGbkResult>, SolrInputDocument> alaSolrDoFn =
                 ALASolrDocumentTransform.create(
                         verbatimTransform.getTag(), basicTransform.getTag(), temporalTransform.getTag(), locationTransform.getTag(),
-                        taxonomyTransform.getTag(), multimediaTransform.getTag(), imageTransform.getTag(), audubonTransform.getTag(),
+                        taxonomyTransform.getTag(),
+                        alaTaxonomyTransform.getTag(),
+                        multimediaTransform.getTag(), imageTransform.getTag(), audubonTransform.getTag(),
                         measurementOrFactTransform.getTag(), metadataView
                 ).converter();
 
@@ -132,6 +139,8 @@ public class InterpretedToSolrIndexPipeline {
                         .and(measurementOrFactTransform.getTag(), measurementCollection)
                         // Raw
                         .and(verbatimTransform.getTag(), verbatimCollection)
+                        //Specific
+                        .and(alaTaxonomyTransform.getTag(), alaTaxonCollection)
                         // Apply
                         .apply("Grouping objects", CoGroupByKey.create())
                         .apply("Merging to Solr doc", alaSolrDoFn);

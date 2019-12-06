@@ -128,10 +128,7 @@
   <fieldType name="tint" class="solr.TrieIntField" omitNorms="true" positionIncrementGap="0" precisionStep="8"/>
   <fieldType name="tlong" class="solr.TrieLongField" omitNorms="true" positionIncrementGap="0" precisionStep="8"/>
 
-
-
   <field name="id" type="string" docValues="true" multiValued="false" indexed="true"/>
-
 
   <!-- required for WMS -->
   <field name="point-0.0001" type="string" docValues="true" indexed="true" />
@@ -156,8 +153,16 @@
   <dynamicField name="dwc_b_*" type="boolean" docValues="true" indexed="true" />
   <dynamicField name="dwc_t_*" type="tdate" docValues="true" indexed="true" />
 
+  <!-- ALA specific fields -->
+  <dynamicField name="ala_s_*" type="string" docValues="true" indexed="true" />
+  <dynamicField name="ala_i_*" type="tint" docValues="true" indexed="true" />
+  <dynamicField name="ala_l_*" type="tlong" docValues="true" indexed="true" />
+  <dynamicField name="ala_d_*" type="tdouble" docValues="true" indexed="true" />
+  <dynamicField name="ala_f_*" type="tfloat" docValues="true" indexed="true" />
+  <dynamicField name="ala_b_*" type="boolean" docValues="true" indexed="true" />
+  <dynamicField name="ala_t_*" type="tdate" docValues="true" indexed="true" />
 
-  <!-- Verbatim fields -->
+  <!-- Raw / Verbatim fields -->
   <dynamicField name="raw_*" type="string" docValues="true" indexed="true"/>
 
   <!-- Environmental fields -->
@@ -168,7 +173,6 @@
 
   <!-- Adhoc fields -->
   <dynamicField name="_*"    type="string" docValues="true" indexed="true" stored="false"/>
-
 
 
   <dynamicField name="*Count" type="int" docValues="true" indexed="true" stored="false"/>

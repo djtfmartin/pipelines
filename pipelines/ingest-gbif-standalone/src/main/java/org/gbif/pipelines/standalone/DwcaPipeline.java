@@ -16,8 +16,12 @@ public class DwcaPipeline {
 
     switch (options.getPipelineStep()) {
       // From DwCA to ExtendedRecord *.avro file
-      case INTERPRETED_TO_SOLR_INDEX:
+      case INTERPRETED_TO_ALA_SOLR_INDEX:
         InterpretedToSolrIndexPipeline.run(options);
+        break;
+      case VERBATIM_TO_ALA_INTERPRETED:
+        PipelinesOptionsFactory.registerHdfs(options);
+        ALAVerbatimToInterpretedPipeline.run(options);
         break;
       case DWCA_TO_VERBATIM:
         DwcaToVerbatimPipeline.run(options);
