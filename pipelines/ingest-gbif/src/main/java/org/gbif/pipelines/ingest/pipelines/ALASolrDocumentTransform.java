@@ -3,6 +3,7 @@ package org.gbif.pipelines.ingest.pipelines;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import freemarker.template.SimpleDate;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import org.apache.avro.Schema;
@@ -15,6 +16,7 @@ import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.solr.common.SolrInputDocument;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
@@ -27,6 +29,8 @@ import org.gbif.pipelines.transforms.converters.GbifJsonTransform;
 
 import java.io.Serializable;
 import java.text.DecimalFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.BiConsumer;
 
@@ -96,7 +100,6 @@ public class ALASolrDocumentTransform implements Serializable {
                 doc.setField("id", er.getId());
 
                 addToDoc(lr, doc);
-                addToDoc(txr, doc);
                 addToDoc(tr, doc);
                 addToDoc(br, doc);
                 addToDoc(er, doc);
@@ -104,24 +107,27 @@ public class ALASolrDocumentTransform implements Serializable {
                 addToDoc(mdr, doc);
 
                 //add event date
-//                if (tr.getEventDate() != null && tr.getEventDate().getGte() != null) {
-//                    doc.setField("dwc_t_eventDateSingle", tr.getEventDate().getGte());
-//                } else {
-//                    TemporalUtils.getTemporal(tr.getYear(), tr.getMonth(), tr.getDay())
-//                            .ifPresent(x -> doc.setField("dwc_t_eventDateSingle", x));
-//                }
+                try {
+                    if (tr.getEventDate() != null && tr.getEventDate().getGte() != null) {
+                        doc.setField("dwc_t_eventDateSingle", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").parse(tr.getEventDate().getGte()));
+                    } else {
+                        TemporalUtils.getTemporal(tr.getYear(), tr.getMonth(), tr.getDay())
+                                .ifPresent(x -> doc.setField("dwc_t_eventDateSingle", x));
+                    }
+                } catch (ParseException e){
+                    //ignore for now
+                }
 
                 //add the classification
                 List<RankedName> taxonomy = txr.getClassification();
                 for (RankedName entry : taxonomy) {
-                    doc.setField("dwc_s_" + entry.getRank().toString().toLowerCase() + "_id", entry.getKey());
-                    doc.setField("dwc_s_" + entry.getRank().toString().toLowerCase(), entry.getName());
+                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase() + "_id", entry.getKey());
+                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase(), entry.getName());
                 }
 
                 String rank = txr.getAcceptedUsage().getRank().toString();
-                doc.setField("dwc_s_rank", txr.getAcceptedUsage().getRank().toString());
-                doc.setField("dwc_s_scientificName", txr.getAcceptedUsage().getName().toString());
-
+                doc.setField("gbif_s_rank", txr.getAcceptedUsage().getRank().toString());
+                doc.setField("gbif_s_scientificName", txr.getAcceptedUsage().getName().toString());
 
                 Map<String,String> raw = er.getCoreTerms();
                 for (Map.Entry<String, String> entry : raw.entrySet()) {
@@ -136,36 +142,31 @@ public class ALASolrDocumentTransform implements Serializable {
                     addGeo(doc, lr.getDecimalLatitude(), lr.getDecimalLongitude());
                 }
 
-
-                //TODO add names_and_lsid
-
-
-//                String sciName = txr.getAcceptedUsage().getRank().toString();
-//                String taxonConceptId = ""
-//                String vernacularName = ""
-//                String kingdom = txr.get
-//                String family = getArrayValue(columnOrder.familyP, array)
-//                addField(doc, "names_and_lsid", sciName + "|" + taxonConceptId + "|" + vernacularName + "|" + kingdom + "|" + family) // is set to IGNORE in headerAttributes
-//                addField(doc, "common_name_and_lsid", vernacularName + "|" + sciName + "|" + taxonConceptId + "|" + vernacularName + "|" + kingdom + "|" + family) // is set to IGNORE in headerAttributes
-
-
                 //TODO assertions
-                //TODO
 
-                //first_loaded_date
-//                doc.setField("data_resource_uid", "dr1");
-                doc.setField("geospatial_kosher", true);
-                doc.setField("first_loaded_date", new Date());
+                if (atxr.getTaxonConceptID() != null){
+                    List<Schema.Field> fields = atxr.getSchema().getFields();
+                    for (Schema.Field field: fields){
+                        field.name();
+                        Object value = atxr.get(field.name());
+                        if (value != null){
+                            if (value instanceof Integer){
+                                doc.setField("dwc_i_" + field.name(), value);
+                            } else {
+                                doc.setField("dwc_s_" + field.name(), value.toString());
+                            }
+                        }
+                    }
 
-                if (atxr.getAcceptedLsid() != null){
-                    doc.setField("ala_i_lft", atxr.getLeft());
-                    doc.setField("ala_i_rgt", atxr.getRight());
-                    doc.setField("ala_s_taxonConceptID", atxr.getAcceptedLsid());
+                    //required for EYA
+                    doc.setField( "names_and_lsid", atxr.getScientificName() + "|" + atxr.getTaxonConceptID() + "|" + atxr.getVernacularName() + "|" + atxr.getKingdom() + "|" + atxr.getFamily()); // is set to IGNORE in headerAttributes
+                    doc.setField( "common_name_and_lsid",  atxr.getVernacularName() + "|" + atxr.getScientificName() + "|" + atxr.getTaxonConceptID() + "|" +  atxr.getVernacularName() + "|" + atxr.getKingdom() + "|" + atxr.getFamily()); // is set to IGNORE in headerAttributes
+
                 } else {
                     System.out.println("No match for taxonomy");
                 }
 
-                doc.setField("geospatial_kosher", true);
+                doc.setField("geospatial_kosher", lr.getHasCoordinate());
                 doc.setField("first_loaded_date", new Date());
 
                 c.output(doc);

@@ -1,7 +1,8 @@
 cd solr
 
 echo 'Zipping configset'
-zip  -c config.zip *
+rm config.zip
+zip config.zip *
 
 echo 'Deleting existing collection'
 curl -X GET "http://localhost:8983/solr/admin/collections?action=DELETE&name=biocache"

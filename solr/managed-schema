@@ -140,6 +140,10 @@
   <field name="lat_long" type="string" docValues="true" indexed="false" />
   <field name="geohash" type="geohash" multiValued="false" indexed="true" stored="false"/>  
 
+  <!-- required for Explore Your Area -->
+  <field name="names_and_lsid"       type="string" docValues="true" indexed="true"/>
+  <field name="common_name_and_lsid" type="string" docValues="true" indexed="true"/>
+
   <!-- lagacy -->
   <field name="geospatial_kosher" type="boolean" docValues="true" multiValued="false" indexed="true" stored="false"/>  
   <field name="first_loaded_date" type="tdate" docValues="true" multiValued="false" indexed="true" stored="false"/>  
@@ -154,13 +158,13 @@
   <dynamicField name="dwc_t_*" type="tdate" docValues="true" indexed="true" />
 
   <!-- ALA specific fields -->
-  <dynamicField name="ala_s_*" type="string" docValues="true" indexed="true" />
-  <dynamicField name="ala_i_*" type="tint" docValues="true" indexed="true" />
-  <dynamicField name="ala_l_*" type="tlong" docValues="true" indexed="true" />
-  <dynamicField name="ala_d_*" type="tdouble" docValues="true" indexed="true" />
-  <dynamicField name="ala_f_*" type="tfloat" docValues="true" indexed="true" />
-  <dynamicField name="ala_b_*" type="boolean" docValues="true" indexed="true" />
-  <dynamicField name="ala_t_*" type="tdate" docValues="true" indexed="true" />
+  <dynamicField name="gbif_s_*" type="string" docValues="true" indexed="true" />
+  <dynamicField name="gbif_i_*" type="tint" docValues="true" indexed="true" />
+  <dynamicField name="gbif_l_*" type="tlong" docValues="true" indexed="true" />
+  <dynamicField name="gbif_d_*" type="tdouble" docValues="true" indexed="true" />
+  <dynamicField name="gbif_f_*" type="tfloat" docValues="true" indexed="true" />
+  <dynamicField name="gbif_b_*" type="boolean" docValues="true" indexed="true" />
+  <dynamicField name="gbif_t_*" type="tdate" docValues="true" indexed="true" />
 
   <!-- Raw / Verbatim fields -->
   <dynamicField name="raw_*" type="string" docValues="true" indexed="true"/>

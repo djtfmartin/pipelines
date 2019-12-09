@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.beanutils.BeanUtils;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.SpeciesMatchRequest;
@@ -28,24 +29,20 @@ public class ALATaxonomyInterpreter {
     public static BiConsumer<ExtendedRecord, ALATaxonRecord> alaTaxonomyInterpreter(
             KeyValueStore<SpeciesMatchRequest, NameUsageMatch> kvStore) {
         return (er, atr) -> {
-
-            System.out.println("Setting ATR ID = " + er.getId() );
             atr.setId(er.getId());
             try {
                 String scientificName = extractValue(er, DwcTerm.scientificName);
                 ObjectMapper om = new ObjectMapper();
                 Map<String, Object> result = om.readValue(new URL("http://localhost:9179/search?q=" + URLEncoder.encode(scientificName, "UTF-8")), Map.class);
-
-                if (result.get("acceptedGuid") != null){
-                    System.out.println("[" + er.getId() + "] ##### Success matching : " + scientificName);
-                    atr.setCleanName(result.get("cleanName").toString());
-                    atr.setAcceptedLsid(result.get("acceptedGuid").toString());
-                    atr.setLeft(result.get("left").toString());
-                    atr.setRight(result.get("right").toString());
-                    atr.setMatchType(result.get("matchType").toString());
+                if (result.get("success") != null  && result.get("taxonConceptID") != null){
+                    System.out.println("################# Match found - " + scientificName );
+                    for (Map.Entry<String, Object> entry : result.entrySet()){
+                        BeanUtils.setProperty(atr, entry.getKey(), entry.getValue());
+                    }
                 } else {
-                    System.out.println("[" + er.getId() + "] ##### FAILED matching : " + scientificName);
+                    System.out.println("################# No Match found - " + scientificName);
                 }
+
             } catch(Exception e){
                 e.printStackTrace();
             }
