@@ -16,6 +16,9 @@ public class DwcaPipeline {
 
     switch (options.getPipelineStep()) {
       // From DwCA to ExtendedRecord *.avro file
+      case INTERPRETED_TO_LATLONG_CSV:
+        InterpretedToLatLongCSVPipeline.run(options);
+        break;
       case INTERPRETED_TO_ALA_SOLR_INDEX:
         InterpretedToSolrIndexPipeline.run(options);
         break;
