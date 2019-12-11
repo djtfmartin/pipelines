@@ -39,6 +39,7 @@ public class AustraliaSpatialInterpreter {
                   Map.class
           );
           if (items != null && !items.isEmpty()) {
+            System.out.println("################# Found sampling....");
             asr.setItems(items);
           } else {
             System.out.println("################# No Response from sampling found");

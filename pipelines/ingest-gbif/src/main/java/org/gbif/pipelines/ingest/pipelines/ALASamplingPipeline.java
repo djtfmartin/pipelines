@@ -31,10 +31,7 @@ import org.gbif.pipelines.transforms.common.UniqueGbifIdTransform;
 import org.gbif.pipelines.transforms.common.UniqueIdTransform;
 import org.gbif.pipelines.transforms.converters.OccurrenceExtensionTransform;
 import org.gbif.pipelines.transforms.core.*;
-import org.gbif.pipelines.transforms.extension.AudubonTransform;
-import org.gbif.pipelines.transforms.extension.ImageTransform;
-import org.gbif.pipelines.transforms.extension.MeasurementOrFactTransform;
-import org.gbif.pipelines.transforms.extension.MultimediaTransform;
+import org.gbif.pipelines.transforms.extension.*;
 import org.gbif.pipelines.transforms.specific.ALATaxonomyTransform;
 import org.gbif.pipelines.transforms.specific.AustraliaSpatialTransform;
 import org.slf4j.MDC;
@@ -93,97 +90,46 @@ public class ALASamplingPipeline {
     run(options);
   }
 
-  public static void run(InterpretationPipelineOptions options ) {
-
-    MDC.put("datasetId", options.getDatasetId());
-    MDC.put("attempt", options.getAttempt().toString());
-    MDC.put("step", StepType.INTERPRETED_TO_INDEX.name());
-    boolean useExtendedRecordId = options.isUseExtendedRecordId();
+  public static void run(InterpretationPipelineOptions options) {
 
     String datasetId = options.getDatasetId();
     Integer attempt = options.getAttempt();
-    boolean tripletValid = options.isTripletValid();
-    boolean occurrenceIdValid = options.isOccurrenceIdValid();
-    boolean skipRegistryCalls = options.isSkipRegisrtyCalls();
-    String endPointType = options.getEndPointType();
-
-
     String targetPath = options.getTargetPath();
     String hdfsSiteConfig = options.getHdfsSiteConfig();
     Properties properties = FsUtils.readPropertiesFile(options.getHdfsSiteConfig(), options.getProperties());
 
+    FsUtils.deleteInterpretIfExist(hdfsSiteConfig, targetPath, datasetId, attempt, options.getInterpretationTypes());
 
-    log.info("Adding step 1: Options");
-    UnaryOperator<String> pathFn = t -> FsUtils.buildPathInterpretUsingTargetPath(options, t, "*" + AVRO_EXTENSION);
+    MDC.put("datasetId", datasetId);
+    MDC.put("attempt", attempt.toString());
+    MDC.put("step", StepType.VERBATIM_TO_INTERPRETED.name());
 
+    String id = Long.toString(LocalDateTime.now().toEpochSecond(ZoneOffset.UTC));
+
+    UnaryOperator<String> pathLocationFn = t -> FsUtils.buildPathInterpretUsingTargetPath(options, t, "*" + AVRO_EXTENSION);
+
+    UnaryOperator<String> pathFn = t -> FsUtils.buildPathInterpretUsingTargetPath(options, t, id);
+
+    log.info("Creating a pipeline from options");
     Pipeline p = Pipeline.create(options);
 
-    log.info("Adding step 2: Creating transformations");
-    // Core
-    MetadataTransform metadataTransform = MetadataTransform.create();
-    VerbatimTransform verbatimTransform = VerbatimTransform.create();
+    log.info("Creating transformations");
     LocationTransform locationTransform = LocationTransform.create();
-    ALASamplingTransform alaSamplingTransform = ALASamplingTransform.create();
+    AustraliaSpatialTransform alaSamplingTransform = AustraliaSpatialTransform.create(properties);
 
-    BasicTransform basicTransform =  BasicTransform.create(properties, datasetId, tripletValid, occurrenceIdValid, useExtendedRecordId);
-    UniqueGbifIdTransform gbifIdTransform = UniqueGbifIdTransform.create(useExtendedRecordId);
+    log.info("Adding pipeline transforms");
+    p.apply("Read Location", locationTransform.read(pathLocationFn))
+            .apply("Interpret Sampling", alaSamplingTransform.interpret())
+            .apply("Write sampling to avro", alaSamplingTransform.write(pathFn));
 
-    Set<String> types = options.getInterpretationTypes();
+    log.info("Running the pipeline");
+    PipelineResult result = p.run();
+    result.waitUntilFinish();
 
+    log.info("Deleting beam temporal folders");
+    String tempPath = String.join("/", targetPath, datasetId, attempt.toString());
+    FsUtils.deleteDirectoryByPrefix(hdfsSiteConfig, tempPath, ".temp-beam");
 
-    log.info("Adding step 3: Creating beam pipeline");
-    PCollectionView<MetadataRecord> metadataView =
-            p.apply("Read Metadata", metadataTransform.read(pathFn))
-                    .apply("Convert to view", View.asSingleton());
-
-    PCollectionView<LocationRecord> locationView =
-            p.apply("Read Metadata", locationTransform.read(pathFn))
-                    .apply("Convert to view", View.asSingleton());
-
-
-    PCollection<ExtendedRecord> uniqueRecords = metadataTransform.metadataOnly(types) ?
-            verbatimTransform.emptyCollection(p) :
-            p.apply("Read ExtendedRecords", verbatimTransform.read(options.getInputPath()))
-                    .apply("Read occurrences from extension", OccurrenceExtensionTransform.create())
-                    .apply("Filter duplicates", UniqueIdTransform.create())
-                    .apply("Set default values", DefaultValuesTransform.create(properties, datasetId, skipRegistryCalls));
-
-    PCollectionTuple basicCollection =
-            uniqueRecords.apply("Check basic transform condition", basicTransform.check(types))
-                    .apply("Interpret basic", basicTransform.interpret())
-                    .apply("Get invalid GBIF IDs", gbifIdTransform);
-
-    PCollection<KV<String, ExtendedRecord>> uniqueRecordsKv =
-            uniqueRecords.apply("Map verbatim to KV", verbatimTransform.toKv());
-
-    PCollection<KV<String, BasicRecord>> uniqueBasicRecordsKv =
-            basicCollection.get(gbifIdTransform.getInvalidTag())
-                    .apply("Map basic to KV", basicTransform.toKv());
-
-    SingleOutput<KV<String, CoGbkResult>, ExtendedRecord> filterByGbifIdFn =
-            FilterExtendedRecordTransform.create(verbatimTransform.getTag(), basicTransform.getTag()).filter();
-
-
-    PCollection<ExtendedRecord> filteredUniqueRecords =
-            KeyedPCollectionTuple
-                    // Core
-                    .of(verbatimTransform.getTag(), uniqueRecordsKv)
-                    .and(basicTransform.getTag(), uniqueBasicRecordsKv)
-                    // Apply
-                    .apply("Grouping objects", CoGroupByKey.create())
-                    .apply("Filter verbatim", filterByGbifIdFn);
-
-
-    PCollection<KV<String, LocationRecord>> locationCollection =
-            p.apply("Read Location", locationTransform.read(pathFn))
-                    .apply("Map Location to KV", locationTransform.toKv());
-
-
-    //TODO this is complaining about return types....
-//    filteredUniqueRecords
-//            .apply("Check ALA taxonomy transform condition", alaSamplingTransform.check(types))
-//            .apply("Interpret ALA taxonomy", alaSamplingTransform.interpret(locationView))
-//            .apply("Write ALA taxon to avro", alaSamplingTransform.write(pathFn));
-
+    log.info("Pipeline has been finished");
   }
 }

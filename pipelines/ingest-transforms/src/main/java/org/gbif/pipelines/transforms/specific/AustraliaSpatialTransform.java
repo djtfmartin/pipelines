@@ -25,7 +25,6 @@ import org.gbif.pipelines.transforms.Transform;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TypeDescriptor;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +40,8 @@ import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Interpretati
  * a source and {@link AustraliaSpatialInterpreter} as interpretation steps
  */
 @Slf4j
+
+
 public class AustraliaSpatialTransform extends Transform<LocationRecord, AustraliaSpatialRecord> {
 
   private final KvConfig kvConfig;
@@ -93,25 +94,25 @@ public class AustraliaSpatialTransform extends Transform<LocationRecord, Austral
   @SneakyThrows
   @Setup
   public void setup() {
-    if (kvConfig != null) {
-
-      CachedHBaseKVStoreConfiguration hBaseKVStoreConfiguration = CachedHBaseKVStoreConfiguration.builder()
-          .withValueColumnQualifier("json") //stores JSON data
-          .withHBaseKVStoreConfiguration(HBaseKVStoreConfiguration.builder()
-              .withTableName(kvConfig.getTableName()) //Geocode KV HBase table
-              .withColumnFamily("v") //Column in which qualifiers are stored
-              .withNumOfKeyBuckets(kvConfig.getNumOfKeyBuckets()) //Buckets for salted key generations == to # of region servers
-              .withHBaseZk(kvConfig.getZookeeperUrl()) //HBase Zookeeper ensemble
-              .build())
-          .withCacheCapacity(15_000L)
-          .build();
-
-      kvStore = ReadOnlyHBaseStore.<LatLng, String>builder()
-          .withHBaseStoreConfiguration(hBaseKVStoreConfiguration.getHBaseKVStoreConfiguration())
-          .withResultMapper(result -> Bytes.toString(result.getValue(Bytes.toBytes("v"), Bytes.toBytes("json"))))
-          .build();
-
-    }
+//    if (kvConfig != null) {
+//
+//      CachedHBaseKVStoreConfiguration hBaseKVStoreConfiguration = CachedHBaseKVStoreConfiguration.builder()
+//          .withValueColumnQualifier("json") //stores JSON data
+//          .withHBaseKVStoreConfiguration(HBaseKVStoreConfiguration.builder()
+//              .withTableName(kvConfig.getTableName()) //Geocode KV HBase table
+//              .withColumnFamily("v") //Column in which qualifiers are stored
+//              .withNumOfKeyBuckets(kvConfig.getNumOfKeyBuckets()) //Buckets for salted key generations == to # of region servers
+//              .withHBaseZk(kvConfig.getZookeeperUrl()) //HBase Zookeeper ensemble
+//              .build())
+//          .withCacheCapacity(15_000L)
+//          .build();
+//
+//      kvStore = ReadOnlyHBaseStore.<LatLng, String>builder()
+//          .withHBaseStoreConfiguration(hBaseKVStoreConfiguration.getHBaseKVStoreConfiguration())
+//          .withResultMapper(result -> Bytes.toString(result.getValue(Bytes.toBytes("v"), Bytes.toBytes("json"))))
+//          .build();
+//
+//    }
   }
 
   @Teardown
@@ -133,7 +134,7 @@ public class AustraliaSpatialTransform extends Transform<LocationRecord, Austral
             .setCreated(Instant.now().toEpochMilli())
             .build())
         .when(lr -> Optional.ofNullable(lr.getCountryCode())
-            .filter(c -> c.equals(Country.AUSTRALIA.getIso2LetterCode()))
+//            .filter(c -> c.equals(Country.AUSTRALIA.getIso2LetterCode()))
             .filter(c -> new LatLng(lr.getDecimalLatitude(), lr.getDecimalLongitude()).isValid())
             .isPresent())
         .via(AustraliaSpatialInterpreter.interpret(kvStore))

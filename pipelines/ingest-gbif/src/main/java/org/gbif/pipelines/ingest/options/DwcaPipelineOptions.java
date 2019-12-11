@@ -8,6 +8,7 @@ import org.apache.beam.sdk.options.Validation;
 public interface DwcaPipelineOptions extends EsIndexingPipelineOptions, InterpretationPipelineOptions {
 
   enum PipelineStep {
+    INTERPRETED_TO_ALA_SAMPLED,
     INTERPRETED_TO_LATLONG_CSV,
     INTERPRETED_TO_ALA_SOLR_INDEX,
     VERBATIM_TO_ALA_INTERPRETED,

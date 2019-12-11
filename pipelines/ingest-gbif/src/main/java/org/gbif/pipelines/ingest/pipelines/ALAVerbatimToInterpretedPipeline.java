@@ -127,7 +127,6 @@ public class ALAVerbatimToInterpretedPipeline {
     LocationTransform locationTransform = LocationTransform.create(properties);
 
     // ALA specific transforms
-    AustraliaSpatialTransform alaSpatialTransform = AustraliaSpatialTransform.create(properties);
     ALATaxonomyTransform alaTaxonomyTransform = ALATaxonomyTransform.create(properties);
 
     // Extension
