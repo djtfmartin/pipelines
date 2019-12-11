@@ -182,7 +182,7 @@ public class ALASamplingPipeline {
     //TODO this is complaining about return types....
 //    filteredUniqueRecords
 //            .apply("Check ALA taxonomy transform condition", alaSamplingTransform.check(types))
-//            .apply("Interpret ALA taxonomy", alaSamplingTransform.interpret())
+//            .apply("Interpret ALA taxonomy", alaSamplingTransform.interpret(locationView))
 //            .apply("Write ALA taxon to avro", alaSamplingTransform.write(pathFn));
 
   }

@@ -161,11 +161,10 @@ public class ALASamplingTransform extends Transform<LocationRecord, AustraliaSpa
         processElement(c.sideInput(locationView)).ifPresent(c::output);
     }
 
-    public Optional<AustraliaSpatialRecord> processElement(LocationRecord mdr) {
-
+    @Override
+    public Optional<AustraliaSpatialRecord> processElement(LocationRecord mdr){
         return null;
     }
-
 
     @Override
     public Optional<AustraliaSpatialRecord> convert(LocationRecord source) {
