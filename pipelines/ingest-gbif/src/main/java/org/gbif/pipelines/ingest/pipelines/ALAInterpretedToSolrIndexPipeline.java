@@ -27,6 +27,7 @@ import org.gbif.pipelines.transforms.extension.ImageTransform;
 import org.gbif.pipelines.transforms.extension.MeasurementOrFactTransform;
 import org.gbif.pipelines.transforms.extension.MultimediaTransform;
 import org.gbif.pipelines.transforms.specific.ALATaxonomyTransform;
+import org.gbif.pipelines.transforms.specific.AustraliaSpatialTransform;
 import org.slf4j.MDC;
 
 import java.util.function.UnaryOperator;
@@ -61,6 +62,7 @@ public class ALAInterpretedToSolrIndexPipeline {
         TemporalTransform temporalTransform = TemporalTransform.create();
         TaxonomyTransform taxonomyTransform = TaxonomyTransform.create();
         ALATaxonomyTransform alaTaxonomyTransform = ALATaxonomyTransform.create();
+        AustraliaSpatialTransform australiaSpatialTransform = AustraliaSpatialTransform.create();
         LocationTransform locationTransform = LocationTransform.create();
 
         // Extension
@@ -114,6 +116,10 @@ public class ALAInterpretedToSolrIndexPipeline {
                 p.apply("Read Measurement", measurementOrFactTransform.read(pathFn))
                         .apply("Map Measurement to KV", measurementOrFactTransform.toKv());
 
+        PCollection<KV<String, AustraliaSpatialRecord>> australiaSpatialCollection =
+                p.apply("Read Sampling", australiaSpatialTransform.read(pathFn))
+                        .apply("Map Sampling to KV", australiaSpatialTransform.toKv());
+
         log.info("Adding step 3: Converting into a json object");
         ParDo.SingleOutput<KV<String, CoGbkResult>, SolrInputDocument> alaSolrDoFn =
                 ALASolrDocumentTransform.create(
@@ -127,6 +133,7 @@ public class ALAInterpretedToSolrIndexPipeline {
                         imageTransform.getTag(),
                         audubonTransform.getTag(),
                         measurementOrFactTransform.getTag(),
+                        australiaSpatialTransform.getTag(),
                         metadataView
                 ).converter();
 
@@ -146,6 +153,7 @@ public class ALAInterpretedToSolrIndexPipeline {
                         .and(verbatimTransform.getTag(), verbatimCollection)
                         //Specific
                         .and(alaTaxonomyTransform.getTag(), alaTaxonCollection)
+                        .and(australiaSpatialTransform.getTag(), australiaSpatialCollection)
                         // Apply
                         .apply("Grouping objects", CoGroupByKey.create())
                         .apply("Merging to Solr doc", alaSolrDoFn);

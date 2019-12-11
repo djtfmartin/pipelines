@@ -17,6 +17,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.beanutils.BeanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.solr.common.SolrInputDocument;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
@@ -26,6 +27,7 @@ import org.gbif.pipelines.core.converters.MultimediaConverter;
 import org.gbif.pipelines.core.utils.TemporalUtils;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.transforms.converters.GbifJsonTransform;
+import org.gbif.pipelines.transforms.specific.AustraliaSpatialTransform;
 
 import java.io.Serializable;
 import java.text.DecimalFormat;
@@ -63,6 +65,8 @@ public class ALASolrDocumentTransform implements Serializable {
     private final TupleTag<AudubonRecord> arTag;
     @NonNull
     private final TupleTag<MeasurementOrFactRecord> mfrTag;
+    @NonNull
+    private final TupleTag<AustraliaSpatialRecord> asrTag;
 
     @NonNull
     private final PCollectionView<MetadataRecord> metadataView;
@@ -85,12 +89,17 @@ public class ALASolrDocumentTransform implements Serializable {
                 TemporalRecord tr = v.getOnly(trTag, TemporalRecord.newBuilder().setId(k).build());
                 LocationRecord lr = v.getOnly(lrTag, LocationRecord.newBuilder().setId(k).build());
                 TaxonRecord txr = v.getOnly(txrTag, TaxonRecord.newBuilder().setId(k).build());
-                ALATaxonRecord atxr = v.getOnly(atxrTag, ALATaxonRecord.newBuilder().setId(k).build());
+
                 // Extension
                 MultimediaRecord mr = v.getOnly(mrTag, MultimediaRecord.newBuilder().setId(k).build());
                 ImageRecord ir = v.getOnly(irTag, ImageRecord.newBuilder().setId(k).build());
                 AudubonRecord ar = v.getOnly(arTag, AudubonRecord.newBuilder().setId(k).build());
                 MeasurementOrFactRecord mfr = v.getOnly(mfrTag, MeasurementOrFactRecord.newBuilder().setId(k).build());
+
+                // ALA specific
+                ALATaxonRecord atxr = v.getOnly(atxrTag, ALATaxonRecord.newBuilder().setId(k).build());
+                AustraliaSpatialRecord asr = v.getOnly(asrTag, AustraliaSpatialRecord.newBuilder().setId(k).build());
+
 
                 MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
@@ -162,12 +171,22 @@ public class ALASolrDocumentTransform implements Serializable {
                     doc.setField( "names_and_lsid", atxr.getScientificName() + "|" + atxr.getTaxonConceptID() + "|" + atxr.getVernacularName() + "|" + atxr.getKingdom() + "|" + atxr.getFamily()); // is set to IGNORE in headerAttributes
                     doc.setField( "common_name_and_lsid",  atxr.getVernacularName() + "|" + atxr.getScientificName() + "|" + atxr.getTaxonConceptID() + "|" +  atxr.getVernacularName() + "|" + atxr.getKingdom() + "|" + atxr.getFamily()); // is set to IGNORE in headerAttributes
 
-                } else {
-                    System.out.println("No match for taxonomy");
                 }
 
                 doc.setField("geospatial_kosher", lr.getHasCoordinate());
                 doc.setField("first_loaded_date", new Date());
+
+                //add sampling
+                Map<String, String> samples = asr.getItems();
+                for (Map.Entry<String, String> sample : samples.entrySet()){
+                    if (!StringUtils.isEmpty(sample.getValue())){
+                        if (sample.getKey().startsWith("el")){
+                            doc.setField(sample.getKey(), Double.valueOf(sample.getKey()));
+                        } else {
+                            doc.setField(sample.getKey(), sample.getValue());
+                        }
+                    }
+                }
 
                 c.output(doc);
 

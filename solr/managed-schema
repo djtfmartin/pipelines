@@ -170,10 +170,10 @@
   <dynamicField name="raw_*" type="string" docValues="true" indexed="true"/>
 
   <!-- Environmental fields -->
-  <dynamicField name="el_*"  type="tfloat" docValues="true" indexed="true" stored="false"/>
+  <dynamicField name="el*"  type="tfloat" docValues="true" indexed="true"/>
 
   <!-- Contextual fields -->
-  <dynamicField name="cl_*"  type="string" docValues="true" indexed="true" stored="false"/>
+  <dynamicField name="cl*"  type="string" docValues="true" indexed="true" />
 
   <!-- Adhoc fields -->
   <dynamicField name="_*"    type="string" docValues="true" indexed="true" stored="false"/>
