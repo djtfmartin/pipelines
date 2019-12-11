@@ -33,6 +33,8 @@ import org.gbif.pipelines.transforms.extension.AudubonTransform;
 import org.gbif.pipelines.transforms.extension.ImageTransform;
 import org.gbif.pipelines.transforms.extension.MeasurementOrFactTransform;
 import org.gbif.pipelines.transforms.extension.MultimediaTransform;
+import org.gbif.pipelines.transforms.specific.ALATaxonomyTransform;
+import org.gbif.pipelines.transforms.specific.AustraliaSpatialTransform;
 import org.slf4j.MDC;
 
 import java.time.LocalDateTime;
@@ -122,13 +124,18 @@ public class ALAVerbatimToInterpretedPipeline {
     VerbatimTransform verbatimTransform = VerbatimTransform.create();
     TemporalTransform temporalTransform = TemporalTransform.create();
     TaxonomyTransform taxonomyTransform = TaxonomyTransform.create(properties);
-    ALATaxonomyTransform alaTaxonomyTransform = ALATaxonomyTransform.create(properties);
     LocationTransform locationTransform = LocationTransform.create(properties);
+
+    // ALA specific transforms
+    AustraliaSpatialTransform alaSpatialTransform = AustraliaSpatialTransform.create(properties);
+    ALATaxonomyTransform alaTaxonomyTransform = ALATaxonomyTransform.create(properties);
+
     // Extension
     MeasurementOrFactTransform measurementOrFactTransform = MeasurementOrFactTransform.create();
     MultimediaTransform multimediaTransform = MultimediaTransform.create();
     AudubonTransform audubonTransform = AudubonTransform.create();
     ImageTransform imageTransform = ImageTransform.create();
+
     // Extra
     UniqueGbifIdTransform gbifIdTransform = UniqueGbifIdTransform.create(useExtendedRecordId);
 

@@ -28,7 +28,7 @@ import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.AVRO_EXTENSI
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class InterpretedToLatLongCSVPipeline {
+public class ALAInterpretedToLatLongCSVPipeline {
 
     public static void main(String[] args) {
         BasePipelineOptions options = PipelinesOptionsFactory.create(BasePipelineOptions.class, args);
@@ -56,7 +56,6 @@ public class InterpretedToLatLongCSVPipeline {
                 p.apply("Read Metadata", metadataTransform.read(pathFn))
                         .apply("Convert to view", View.asSingleton());
 
-
         PCollection<KV<String, LocationRecord>> locationCollection =
                 p.apply("Read Location", locationTransform.read(pathFn))
                         .apply("Map Location to KV", locationTransform.toKv());
@@ -71,7 +70,7 @@ public class InterpretedToLatLongCSVPipeline {
                         .apply("Grouping objects", CoGroupByKey.create())
                         .apply("Merging to CSV doc", alaCSVrDoFn);
 
-        csvCollection.apply(TextIO.write().to("/tmp/file.csv"));
+        csvCollection.apply(TextIO.write().to("/data/biocache-load/latlong.csv"));
 
         log.info("Running the pipeline");
         PipelineResult result = p.run();

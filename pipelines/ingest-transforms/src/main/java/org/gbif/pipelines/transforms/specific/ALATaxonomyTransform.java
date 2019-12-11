@@ -1,4 +1,4 @@
-package org.gbif.pipelines.transforms.core;
+package org.gbif.pipelines.transforms.specific;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -6,9 +6,6 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TypeDescriptor;
 import org.gbif.kvs.KeyValueStore;
-import org.gbif.kvs.conf.CachedHBaseKVStoreConfiguration;
-import org.gbif.kvs.hbase.HBaseKVStoreConfiguration;
-import org.gbif.kvs.species.NameUsageMatchKVStoreFactory;
 import org.gbif.kvs.species.SpeciesMatchRequest;
 import org.gbif.pipelines.core.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.TaxonomyInterpreter;
@@ -20,13 +17,9 @@ import org.gbif.pipelines.parsers.config.KvConfig;
 import org.gbif.pipelines.parsers.config.KvConfigFactory;
 import org.gbif.pipelines.transforms.SerializableConsumer;
 import org.gbif.pipelines.transforms.Transform;
-import org.gbif.rest.client.configuration.ClientConfiguration;
 import org.gbif.rest.client.species.NameUsageMatch;
 
-import java.io.IOException;
 import java.nio.file.Paths;
-import java.time.Instant;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 

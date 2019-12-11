@@ -21,12 +21,12 @@ import org.gbif.pipelines.ingest.options.PipelinesOptionsFactory;
 import org.gbif.pipelines.ingest.utils.FsUtils;
 import org.gbif.pipelines.ingest.utils.MetricsHandler;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.transforms.converters.GbifJsonTransform;
 import org.gbif.pipelines.transforms.core.*;
 import org.gbif.pipelines.transforms.extension.AudubonTransform;
 import org.gbif.pipelines.transforms.extension.ImageTransform;
 import org.gbif.pipelines.transforms.extension.MeasurementOrFactTransform;
 import org.gbif.pipelines.transforms.extension.MultimediaTransform;
+import org.gbif.pipelines.transforms.specific.ALATaxonomyTransform;
 import org.slf4j.MDC;
 
 import java.util.function.UnaryOperator;
@@ -35,7 +35,7 @@ import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.AVRO_EXTENSI
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class InterpretedToSolrIndexPipeline {
+public class ALAInterpretedToSolrIndexPipeline {
 
     public static void main(String[] args) {
         EsIndexingPipelineOptions options = PipelinesOptionsFactory.createIndexing(args);
@@ -47,8 +47,6 @@ public class InterpretedToSolrIndexPipeline {
         MDC.put("datasetId", options.getDatasetId());
         MDC.put("attempt", options.getAttempt().toString());
         MDC.put("step", StepType.INTERPRETED_TO_INDEX.name());
-
-        String esDocumentId = options.getEsDocumentId();
 
         log.info("Adding step 1: Options");
         UnaryOperator<String> pathFn = t -> FsUtils.buildPathInterpretUsingTargetPath(options, t, "*" + AVRO_EXTENSION);
@@ -64,6 +62,7 @@ public class InterpretedToSolrIndexPipeline {
         TaxonomyTransform taxonomyTransform = TaxonomyTransform.create();
         ALATaxonomyTransform alaTaxonomyTransform = ALATaxonomyTransform.create();
         LocationTransform locationTransform = LocationTransform.create();
+
         // Extension
         MeasurementOrFactTransform measurementOrFactTransform = MeasurementOrFactTransform.create();
         MultimediaTransform multimediaTransform = MultimediaTransform.create();
@@ -118,11 +117,17 @@ public class InterpretedToSolrIndexPipeline {
         log.info("Adding step 3: Converting into a json object");
         ParDo.SingleOutput<KV<String, CoGbkResult>, SolrInputDocument> alaSolrDoFn =
                 ALASolrDocumentTransform.create(
-                        verbatimTransform.getTag(), basicTransform.getTag(), temporalTransform.getTag(), locationTransform.getTag(),
+                        verbatimTransform.getTag(),
+                        basicTransform.getTag(),
+                        temporalTransform.getTag(),
+                        locationTransform.getTag(),
                         taxonomyTransform.getTag(),
                         alaTaxonomyTransform.getTag(),
-                        multimediaTransform.getTag(), imageTransform.getTag(), audubonTransform.getTag(),
-                        measurementOrFactTransform.getTag(), metadataView
+                        multimediaTransform.getTag(),
+                        imageTransform.getTag(),
+                        audubonTransform.getTag(),
+                        measurementOrFactTransform.getTag(),
+                        metadataView
                 ).converter();
 
         PCollection<SolrInputDocument> jsonCollection =
@@ -144,7 +149,6 @@ public class InterpretedToSolrIndexPipeline {
                         // Apply
                         .apply("Grouping objects", CoGroupByKey.create())
                         .apply("Merging to Solr doc", alaSolrDoFn);
-
 
 
         log.info("Adding step 4: SOLR indexing");
