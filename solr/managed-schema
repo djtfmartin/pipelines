@@ -15,8 +15,18 @@
   <fieldType name="date" class="solr.TrieDateField" omitNorms="true" positionIncrementGap="0" precisionStep="0"/>
   <fieldType name="double" class="solr.TrieDoubleField" omitNorms="true" positionIncrementGap="0" precisionStep="0"/>
   <fieldType name="float" class="solr.TrieFloatField" omitNorms="true" positionIncrementGap="0" precisionStep="0"/>
-  <fieldType name="geohash" class="solr.SpatialRecursivePrefixTreeFieldType" datelineRule="ccwRect" spatialContextFactory="org.locationtech.spatial4j.context.jts.JtsSpatialContextFactory" validationRule="none" distanceUnits="degrees" autoIndex="true"/>
-  <fieldType name="location" class="solr.LatLonPointSpatialField" docValues="true"/>
+  <fieldType name="geohash"
+            class="solr.SpatialRecursivePrefixTreeFieldType"
+            datelineRule="ccwRect"
+            spatialContextFactory="org.locationtech.spatial4j.context.jts.JtsSpatialContextFactory"
+            validationRule="none"
+            distanceUnits="degrees"
+            autoIndex="true"
+  />
+  <fieldType name="location"
+            class="solr.LatLonPointSpatialField"
+            docValues="true"
+  />
   <fieldType name="ignored" class="solr.StrField" indexed="false" stored="false" multiValued="true"/>
   <fieldType name="int" class="solr.TrieIntField" omitNorms="true" positionIncrementGap="0" precisionStep="0"/>
   <fieldType name="long" class="solr.TrieLongField" omitNorms="true" positionIncrementGap="0" precisionStep="0"/>
@@ -138,15 +148,15 @@
   <field name="point-0.1" type="string" docValues="true" indexed="true"/>
   <field name="point-1" type="string" docValues="true" indexed="true" />
   <field name="lat_long" type="string" docValues="true" indexed="false" />
-  <field name="geohash" type="geohash" multiValued="false" indexed="true"/>
-  <field name="location" type="location" multiValued="false" indexed="true"/>
+  <field name="geohash"  type="geohash"  indexed="true"/>
+  <field name="location" type="location" indexed="true"/>
 
   <!-- required for Explore Your Area -->
   <field name="names_and_lsid"       type="string" docValues="true" indexed="true"/>
   <field name="common_name_and_lsid" type="string" docValues="true" indexed="true"/>
 
   <!-- legacy -->
-  <field name="taxon_name"       type="string" docValues="true" indexed="true"/>
+  `taxon_name"       type="string" docValues="true" indexed="true"/>
   <field name="rank"       type="string" docValues="true" indexed="true"/>
   <field name="rank_id"       type="tint" docValues="true" indexed="true"/>
   <field name="lsid"       type="string" docValues="true" indexed="true"/>
@@ -200,5 +210,6 @@
 
 
   <copyField source="lat_long" dest="geohash"/>
+  <copyField source="lat_long" dest="location"/>
 
 </schema>

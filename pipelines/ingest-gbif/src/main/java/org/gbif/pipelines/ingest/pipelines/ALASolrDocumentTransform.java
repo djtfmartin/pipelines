@@ -218,17 +218,14 @@ public class ALASolrDocumentTransform implements Serializable {
 
 
     void addGeo(SolrInputDocument doc, double lat, double lon){
-        double test = -90d;
-        double test2 = -180d;
         String latlon = "";
         //ensure that the lat longs are in the required range before
-        if (lat <= 90 && lat >= test && lon <= 180 && lon >= test2) {
+        if (lat <= 90 && lat >= -90d && lon <= 180 && lon >= -180d) {
             //https://lucene.apache.org/solr/guide/7_0/spatial-search.html#indexing-points
-            latlon = lat + "," + lat; //required format for indexing geodetic points in SOLR
+            latlon = lat + "," + lon; //required format for indexing geodetic points in SOLR
         }
 
         doc.addField("lat_long", latlon); // is set to IGNORE in headerAttributes
-        doc.addField("location", latlon);
         doc.addField("point-1", getLatLongString(lat, lon, "#")); // is set to IGNORE in headerAttributes
         doc.addField("point-0.1", getLatLongString(lat, lon, "#.#")); // is set to IGNORE in headerAttributes
         doc.addField("point-0.01", getLatLongString(lat, lon, "#.##")); // is set to IGNORE in headerAttributes
