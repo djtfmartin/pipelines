@@ -171,6 +171,20 @@ public class ALASolrDocumentTransform implements Serializable {
                     doc.setField( "names_and_lsid", atxr.getScientificName() + "|" + atxr.getTaxonConceptID() + "|" + atxr.getVernacularName() + "|" + atxr.getKingdom() + "|" + atxr.getFamily()); // is set to IGNORE in headerAttributes
                     doc.setField( "common_name_and_lsid",  atxr.getVernacularName() + "|" + atxr.getScientificName() + "|" + atxr.getTaxonConceptID() + "|" +  atxr.getVernacularName() + "|" + atxr.getKingdom() + "|" + atxr.getFamily()); // is set to IGNORE in headerAttributes
 
+                    //legacy fields referenced in biocache-service code
+                    doc.setField("taxon_name", atxr.getScientificName());
+                    doc.setField("lsid", atxr.getTaxonConceptID());
+                    doc.setField("lft", atxr.getLeft());
+                    doc.setField("rgt", atxr.getRight());
+                    doc.setField("rank", atxr.getRank());
+                    doc.setField("rank_id", atxr.getRankID());
+
+                    for (String s : atxr.getSpeciesGroup()){
+                        doc.setField("species_group", s);
+                    }
+                    for (String s : atxr.getSpeciesSubgroup()){
+                        doc.setField("species_subgroup", s);
+                    }
                 }
 
                 doc.setField("geospatial_kosher", lr.getHasCoordinate());
@@ -188,6 +202,11 @@ public class ALASolrDocumentTransform implements Serializable {
                     }
                 }
 
+                //legacy fields reference directly in biocache-service code
+
+
+
+
                 c.output(doc);
 
                 counter.inc();
@@ -204,10 +223,12 @@ public class ALASolrDocumentTransform implements Serializable {
         String latlon = "";
         //ensure that the lat longs are in the required range before
         if (lat <= 90 && lat >= test && lon <= 180 && lon >= test2) {
-            latlon = lat + "," + lat;
+            //https://lucene.apache.org/solr/guide/7_0/spatial-search.html#indexing-points
+            latlon = lat + "," + lat; //required format for indexing geodetic points in SOLR
         }
 
         doc.addField("lat_long", latlon); // is set to IGNORE in headerAttributes
+        doc.addField("location", latlon);
         doc.addField("point-1", getLatLongString(lat, lon, "#")); // is set to IGNORE in headerAttributes
         doc.addField("point-0.1", getLatLongString(lat, lon, "#.#")); // is set to IGNORE in headerAttributes
         doc.addField("point-0.01", getLatLongString(lat, lon, "#.##")); // is set to IGNORE in headerAttributes
@@ -245,6 +266,8 @@ public class ALASolrDocumentTransform implements Serializable {
         skipKeys.add("extensions");
         skipKeys.add("usage");
         skipKeys.add("classification");
+        skipKeys.add("issues");
+        skipKeys.add("eventDate");
 
         record.getSchema().getFields().stream()
                 .filter(n -> !skipKeys.contains(n.name()))
