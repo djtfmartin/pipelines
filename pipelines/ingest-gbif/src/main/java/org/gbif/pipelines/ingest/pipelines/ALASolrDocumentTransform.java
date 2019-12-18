@@ -100,28 +100,44 @@ public class ALASolrDocumentTransform implements Serializable {
                 ALATaxonRecord atxr = v.getOnly(atxrTag, ALATaxonRecord.newBuilder().setId(k).build());
                 AustraliaSpatialRecord asr = v.getOnly(asrTag, AustraliaSpatialRecord.newBuilder().setId(k).build());
 
-
                 MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
-                List<String> skipKeys = new ArrayList<String>();
+                Set<String> skipKeys = new HashSet<String>();
+                skipKeys.add("id");
+                skipKeys.add("created");
+                skipKeys.add("text");
+                skipKeys.add("name");
+                skipKeys.add("coreRowType");
+                skipKeys.add("coreTerms");
+                skipKeys.add("extensions");
+                skipKeys.add("usage");
+                skipKeys.add("classification");
+                skipKeys.add("issues");
+                skipKeys.add("eventDate");
+                skipKeys.add("hasCoordinate");
+                skipKeys.add("hasGeospatialIssue");
+                skipKeys.add("gbifId");
+                skipKeys.add("crawlId");
+                skipKeys.add("networkKeys");
+                skipKeys.add("protocol");
 
                 SolrInputDocument doc = new SolrInputDocument();
                 doc.setField("id", er.getId());
 
-                addToDoc(lr, doc);
-                addToDoc(tr, doc);
-                addToDoc(br, doc);
-                addToDoc(er, doc);
-                addToDoc(mdr, doc);
-                addToDoc(mdr, doc);
+                addToDoc(lr, doc, skipKeys);
+                addToDoc(tr, doc, skipKeys);
+                addToDoc(br, doc, skipKeys);
+                addToDoc(er, doc, skipKeys);
+                addToDoc(mdr, doc, skipKeys);
+                addToDoc(mdr, doc, skipKeys);
 
                 //add event date
                 try {
                     if (tr.getEventDate() != null && tr.getEventDate().getGte() != null) {
-                        doc.setField("dwc_t_eventDateSingle", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").parse(tr.getEventDate().getGte()));
+                        doc.setField("eventDateSingle", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").parse(tr.getEventDate().getGte()));
                     } else {
                         TemporalUtils.getTemporal(tr.getYear(), tr.getMonth(), tr.getDay())
-                                .ifPresent(x -> doc.setField("dwc_t_eventDateSingle", x));
+                                .ifPresent(x -> doc.setField("eventDateSingle", x));
                     }
                 } catch (ParseException e){
                     //ignore for now
@@ -152,17 +168,16 @@ public class ALASolrDocumentTransform implements Serializable {
                 }
 
                 //TODO assertions
-
                 if (atxr.getTaxonConceptID() != null){
                     List<Schema.Field> fields = atxr.getSchema().getFields();
                     for (Schema.Field field: fields){
                         field.name();
                         Object value = atxr.get(field.name());
-                        if (value != null){
+                        if (value != null && !field.name().equals("speciesGroup")&& !field.name().equals("speciesSubgroup")){
                             if (value instanceof Integer){
-                                doc.setField("dwc_i_" + field.name(), value);
+                                doc.setField(field.name(), value);
                             } else {
-                                doc.setField("dwc_s_" + field.name(), value.toString());
+                                doc.setField(field.name(), value.toString());
                             }
                         }
                     }
@@ -174,8 +189,6 @@ public class ALASolrDocumentTransform implements Serializable {
                     //legacy fields referenced in biocache-service code
                     doc.setField("taxon_name", atxr.getScientificName());
                     doc.setField("lsid", atxr.getTaxonConceptID());
-                    doc.setField("lft", atxr.getLeft());
-                    doc.setField("rgt", atxr.getRight());
                     doc.setField("rank", atxr.getRank());
                     doc.setField("rank_id", atxr.getRankID());
 
@@ -204,8 +217,29 @@ public class ALASolrDocumentTransform implements Serializable {
 
                 //legacy fields reference directly in biocache-service code
 
+                IssueRecord taxonomicIssues = txr.getIssues();
+                for(String issue : taxonomicIssues.getIssueList()){
+                    doc.setField("assertions", issue);
+                }
 
+                IssueRecord geospatialIssues = lr.getIssues();
+                for(String issue : geospatialIssues.getIssueList()){
+                    doc.setField("assertions", issue);
+                }
 
+                IssueRecord temporalIssues = tr.getIssues();
+                for(String issue : temporalIssues.getIssueList()){
+                    doc.setField("assertions", issue);
+                }
+
+                IssueRecord basisOfRecordIssues = br.getIssues();
+                for(String issue : basisOfRecordIssues.getIssueList()){
+                    doc.setField("assertions", issue);
+                }
+
+                for(String issue : mdr.getIssues().getIssueList()){
+                    doc.setField("assertions", issue);
+                }
 
                 c.output(doc);
 
@@ -251,20 +285,7 @@ public class ALASolrDocumentTransform implements Serializable {
         return df.format(lat) + "," + df.format(lon);
     }
 
-    void addToDoc(SpecificRecordBase record, SolrInputDocument doc){
-
-        Set<String> skipKeys = new HashSet<String>();
-        skipKeys.add("id");
-        skipKeys.add("created");
-        skipKeys.add("text");
-        skipKeys.add("name");
-        skipKeys.add("coreRowType");
-        skipKeys.add("coreTerms");
-        skipKeys.add("extensions");
-        skipKeys.add("usage");
-        skipKeys.add("classification");
-        skipKeys.add("issues");
-        skipKeys.add("eventDate");
+    void addToDoc(SpecificRecordBase record, SolrInputDocument doc, Set<String> skipKeys){
 
         record.getSchema().getFields().stream()
                 .filter(n -> !skipKeys.contains(n.name()))
@@ -279,22 +300,22 @@ public class ALASolrDocumentTransform implements Serializable {
                             type.ifPresent(t -> {
                                 switch (t) {
                                     case BOOLEAN:
-                                        doc.setField("dwc_b_" + f.name(), (Boolean) r);
+                                        doc.setField(f.name(), (Boolean) r);
                                         break;
                                     case FLOAT:
-                                        doc.setField("dwc_f_" + f.name(), (Float) r);
+                                        doc.setField(f.name(), (Float) r);
                                         break;
                                     case DOUBLE:
-                                        doc.setField("dwc_d_" + f.name(), (Double) r);
+                                        doc.setField(f.name(), (Double) r);
                                         break;
                                     case INT:
-                                        doc.setField("dwc_i_" + f.name(), (Integer) r);
+                                        doc.setField(f.name(), (Integer) r);
                                         break;
                                     case LONG:
-                                        doc.setField("dwc_l_" + f.name(), (Long) r);
+                                        doc.setField(f.name(), (Long) r);
                                         break;
                                     default:
-                                        doc.setField("dwc_s_"+  f.name(), r.toString());
+                                        doc.setField(f.name(), r.toString());
                                         break;
                                 }
                             });
