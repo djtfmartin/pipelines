@@ -52,8 +52,8 @@ public class ALASolrDocumentTransform implements Serializable {
     private final TupleTag<TemporalRecord> trTag;
     @NonNull
     private final TupleTag<LocationRecord> lrTag;
-    @NonNull
-    private final TupleTag<TaxonRecord> txrTag;
+//    @NonNull
+//    private final TupleTag<TaxonRecord> txrTag;
     @NonNull
     private final TupleTag<ALATaxonRecord> atxrTag;
     // Extension
@@ -88,7 +88,7 @@ public class ALASolrDocumentTransform implements Serializable {
                 BasicRecord br = v.getOnly(brTag, BasicRecord.newBuilder().setId(k).build());
                 TemporalRecord tr = v.getOnly(trTag, TemporalRecord.newBuilder().setId(k).build());
                 LocationRecord lr = v.getOnly(lrTag, LocationRecord.newBuilder().setId(k).build());
-                TaxonRecord txr = v.getOnly(txrTag, TaxonRecord.newBuilder().setId(k).build());
+//                TaxonRecord txr = v.getOnly(txrTag, TaxonRecord.newBuilder().setId(k).build());
 
                 // Extension
                 MultimediaRecord mr = v.getOnly(mrTag, MultimediaRecord.newBuilder().setId(k).build());
@@ -143,16 +143,16 @@ public class ALASolrDocumentTransform implements Serializable {
                     //ignore for now
                 }
 
-                //add the classification
-                List<RankedName> taxonomy = txr.getClassification();
-                for (RankedName entry : taxonomy) {
-                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase() + "_id", entry.getKey());
-                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase(), entry.getName());
-                }
-
-                String rank = txr.getAcceptedUsage().getRank().toString();
-                doc.setField("gbif_s_rank", txr.getAcceptedUsage().getRank().toString());
-                doc.setField("gbif_s_scientificName", txr.getAcceptedUsage().getName().toString());
+//                //add the classification
+//                List<RankedName> taxonomy = txr.getClassification();
+//                for (RankedName entry : taxonomy) {
+//                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase() + "_id", entry.getKey());
+//                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase(), entry.getName());
+//                }
+//
+//                String rank = txr.getAcceptedUsage().getRank().toString();
+//                doc.setField("gbif_s_rank", txr.getAcceptedUsage().getRank().toString());
+//                doc.setField("gbif_s_scientificName", txr.getAcceptedUsage().getName().toString());
 
                 Map<String,String> raw = er.getCoreTerms();
                 for (Map.Entry<String, String> entry : raw.entrySet()) {
@@ -217,10 +217,10 @@ public class ALASolrDocumentTransform implements Serializable {
 
                 //legacy fields reference directly in biocache-service code
 
-                IssueRecord taxonomicIssues = txr.getIssues();
-                for(String issue : taxonomicIssues.getIssueList()){
-                    doc.setField("assertions", issue);
-                }
+//                IssueRecord taxonomicIssues = txr.getIssues();
+//                for(String issue : taxonomicIssues.getIssueList()){
+//                    doc.setField("assertions", issue);
+//                }
 
                 IssueRecord geospatialIssues = lr.getIssues();
                 for(String issue : geospatialIssues.getIssueList()){

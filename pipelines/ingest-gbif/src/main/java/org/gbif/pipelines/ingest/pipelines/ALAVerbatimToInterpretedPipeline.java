@@ -123,7 +123,7 @@ public class ALAVerbatimToInterpretedPipeline {
     BasicTransform basicTransform =  BasicTransform.create(properties, datasetId, tripletValid, occurrenceIdValid, useExtendedRecordId);
     VerbatimTransform verbatimTransform = VerbatimTransform.create();
     TemporalTransform temporalTransform = TemporalTransform.create();
-    TaxonomyTransform taxonomyTransform = TaxonomyTransform.create(properties);
+//    TaxonomyTransform taxonomyTransform = TaxonomyTransform.create(properties);
     LocationTransform locationTransform = LocationTransform.create(properties);
 
     // ALA specific transforms
@@ -219,11 +219,11 @@ public class ALAVerbatimToInterpretedPipeline {
         .apply("Check measurement transform condition", measurementOrFactTransform.check(types))
         .apply("Interpret measurement", measurementOrFactTransform.interpret())
         .apply("Write measurement to avro", measurementOrFactTransform.write(pathFn));
-
-    filteredUniqueRecords
-        .apply("Check taxonomy transform condition", taxonomyTransform.check(types))
-        .apply("Interpret taxonomy", taxonomyTransform.interpret())
-        .apply("Write taxon to avro", taxonomyTransform.write(pathFn));
+//
+//    filteredUniqueRecords
+//        .apply("Check taxonomy transform condition", taxonomyTransform.check(types))
+//        .apply("Interpret taxonomy", taxonomyTransform.interpret())
+//        .apply("Write taxon to avro", taxonomyTransform.write(pathFn));
 
     filteredUniqueRecords
         .apply("Check ALA taxonomy transform condition", alaTaxonomyTransform.check(types))

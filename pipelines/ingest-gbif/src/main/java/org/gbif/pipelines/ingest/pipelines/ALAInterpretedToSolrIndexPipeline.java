@@ -128,7 +128,7 @@ public class ALAInterpretedToSolrIndexPipeline {
                         basicTransform.getTag(),
                         temporalTransform.getTag(),
                         locationTransform.getTag(),
-                        taxonomyTransform.getTag(),
+//                        taxonomyTransform.getTag(),
                         alaTaxonomyTransform.getTag(),
                         multimediaTransform.getTag(),
                         imageTransform.getTag(),
