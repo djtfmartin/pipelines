@@ -67,4 +67,14 @@ public final class PipelinesOptionsFactory {
     registerHdfs(options);
     return options;
   }
+
+  /**
+   * Creates {@link EsIndexingPipelineOptions} from args
+   *
+   * @param args string arguments or file
+   */
+  public static SolrPipelineOptions createSolrIndexing(String[] args) {
+    SolrPipelineOptions options = create(SolrPipelineOptions.class, args);
+    return options;
+  }
 }

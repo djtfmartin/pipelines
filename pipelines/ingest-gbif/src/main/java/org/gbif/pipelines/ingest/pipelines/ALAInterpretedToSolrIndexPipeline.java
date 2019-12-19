@@ -18,6 +18,7 @@ import org.apache.solr.common.SolrInputDocument;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.pipelines.ingest.options.EsIndexingPipelineOptions;
 import org.gbif.pipelines.ingest.options.PipelinesOptionsFactory;
+import org.gbif.pipelines.ingest.options.SolrPipelineOptions;
 import org.gbif.pipelines.ingest.utils.FsUtils;
 import org.gbif.pipelines.ingest.utils.MetricsHandler;
 import org.gbif.pipelines.io.avro.*;
@@ -39,11 +40,11 @@ import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.AVRO_EXTENSI
 public class ALAInterpretedToSolrIndexPipeline {
 
     public static void main(String[] args) {
-        EsIndexingPipelineOptions options = PipelinesOptionsFactory.createIndexing(args);
+        SolrPipelineOptions options = PipelinesOptionsFactory.createSolrIndexing(args);
         run(options);
     }
 
-    public static void run(EsIndexingPipelineOptions options) {
+    public static void run(SolrPipelineOptions options) {
 
         MDC.put("datasetId", options.getDatasetId());
         MDC.put("attempt", options.getAttempt().toString());
@@ -161,12 +162,12 @@ public class ALAInterpretedToSolrIndexPipeline {
 
         log.info("Adding step 4: SOLR indexing");
         SolrIO.ConnectionConfiguration conn = SolrIO.ConnectionConfiguration.create(
-                "localhost:9983"
+                options.getZkHost() //"localhost:9983"
         );
 
         jsonCollection.apply(
                 SolrIO.write()
-                        .to("biocache")
+                        .to(options.solrCollection()) //biocache
                         .withConnectionConfiguration(conn)
         );
 
