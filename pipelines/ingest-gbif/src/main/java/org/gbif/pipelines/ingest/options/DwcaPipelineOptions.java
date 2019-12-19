@@ -5,7 +5,7 @@ import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.Hidden;
 import org.apache.beam.sdk.options.Validation;
 
-public interface DwcaPipelineOptions extends EsIndexingPipelineOptions, InterpretationPipelineOptions {
+public interface DwcaPipelineOptions extends EsIndexingPipelineOptions, InterpretationPipelineOptions, SolrPipelineOptions {
 
   enum PipelineStep {
     INTERPRETED_TO_ALA_SAMPLED,

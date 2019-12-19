@@ -9,10 +9,20 @@ public interface SolrPipelineOptions extends PipelineOptions, InterpretationPipe
 
     @Description("SOLR collection to index into")
     @Default.String("biocache")
-    String solrCollection();
-    void setSolrCollection(String collection);
+    String getSolrCollection();
+    void setSolrCollection(String solrCollection);
 
     @Description("List of Zookeeper hosts.")
     String getZkHost();
     void setZkHost(String zkHosts);
+
+    @Description("Include sampling")
+    @Default.Boolean(false)
+    Boolean getIncludeSampling();
+    void setIncludeSampling(Boolean includeSampling);
+
+    @Description("Include gbif taxonomy")
+    @Default.Boolean(false)
+    Boolean getIncludeGbifTaxonomy();
+    void setIncludeGbifTaxonomy(Boolean includeGbifTaxonomy);
 }

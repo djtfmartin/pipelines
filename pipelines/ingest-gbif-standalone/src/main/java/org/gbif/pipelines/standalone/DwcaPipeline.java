@@ -23,7 +23,7 @@ public class DwcaPipeline {
         ALAInterpretedToLatLongCSVPipeline.run(options);
         break;
       case INTERPRETED_TO_ALA_SOLR_INDEX:
-        ALAInterpretedToSolrIndexPipeline.run(PipelinesOptionsFactory.createSolrIndexing(args));
+        ALAInterpretedToSolrIndexPipeline.run(options);
         break;
       case VERBATIM_TO_ALA_INTERPRETED:
         PipelinesOptionsFactory.registerHdfs(options);

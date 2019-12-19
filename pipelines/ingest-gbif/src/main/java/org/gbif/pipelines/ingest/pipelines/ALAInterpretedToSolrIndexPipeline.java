@@ -93,9 +93,12 @@ public class ALAInterpretedToSolrIndexPipeline {
                 p.apply("Read Location", locationTransform.read(pathFn))
                         .apply("Map Location to KV", locationTransform.toKv());
 
-        PCollection<KV<String, TaxonRecord>> taxonCollection =
-                p.apply("Read Taxon", taxonomyTransform.read(pathFn))
-                        .apply("Map Taxon to KV", taxonomyTransform.toKv());
+        PCollection<KV<String, TaxonRecord>> taxonCollection = null;
+        if (options.getIncludeGbifTaxonomy()) {
+            taxonCollection =
+                    p.apply("Read Taxon", taxonomyTransform.read(pathFn))
+                            .apply("Map Taxon to KV", taxonomyTransform.toKv());
+        }
 
         PCollection<KV<String, ALATaxonRecord>> alaTaxonCollection =
                 p.apply("Read Taxon", alaTaxonomyTransform.read(pathFn))
@@ -117,9 +120,12 @@ public class ALAInterpretedToSolrIndexPipeline {
                 p.apply("Read Measurement", measurementOrFactTransform.read(pathFn))
                         .apply("Map Measurement to KV", measurementOrFactTransform.toKv());
 
-        PCollection<KV<String, AustraliaSpatialRecord>> australiaSpatialCollection =
-                p.apply("Read Sampling", australiaSpatialTransform.read(pathFn))
-                        .apply("Map Sampling to KV", australiaSpatialTransform.toKv());
+        PCollection<KV<String, AustraliaSpatialRecord>> australiaSpatialCollection = null;
+        if(options.getIncludeSampling()) {
+            australiaSpatialCollection =
+                    p.apply("Read Sampling", australiaSpatialTransform.read(pathFn))
+                            .apply("Map Sampling to KV", australiaSpatialTransform.toKv());
+        }
 
         log.info("Adding step 3: Converting into a json object");
         ParDo.SingleOutput<KV<String, CoGbkResult>, SolrInputDocument> alaSolrDoFn =
@@ -128,36 +134,44 @@ public class ALAInterpretedToSolrIndexPipeline {
                         basicTransform.getTag(),
                         temporalTransform.getTag(),
                         locationTransform.getTag(),
-//                        taxonomyTransform.getTag(),
+                        options.getIncludeGbifTaxonomy() ? taxonomyTransform.getTag() : null,
                         alaTaxonomyTransform.getTag(),
                         multimediaTransform.getTag(),
                         imageTransform.getTag(),
                         audubonTransform.getTag(),
                         measurementOrFactTransform.getTag(),
-                        australiaSpatialTransform.getTag(),
+                        options.getIncludeSampling() ? australiaSpatialTransform.getTag() : null,
                         metadataView
                 ).converter();
 
-        PCollection<SolrInputDocument> jsonCollection =
-                KeyedPCollectionTuple
-                        // Core
-                        .of(basicTransform.getTag(), basicCollection)
-                        .and(temporalTransform.getTag(), temporalCollection)
-                        .and(locationTransform.getTag(), locationCollection)
-                        .and(taxonomyTransform.getTag(), taxonCollection)
-                        // Extension
-                        .and(multimediaTransform.getTag(), multimediaCollection)
-                        .and(imageTransform.getTag(), imageCollection)
-                        .and(audubonTransform.getTag(), audubonCollection)
-                        .and(measurementOrFactTransform.getTag(), measurementCollection)
-                        // Raw
-                        .and(verbatimTransform.getTag(), verbatimCollection)
-                        //Specific
-                        .and(alaTaxonomyTransform.getTag(), alaTaxonCollection)
-                        .and(australiaSpatialTransform.getTag(), australiaSpatialCollection)
-                        // Apply
-                        .apply("Grouping objects", CoGroupByKey.create())
-                        .apply("Merging to Solr doc", alaSolrDoFn);
+        KeyedPCollectionTuple<String> kpct = KeyedPCollectionTuple
+                // Core
+                .of(basicTransform.getTag(), basicCollection)
+                .and(temporalTransform.getTag(), temporalCollection)
+                .and(locationTransform.getTag(), locationCollection)
+
+                // Extension
+                .and(multimediaTransform.getTag(), multimediaCollection)
+                .and(imageTransform.getTag(), imageCollection)
+                .and(audubonTransform.getTag(), audubonCollection)
+                .and(measurementOrFactTransform.getTag(), measurementCollection)
+                // Raw
+                .and(verbatimTransform.getTag(), verbatimCollection)
+                //Specific
+                .and(alaTaxonomyTransform.getTag(), alaTaxonCollection);
+
+
+        if (options.getIncludeSampling()){
+            kpct = kpct.and(australiaSpatialTransform.getTag(), australiaSpatialCollection);
+        }
+
+        if (options.getIncludeGbifTaxonomy()){
+            kpct = kpct.and(taxonomyTransform.getTag(), taxonCollection);
+        }
+
+        PCollection<SolrInputDocument> jsonCollection = kpct
+                .apply("Grouping objects", CoGroupByKey.create())
+                .apply("Merging to Solr doc", alaSolrDoFn);
 
 
         log.info("Adding step 4: SOLR indexing");
@@ -167,7 +181,7 @@ public class ALAInterpretedToSolrIndexPipeline {
 
         jsonCollection.apply(
                 SolrIO.write()
-                        .to(options.solrCollection()) //biocache
+                        .to(options.getSolrCollection()) //biocache
                         .withConnectionConfiguration(conn)
         );
 

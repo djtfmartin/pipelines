@@ -7,4 +7,4 @@ java -cp pipelines/ingest-gbif-standalone/target/ingest-gbif-standalone-2.3.1-SN
   --attempt=1 \
   --runner=SparkRunner \
   --targetPath=/data/pipelines-data \
-  --inputPath=/data/biocache-load/inaturalist/
+  --inputPath=/data/biocache-load/dr1411

@@ -52,8 +52,8 @@ public class ALASolrDocumentTransform implements Serializable {
     private final TupleTag<TemporalRecord> trTag;
     @NonNull
     private final TupleTag<LocationRecord> lrTag;
-//    @NonNull
-//    private final TupleTag<TaxonRecord> txrTag;
+
+    private final TupleTag<TaxonRecord> txrTag;
     @NonNull
     private final TupleTag<ALATaxonRecord> atxrTag;
     // Extension
@@ -65,7 +65,7 @@ public class ALASolrDocumentTransform implements Serializable {
     private final TupleTag<AudubonRecord> arTag;
     @NonNull
     private final TupleTag<MeasurementOrFactRecord> mfrTag;
-    @NonNull
+
     private final TupleTag<AustraliaSpatialRecord> asrTag;
 
     @NonNull
@@ -88,7 +88,10 @@ public class ALASolrDocumentTransform implements Serializable {
                 BasicRecord br = v.getOnly(brTag, BasicRecord.newBuilder().setId(k).build());
                 TemporalRecord tr = v.getOnly(trTag, TemporalRecord.newBuilder().setId(k).build());
                 LocationRecord lr = v.getOnly(lrTag, LocationRecord.newBuilder().setId(k).build());
-//                TaxonRecord txr = v.getOnly(txrTag, TaxonRecord.newBuilder().setId(k).build());
+                TaxonRecord txr = null;
+                if(txrTag != null) {
+                    txr = v.getOnly(txrTag, TaxonRecord.newBuilder().setId(k).build());
+                }
 
                 // Extension
                 MultimediaRecord mr = v.getOnly(mrTag, MultimediaRecord.newBuilder().setId(k).build());
@@ -98,7 +101,12 @@ public class ALASolrDocumentTransform implements Serializable {
 
                 // ALA specific
                 ALATaxonRecord atxr = v.getOnly(atxrTag, ALATaxonRecord.newBuilder().setId(k).build());
-                AustraliaSpatialRecord asr = v.getOnly(asrTag, AustraliaSpatialRecord.newBuilder().setId(k).build());
+
+                AustraliaSpatialRecord asr = null;
+                if (asrTag != null){
+                    asr = v.getOnly(asrTag, AustraliaSpatialRecord.newBuilder().setId(k).build());
+                }
+
 
                 MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
@@ -143,16 +151,18 @@ public class ALASolrDocumentTransform implements Serializable {
                     //ignore for now
                 }
 
-//                //add the classification
-//                List<RankedName> taxonomy = txr.getClassification();
-//                for (RankedName entry : taxonomy) {
-//                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase() + "_id", entry.getKey());
-//                    doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase(), entry.getName());
-//                }
-//
-//                String rank = txr.getAcceptedUsage().getRank().toString();
-//                doc.setField("gbif_s_rank", txr.getAcceptedUsage().getRank().toString());
-//                doc.setField("gbif_s_scientificName", txr.getAcceptedUsage().getName().toString());
+                if (txr != null) {
+                    //add the classification
+                    List<RankedName> taxonomy = txr.getClassification();
+                    for (RankedName entry : taxonomy) {
+                        doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase() + "_id", entry.getKey());
+                        doc.setField("gbif_s_" + entry.getRank().toString().toLowerCase(), entry.getName());
+                    }
+
+                    String rank = txr.getAcceptedUsage().getRank().toString();
+                    doc.setField("gbif_s_rank", txr.getAcceptedUsage().getRank().toString());
+                    doc.setField("gbif_s_scientificName", txr.getAcceptedUsage().getName().toString());
+                }
 
                 Map<String,String> raw = er.getCoreTerms();
                 for (Map.Entry<String, String> entry : raw.entrySet()) {
@@ -204,23 +214,26 @@ public class ALASolrDocumentTransform implements Serializable {
                 doc.setField("first_loaded_date", new Date());
 
                 //add sampling
-                Map<String, String> samples = asr.getItems();
-                for (Map.Entry<String, String> sample : samples.entrySet()){
-                    if (!StringUtils.isEmpty(sample.getValue())){
-                        if (sample.getKey().startsWith("el")){
-                            doc.setField(sample.getKey(), Double.valueOf(sample.getKey()));
-                        } else {
-                            doc.setField(sample.getKey(), sample.getValue());
+                if (asr != null) {
+                    Map<String, String> samples = asr.getItems();
+                    for (Map.Entry<String, String> sample : samples.entrySet()) {
+                        if (!StringUtils.isEmpty(sample.getValue())) {
+                            if (sample.getKey().startsWith("el")) {
+                                doc.setField(sample.getKey(), Double.valueOf(sample.getKey()));
+                            } else {
+                                doc.setField(sample.getKey(), sample.getValue());
+                            }
                         }
                     }
                 }
 
                 //legacy fields reference directly in biocache-service code
-
-//                IssueRecord taxonomicIssues = txr.getIssues();
-//                for(String issue : taxonomicIssues.getIssueList()){
-//                    doc.setField("assertions", issue);
-//                }
+                if (txr != null) {
+                    IssueRecord taxonomicIssues = txr.getIssues();
+                    for(String issue : taxonomicIssues.getIssueList()){
+                        doc.setField("assertions", issue);
+                    }
+                }
 
                 IssueRecord geospatialIssues = lr.getIssues();
                 for(String issue : geospatialIssues.getIssueList()){
