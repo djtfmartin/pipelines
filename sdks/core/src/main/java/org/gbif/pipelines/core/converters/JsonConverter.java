@@ -1,5 +1,6 @@
 package org.gbif.pipelines.core.converters;
 
+import static org.gbif.pipelines.core.converters.OccurrenceJsonConverter.GBIF_BACKBONE_DATASET_KEY;
 import static org.gbif.pipelines.core.utils.ModelUtils.extractOptValue;
 
 import com.google.common.base.Strings;
@@ -7,41 +8,27 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAccessor;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.LongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.apache.avro.specific.SpecificRecordBase;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.api.vocabulary.License;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.common.parsers.date.TemporalAccessorUtils;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.common.PipelinesVariables.Pipeline.Indexing;
 import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
 import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.pipelines.core.utils.TemporalConverter;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.Issues;
+import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.Multimedia;
-import org.gbif.pipelines.io.avro.MultimediaRecord;
-import org.gbif.pipelines.io.avro.Rank;
-import org.gbif.pipelines.io.avro.TaxonRecord;
-import org.gbif.pipelines.io.avro.TemporalRecord;
+import org.gbif.pipelines.io.avro.json.*;
 import org.gbif.pipelines.io.avro.json.AgentIdentifier;
 import org.gbif.pipelines.io.avro.json.Authorship;
 import org.gbif.pipelines.io.avro.json.Coordinates;
@@ -52,6 +39,7 @@ import org.gbif.pipelines.io.avro.json.GbifClassification;
 import org.gbif.pipelines.io.avro.json.ParsedName;
 import org.gbif.pipelines.io.avro.json.ParsedName.Builder;
 import org.gbif.pipelines.io.avro.json.RankedName;
+import org.gbif.pipelines.io.avro.json.RankedNameWithAuthorship;
 import org.gbif.pipelines.io.avro.json.VerbatimRecord;
 import org.gbif.pipelines.io.avro.json.VocabularyConcept;
 import org.gbif.pipelines.io.avro.json.VocabularyConceptList;
@@ -91,13 +79,11 @@ public class JsonConverter {
   }
 
   /** Gets the maximum/latest created date of all the records. */
-  public static Optional<String> getMaxCreationDate(SpecificRecordBase... recordBases) {
-    return Arrays.stream(recordBases)
+  public static Optional<String> getMaxCreationDate(Created... records) {
+    return Arrays.stream(records)
         .filter(Objects::nonNull)
-        .filter(r -> Objects.nonNull(r.getSchema().getField(Indexing.CREATED)))
-        .map(r -> r.get(Indexing.CREATED))
+        .map(r -> r.getCreated())
         .filter(Objects::nonNull)
-        .map(Long.class::cast)
         .max(Long::compareTo)
         .flatMap(JsonConverter::convertToDate);
   }
@@ -354,8 +340,61 @@ public class JsonConverter {
             rn ->
                 RankedName.newBuilder()
                     .setName(rn.getName())
-                    .setRank(rn.getRank() != null ? rn.getRank().name() : null)
+                    .setRank(rn.getRank())
                     .setKey(rn.getKey())
+                    .build());
+  }
+
+  public static Optional<Usage> convertToAcceptedUsage(
+      org.gbif.pipelines.io.avro.TaxonRecord taxonRecord) {
+    Optional<Usage> usage = buildUsage(taxonRecord, true);
+    usage.ifPresent(
+        u -> u.setGenericName(convertGenericNameFromClassification(taxonRecord).orElse(null)));
+    return usage;
+  }
+
+  public static Optional<Usage> convertToUsage(org.gbif.pipelines.io.avro.TaxonRecord taxonRecord) {
+    Optional<Usage> usage = buildUsage(taxonRecord, false);
+    usage.ifPresent(
+        u -> u.setGenericName(convertGenericNameFromParsedName(taxonRecord).orElse(null)));
+    return usage;
+  }
+
+  private static Optional<Usage> buildUsage(
+      org.gbif.pipelines.io.avro.TaxonRecord taxonRecord, boolean accepted) {
+    if (taxonRecord == null) {
+      return Optional.empty();
+    }
+
+    var usageData = accepted ? taxonRecord.getAcceptedUsage() : taxonRecord.getUsage();
+    Usage.Builder builder = Usage.newBuilder();
+
+    if (usageData != null) {
+      builder
+          .setName(usageData.getName())
+          .setRank(usageData.getRank())
+          .setKey(usageData.getKey())
+          .setAuthorship(usageData.getAuthorship())
+          .setCode(usageData.getCode())
+          .setSpecificEpithet(usageData.getSpecificEpithet())
+          .setInfragenericEpithet(usageData.getInfragenericEpithet())
+          .setInfraspecificEpithet(usageData.getInfraspecificEpithet())
+          .setFormattedName(usageData.getFormattedName());
+    }
+
+    return Optional.of(builder.build());
+  }
+
+  public static Optional<RankedNameWithAuthorship> convertRankedName(
+      org.gbif.pipelines.io.avro.RankedNameWithAuthorship rankedName) {
+    return Optional.ofNullable(rankedName)
+        .map(
+            rn ->
+                RankedNameWithAuthorship.newBuilder()
+                    .setName(rn.getName())
+                    .setRank(rn.getRank())
+                    .setKey(rn.getKey())
+                    .setAuthorship(rn.getAuthorship())
                     .build());
   }
 
@@ -433,19 +472,122 @@ public class JsonConverter {
     return Optional.of(build);
   }
 
-  public static Optional<String> convertGenericName(TaxonRecord taxonRecord) {
+  public static Optional<String> convertGenericNameFromParsedName(TaxonRecord taxonRecord) {
     // only set generic name for genus or more specific
-    if (Objects.nonNull(taxonRecord.getUsage())
-        && Rank.GENUS.compareTo(taxonRecord.getUsage().getRank()) <= 0) {
-      return Optional.ofNullable(taxonRecord.getUsageParsedName())
-          .map(upn -> upn.getGenus() != null ? upn.getGenus() : upn.getUninomial());
-    } else {
-      return Optional.empty();
+    if (Objects.nonNull(taxonRecord.getUsage())) {
+      try {
+        if (Rank.GENUS.compareTo(Rank.valueOf(taxonRecord.getUsage().getRank())) <= 0) {
+          return Optional.ofNullable(taxonRecord.getUsageParsedName())
+              .map(upn -> upn.getGenus() != null ? upn.getGenus() : upn.getUninomial());
+        }
+      } catch (java.lang.IllegalArgumentException ex) {
+        // throw if rank unrecognised - more common now with xcol
+        return Optional.empty();
+      }
     }
+    return Optional.empty();
   }
 
-  public static GbifClassification convertClassification(
+  public static Optional<String> convertGenericNameFromClassification(TaxonRecord taxonRecord) {
+    // only set generic name for genus or more specific
+    if (Objects.nonNull(taxonRecord.getClassification())) {
+      try {
+        Optional<org.gbif.pipelines.io.avro.RankedName> genus =
+            taxonRecord.getClassification().stream()
+                .filter(rn -> Rank.GENUS.name().equalsIgnoreCase(rn.getRank()))
+                .findFirst();
+        if (genus.isPresent()) {
+          return Optional.of(genus.get().getName());
+        }
+
+      } catch (java.lang.IllegalArgumentException ex) {
+        // throw if rank unrecognised - more common now with xcol
+        return Optional.empty();
+      }
+    }
+    return Optional.empty();
+  }
+
+  public static Map<String, Classification> convertToClassifications(MultiTaxonRecord taxon) {
+    return taxon.getTaxonRecords().stream()
+        .collect(
+            Collectors.toMap(TaxonRecord::getDatasetKey, JsonConverter::convertToClassification));
+  }
+
+  private static LinkedHashMap<String, String> convertToMap(
+      List<org.gbif.pipelines.io.avro.RankedName> names,
+      Function<org.gbif.pipelines.io.avro.RankedName, String> valueExtractor) {
+
+    LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
+    Set<String> ranks = new LinkedHashSet<>();
+    int depth = 0;
+    for (org.gbif.pipelines.io.avro.RankedName rankedName : names) {
+      String rankToUse = rankedName.getRank();
+      if (ranks.contains(rankedName.getRank())) {
+        rankToUse = rankedName.getRank() + "_" + depth;
+      } else {
+        ranks.add(rankedName.getRank());
+      }
+      map.put(rankToUse, valueExtractor.apply(rankedName));
+      depth++;
+    }
+    return map;
+  }
+
+  public static Classification convertToClassification(TaxonRecord taxon) {
+
+    Classification.Builder classificationBuilder =
+        Classification.newBuilder()
+            .setClassification(
+                convertToMap(
+                    taxon.getClassification(), org.gbif.pipelines.io.avro.RankedName::getName))
+            .setClassificationKeys(
+                convertToMap(
+                    taxon.getClassification(), org.gbif.pipelines.io.avro.RankedName::getKey))
+            .setTaxonKeys(JsonConverter.convertTaxonKey(taxon))
+            .setIucnRedListCategoryCode(taxon.getIucnRedListCategoryCode())
+            .setUsage(JsonConverter.convertToUsage(taxon).orElse(null))
+            .setAcceptedUsage(JsonConverter.convertToAcceptedUsage(taxon).orElse(null));
+
+    if (taxon.getIssues() != null
+        && taxon.getIssues().getIssueList() != null
+        && !taxon.getIssues().getIssueList().isEmpty()) {
+      classificationBuilder.setIssues(taxon.getIssues().getIssueList());
+    } else {
+      classificationBuilder.setIssues(Collections.emptyList());
+    }
+
+    if (taxon.getDiagnostics() != null && taxon.getDiagnostics().getStatus() != null) {
+      classificationBuilder.setStatus(taxon.getDiagnostics().getStatus().name());
+    }
+
+    JsonConverter.convertClassificationDepth(taxon)
+        .ifPresent(classificationBuilder::setClassificationDepth);
+
+    return classificationBuilder.build();
+  }
+
+  public static GbifClassification convertToGbifClassificationFromMultiTaxon(
+      ExtendedRecord verbatim, MultiTaxonRecord multiTaxon) {
+    if (multiTaxon != null
+        && multiTaxon.getTaxonRecords() != null
+        && !multiTaxon.getTaxonRecords().isEmpty()) {
+
+      Optional<TaxonRecord> gbifRecord =
+          multiTaxon.getTaxonRecords().stream()
+              .filter(tr -> GBIF_BACKBONE_DATASET_KEY.equals(tr.getDatasetKey()))
+              .findFirst();
+
+      return gbifRecord
+          .map(tr -> JsonConverter.convertToGbifClassification(verbatim, tr))
+          .orElse(null);
+    }
+    return null;
+  }
+
+  public static GbifClassification convertToGbifClassification(
       ExtendedRecord verbatim, TaxonRecord taxon) {
+
     GbifClassification.Builder classificationBuilder =
         GbifClassification.newBuilder()
             .setSynonym(taxon.getSynonym())
@@ -464,11 +606,14 @@ public class JsonConverter {
     JsonConverter.convertParsedName(taxon.getUsageParsedName())
         .ifPresent(classificationBuilder::setUsageParsedName);
 
-    JsonConverter.convertGenericName(taxon)
+    JsonConverter.convertGenericNameFromParsedName(taxon)
         .ifPresent(
             genericName -> {
-              if (classificationBuilder.getUsageParsedName() != null) {
-                classificationBuilder.getUsageParsedName().setGenericName(genericName);
+              GbifClassification partial = classificationBuilder.build();
+              ParsedName existing = partial.getUsageParsedName();
+              if (existing != null) {
+                existing.setGenericName(genericName);
+                classificationBuilder.setUsageParsedName(existing);
               }
             });
 
@@ -478,45 +623,45 @@ public class JsonConverter {
     // Classification
     if (taxon.getClassification() != null) {
       for (org.gbif.pipelines.io.avro.RankedName rankedName : taxon.getClassification()) {
-        Rank rank = rankedName.getRank();
+        String rank = rankedName.getRank();
         switch (rank) {
-          case KINGDOM:
+          case "KINGDOM":
             classificationBuilder.setKingdom(rankedName.getName());
             Optional.ofNullable(rankedName.getKey())
                 .map(String::valueOf)
                 .ifPresent(classificationBuilder::setKingdomKey);
             break;
-          case PHYLUM:
+          case "PHYLUM":
             classificationBuilder.setPhylum(rankedName.getName());
             Optional.ofNullable(rankedName.getKey())
                 .map(String::valueOf)
                 .ifPresent(classificationBuilder::setPhylumKey);
             break;
-          case CLASS:
+          case "CLASS":
             classificationBuilder.setClass$(rankedName.getName());
             Optional.ofNullable(rankedName.getKey())
                 .map(String::valueOf)
                 .ifPresent(classificationBuilder::setClassKey);
             break;
-          case ORDER:
+          case "ORDER":
             classificationBuilder.setOrder(rankedName.getName());
             Optional.ofNullable(rankedName.getKey())
                 .map(String::valueOf)
                 .ifPresent(classificationBuilder::setOrderKey);
             break;
-          case FAMILY:
+          case "FAMILY":
             classificationBuilder.setFamily(rankedName.getName());
             Optional.ofNullable(rankedName.getKey())
                 .map(String::valueOf)
                 .ifPresent(classificationBuilder::setFamilyKey);
             break;
-          case GENUS:
+          case "GENUS":
             classificationBuilder.setGenus(rankedName.getName());
             Optional.ofNullable(rankedName.getKey())
                 .map(String::valueOf)
                 .ifPresent(classificationBuilder::setGenusKey);
             break;
-          case SPECIES:
+          case "SPECIES":
             classificationBuilder.setSpecies(rankedName.getName());
             Optional.ofNullable(rankedName.getKey())
                 .map(String::valueOf)
@@ -529,9 +674,11 @@ public class JsonConverter {
     }
 
     // Raw to index classification
-    extractOptValue(verbatim, DwcTerm.taxonID).ifPresent(classificationBuilder::setTaxonID);
-    extractOptValue(verbatim, DwcTerm.scientificName)
-        .ifPresent(classificationBuilder::setVerbatimScientificName);
+    if (verbatim != null) {
+      extractOptValue(verbatim, DwcTerm.taxonID).ifPresent(classificationBuilder::setTaxonID);
+      extractOptValue(verbatim, DwcTerm.scientificName)
+          .ifPresent(classificationBuilder::setVerbatimScientificName);
+    }
 
     return classificationBuilder.build();
   }
@@ -548,8 +695,46 @@ public class JsonConverter {
 
     String pathJoiner =
         taxonRecord.getClassification().stream()
-            .filter(rankedName -> taxonRecord.getUsage().getRank() != rankedName.getRank())
-            .map(rankedName -> rankedName.getKey().toString())
+            .filter(
+                rankedName ->
+                    !Objects.equals(taxonRecord.getUsage().getRank(), rankedName.getRank()))
+            .map(org.gbif.pipelines.io.avro.RankedName::getKey)
+            .collect(Collectors.joining("_"));
+
+    return Optional.of("_" + pathJoiner);
+  }
+
+  /**
+   * Creates a set of fields" kingdomKey, phylumKey, classKey, etc for convenient aggregation/facets
+   */
+  public static Optional<Map<String, String>> convertClassificationDepth(TaxonRecord taxonRecord) {
+    if (taxonRecord.getClassification() == null
+        || taxonRecord.getClassification().isEmpty()
+        || taxonRecord.getUsage() == null) {
+      return Optional.empty();
+    }
+
+    Map<String, String> depthMap = new LinkedHashMap<>();
+    AtomicInteger idx = new AtomicInteger(0); // Using AtomicInteger to handle index
+    taxonRecord
+        .getClassification()
+        .forEach(taxon -> depthMap.put(String.valueOf(idx.getAndIncrement()), taxon.getKey()));
+    return Optional.of(depthMap);
+  }
+
+  /**
+   * Creates a set of fields" kingdomKey, phylumKey, classKey, etc for convenient aggregation/facets
+   */
+  public static Optional<String> convertRankPath(TaxonRecord taxonRecord) {
+    if (taxonRecord.getClassification() == null
+        || taxonRecord.getClassification().isEmpty()
+        || taxonRecord.getUsage() == null) {
+      return Optional.empty();
+    }
+
+    String pathJoiner =
+        taxonRecord.getClassification().stream()
+            .map(org.gbif.pipelines.io.avro.RankedName::getRank)
             .collect(Collectors.joining("_"));
 
     return Optional.of("_" + pathJoiner);
@@ -560,14 +745,14 @@ public class JsonConverter {
       return Collections.emptyList();
     }
 
-    Set<Integer> taxonKey = new HashSet<>();
-
-    Optional.ofNullable(taxonRecord.getUsage()).ifPresent(s -> taxonKey.add(s.getKey()));
-    Optional.ofNullable(taxonRecord.getAcceptedUsage()).ifPresent(au -> taxonKey.add(au.getKey()));
+    Set<String> taxonKey = new LinkedHashSet<>();
 
     taxonRecord.getClassification().stream()
         .map(org.gbif.pipelines.io.avro.RankedName::getKey)
         .forEach(taxonKey::add);
+
+    Optional.ofNullable(taxonRecord.getUsage()).ifPresent(s -> taxonKey.add(s.getKey()));
+    Optional.ofNullable(taxonRecord.getAcceptedUsage()).ifPresent(au -> taxonKey.add(au.getKey()));
 
     return taxonKey.stream().map(String::valueOf).collect(Collectors.toList());
   }

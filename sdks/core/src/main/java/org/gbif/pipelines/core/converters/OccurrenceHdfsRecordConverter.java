@@ -2,9 +2,12 @@ package org.gbif.pipelines.core.converters;
 
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Strings;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
@@ -24,7 +27,6 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
 import org.gbif.dwc.terms.TermFactory;
 import org.gbif.occurrence.common.TermUtils;
-import org.gbif.occurrence.download.hive.HiveColumns;
 import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
 import org.gbif.pipelines.core.utils.MediaSerDeser;
 import org.gbif.pipelines.core.utils.TemporalConverter;
@@ -43,7 +45,7 @@ public class OccurrenceHdfsRecordConverter {
   private final ClusteringRecord clusteringRecord;
   private final BasicRecord basicRecord;
   private final LocationRecord locationRecord;
-  private final TaxonRecord taxonRecord;
+  private final MultiTaxonRecord multiTaxonRecord;
   private final GrscicollRecord grscicollRecord;
   private final TemporalRecord temporalRecord;
   private final MetadataRecord metadataRecord;
@@ -67,7 +69,7 @@ public class OccurrenceHdfsRecordConverter {
     mapMetadataRecord(occurrenceHdfsRecord);
     mapTemporalRecord(occurrenceHdfsRecord);
     mapLocationRecord(occurrenceHdfsRecord);
-    mapTaxonRecord(occurrenceHdfsRecord);
+    mapMultiTaxonRecord(occurrenceHdfsRecord);
     mapGrscicollRecord(occurrenceHdfsRecord);
     mapMultimediaRecord(occurrenceHdfsRecord);
     mapExtendedRecord(occurrenceHdfsRecord);
@@ -265,8 +267,41 @@ public class OccurrenceHdfsRecordConverter {
     addIssues(temporalRecord.getIssues(), occurrenceHdfsRecord);
   }
 
+  private void mapMultiTaxonRecord(OccurrenceHdfsRecord occurrenceHdfsRecord) {
+    if (multiTaxonRecord == null
+        || multiTaxonRecord.getTaxonRecords() == null
+        || multiTaxonRecord.getTaxonRecords().isEmpty()) {
+      occurrenceHdfsRecord.setClassifications(new HashMap<>());
+      return;
+    }
+    occurrenceHdfsRecord.setChecklistkey(
+        multiTaxonRecord.getTaxonRecords().stream()
+            .map(TaxonRecord::getDatasetKey)
+            .collect(Collectors.toList()));
+
+    occurrenceHdfsRecord.setClassifications(
+        multiTaxonRecord.getTaxonRecords().stream()
+            .collect(
+                Collectors.toMap(
+                    TaxonRecord::getDatasetKey,
+                    tr ->
+                        tr.getClassification().stream()
+                            .map(RankedName::getKey)
+                            .collect(Collectors.toList()))));
+
+    // find the GBIF taxonomy
+    Optional<TaxonRecord> gbifRecord =
+        multiTaxonRecord.getTaxonRecords().stream()
+            .filter(
+                tr -> OccurrenceJsonConverter.GBIF_BACKBONE_DATASET_KEY.equals(tr.getDatasetKey()))
+            .findFirst();
+
+    gbifRecord.ifPresent(tr -> mapLegacyGbifTaxonRecord(occurrenceHdfsRecord, tr));
+  }
+
   /** Copies the {@link TaxonRecord} data into the {@link OccurrenceHdfsRecord}. */
-  private void mapTaxonRecord(OccurrenceHdfsRecord occurrenceHdfsRecord) {
+  private void mapLegacyGbifTaxonRecord(
+      OccurrenceHdfsRecord occurrenceHdfsRecord, TaxonRecord taxonRecord) {
     if (taxonRecord == null) {
       return;
     }
@@ -278,35 +313,35 @@ public class OccurrenceHdfsRecordConverter {
           .forEach(
               rankedName -> {
                 switch (rankedName.getRank()) {
-                  case KINGDOM:
+                  case "KINGDOM":
                     occurrenceHdfsRecord.setKingdom(rankedName.getName());
                     occurrenceHdfsRecord.setKingdomkey(rankedName.getKey());
                     break;
-                  case PHYLUM:
+                  case "PHYLUM":
                     occurrenceHdfsRecord.setPhylum(rankedName.getName());
                     occurrenceHdfsRecord.setPhylumkey(rankedName.getKey());
                     break;
-                  case CLASS:
+                  case "CLASS":
                     occurrenceHdfsRecord.setClass$(rankedName.getName());
                     occurrenceHdfsRecord.setClasskey(rankedName.getKey());
                     break;
-                  case ORDER:
+                  case "ORDER":
                     occurrenceHdfsRecord.setOrder(rankedName.getName());
                     occurrenceHdfsRecord.setOrderkey(rankedName.getKey());
                     break;
-                  case FAMILY:
+                  case "FAMILY":
                     occurrenceHdfsRecord.setFamily(rankedName.getName());
                     occurrenceHdfsRecord.setFamilykey(rankedName.getKey());
                     break;
-                  case GENUS:
+                  case "GENUS":
                     occurrenceHdfsRecord.setGenus(rankedName.getName());
                     occurrenceHdfsRecord.setGenuskey(rankedName.getKey());
                     break;
-                  case SUBGENUS:
+                  case "SUBGENUS":
                     occurrenceHdfsRecord.setSubgenus(rankedName.getName());
                     occurrenceHdfsRecord.setSubgenuskey(rankedName.getKey());
                     break;
-                  case SPECIES:
+                  case "SPECIES":
                     occurrenceHdfsRecord.setSpecies(rankedName.getName());
                     occurrenceHdfsRecord.setSpecieskey(rankedName.getKey());
                     break;
@@ -324,8 +359,9 @@ public class OccurrenceHdfsRecordConverter {
         occurrenceHdfsRecord.setAcceptedtaxonkey(taxonRecord.getAcceptedUsage().getKey());
       }
       Optional.ofNullable(taxonRecord.getAcceptedUsage().getRank())
-          .ifPresent(r -> occurrenceHdfsRecord.setTaxonrank(r.name()));
-    } else if (Objects.nonNull(taxonRecord.getUsage()) && taxonRecord.getUsage().getKey() != 0) {
+          .ifPresent(occurrenceHdfsRecord::setTaxonrank);
+    } else if (Objects.nonNull(taxonRecord.getUsage())
+        && !taxonRecord.getUsage().getKey().equals("0")) {
       // if the acceptedUsage is null we use the usage as the accepted as longs as it's not
       // incertidae sedis
       occurrenceHdfsRecord.setAcceptedtaxonkey(taxonRecord.getUsage().getKey());
@@ -337,25 +373,25 @@ public class OccurrenceHdfsRecordConverter {
       occurrenceHdfsRecord.setTaxonkey(taxonRecord.getUsage().getKey());
       occurrenceHdfsRecord.setScientificname(taxonRecord.getUsage().getName());
       Optional.ofNullable(taxonRecord.getUsage().getRank())
-          .ifPresent(r -> occurrenceHdfsRecord.setTaxonrank(r.name()));
+          .ifPresent(occurrenceHdfsRecord::setTaxonrank);
     }
 
     if (Objects.nonNull(taxonRecord.getUsageParsedName())
         && Objects.nonNull(taxonRecord.getUsage())) {
-      Rank rank = taxonRecord.getUsage().getRank();
-      if (Rank.GENUS.compareTo(rank) <= 0) {
+      String rank = taxonRecord.getUsage().getRank();
+      if (Rank.GENUS.compareTo(Rank.valueOf(rank)) <= 0) {
         occurrenceHdfsRecord.setGenericname(
             Objects.nonNull(taxonRecord.getUsageParsedName().getGenus())
                 ? taxonRecord.getUsageParsedName().getGenus()
                 : taxonRecord.getUsageParsedName().getUninomial());
       }
 
-      if (Rank.SPECIES.compareTo(rank) <= 0) {
+      if (Rank.SPECIES.compareTo(Rank.valueOf(rank)) <= 0) {
         occurrenceHdfsRecord.setSpecificepithet(
             taxonRecord.getUsageParsedName().getSpecificEpithet());
       }
 
-      if (Rank.INFRASPECIFIC_NAME.compareTo(rank) <= 0) {
+      if (Rank.INFRASPECIFIC_NAME.compareTo(Rank.valueOf(rank)) <= 0) {
         occurrenceHdfsRecord.setInfraspecificepithet(
             taxonRecord.getUsageParsedName().getInfraspecificEpithet());
       }
@@ -767,22 +803,35 @@ public class OccurrenceHdfsRecordConverter {
           .ifPresent(
               field -> {
                 // Fields that were set by other mappers are ignored
-                if (Objects.isNull(occurrenceHdfsRecord.get(field.name()))) {
-                  String interpretedFieldname = field.name();
-                  if (DcTerm.abstract_ == term) {
-                    interpretedFieldname = "abstract$";
-                  } else if (DwcTerm.class_ == term) {
-                    interpretedFieldname = "class$";
-                  } else if (DwcTerm.group == term) {
-                    interpretedFieldname = "group";
-                  } else if (DwcTerm.order == term) {
-                    interpretedFieldname = "order";
-                  } else if (DcTerm.date == term) {
-                    interpretedFieldname = "date";
-                  } else if (DcTerm.format == term) {
-                    interpretedFieldname = "format";
+
+                // Use reflection to get the value (previously used names from Avro schema)
+                String methodName =
+                    "get"
+                        + Character.toUpperCase(field.name().charAt(0))
+                        + field.name().substring(1);
+                try {
+                  Method method = occurrenceHdfsRecord.getClass().getMethod(methodName);
+                  if (Objects.isNull(method.invoke(occurrenceHdfsRecord))) {
+                    String interpretedFieldname = field.name();
+                    if (DcTerm.abstract_ == term) {
+                      interpretedFieldname = "abstract$";
+                    } else if (DwcTerm.class_ == term) {
+                      interpretedFieldname = "class$";
+                    } else if (DwcTerm.group == term) {
+                      interpretedFieldname = "group";
+                    } else if (DwcTerm.order == term) {
+                      interpretedFieldname = "order";
+                    } else if (DcTerm.date == term) {
+                      interpretedFieldname = "date";
+                    } else if (DcTerm.format == term) {
+                      interpretedFieldname = "format";
+                    }
+                    setHdfsRecordField(occurrenceHdfsRecord, field, interpretedFieldname, v);
                   }
-                  setHdfsRecordField(occurrenceHdfsRecord, field, interpretedFieldname, v);
+                } catch (IllegalAccessException
+                    | InvocationTargetException
+                    | NoSuchMethodException ex) {
+                  throw new RuntimeException(ex);
                 }
               });
     }
@@ -830,11 +879,13 @@ public class OccurrenceHdfsRecordConverter {
 
   /** Gets the {@link Schema.Field} associated to a verbatim term. */
   private static Schema.Field verbatimSchemaField(Term term) {
-    return OccurrenceHdfsRecord.SCHEMA$.getField("v_" + term.simpleName().toLowerCase());
+    // return OccurrenceHdfsRecord.SCHEMA$.getField("v_" + term.simpleName().toLowerCase());
+    throw new RuntimeException("This functionality removed when we moved to Beans from Avro");
   }
 
   /** Gets the {@link Schema.Field} associated to a interpreted term. */
   private static Schema.Field interpretedSchemaField(Term term) {
-    return OccurrenceHdfsRecord.SCHEMA$.getField(HiveColumns.columnFor(term));
+    // return OccurrenceHdfsRecord.SCHEMA$.getField(HiveColumns.columnFor(term));
+    throw new RuntimeException("This functionality removed when we moved to Beans from Avro");
   }
 }
