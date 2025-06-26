@@ -3,11 +3,15 @@ package org.gbif.pipelines.core.parsers.taxonomy;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.api.model.Constants;
-import org.gbif.pipelines.io.avro.*;
+import org.gbif.pipelines.core.interpreters.model.Diagnostics;
+import org.gbif.pipelines.core.interpreters.model.RankedName;
+import org.gbif.pipelines.core.interpreters.model.RankedNameWithAuthorship;
+import org.gbif.pipelines.core.interpreters.model.TaxonRecord;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 /** Adapts a {@link NameUsageMatchResponse} into a {@link TaxonRecord} */
@@ -46,7 +50,7 @@ public class TaxonRecordConverter {
 
     // IUCN Red List Category
     Optional.ofNullable(source.getAdditionalStatus()).orElseGet(List::of).stream()
-        .filter(status -> status.getGbifKey().equals(IUCN_REDLIST_GBIF_KEY))
+        .filter(status -> status.getDatasetKey().equals(IUCN_REDLIST_GBIF_KEY))
         .findFirst()
         .map(status -> status.getStatusCode())
         .ifPresent(taxonRecord::setIucnRedListCategoryCode);
@@ -54,38 +58,41 @@ public class TaxonRecordConverter {
     return taxonRecord;
   }
 
-  private static RankedNameWithAuthorship convertUsage(NameUsageMatchResponse.Usage rankedNameApi) {
+  private static RankedNameWithAuthorship convertUsage(NameUsageMatchResponse.Usage rankedNameApi,
+                                                       Supplier<RankedNameWithAuthorship> supplier) {
     if (rankedNameApi == null) {
       return null;
     }
 
-    return RankedNameWithAuthorship.newBuilder()
-        .setKey(rankedNameApi.getKey())
-        .setName(rankedNameApi.getName())
-        .setRank(rankedNameApi.getRank())
-        .setAuthorship(rankedNameApi.getAuthorship())
-        .setCode(rankedNameApi.getCode())
-        .setInfragenericEpithet(rankedNameApi.getInfragenericEpithet())
-        .setInfraspecificEpithet(rankedNameApi.getInfraspecificEpithet())
-        .setSpecificEpithet(rankedNameApi.getSpecificEpithet())
-        .setFormattedName(rankedNameApi.getFormattedName())
-        .setStatus(rankedNameApi.getStatus())
-        .build();
+    RankedNameWithAuthorship rankedNameWithAuthorship = supplier.get();
+    rankedNameWithAuthorship.setKey(rankedNameApi.getKey());
+    rankedNameWithAuthorship.setName(rankedNameApi.getName());
+    rankedNameWithAuthorship.setRank(rankedNameApi.getRank());
+    rankedNameWithAuthorship.setAuthorship(rankedNameApi.getAuthorship());
+    rankedNameWithAuthorship.setCode(rankedNameApi.getCode());
+    rankedNameWithAuthorship.setInfragenericEpithet(rankedNameApi.getInfragenericEpithet());
+    rankedNameWithAuthorship.setInfraspecificEpithet(rankedNameApi.getInfraspecificEpithet());
+    rankedNameWithAuthorship.setSpecificEpithet(rankedNameApi.getSpecificEpithet());
+    rankedNameWithAuthorship.setFormattedName(rankedNameApi.getFormattedName());
+    rankedNameWithAuthorship.setStatus(rankedNameApi.getStatus());
+
+    return rankedNameWithAuthorship;
   }
 
-  private static RankedName convertRankedName(NameUsageMatchResponse.RankedName rankedNameApi) {
+  private static RankedName convertRankedName(NameUsageMatchResponse.RankedName rankedNameApi,
+                                              Supplier<RankedName> supplier) {
     if (rankedNameApi == null) {
       return null;
     }
 
-    return RankedName.newBuilder()
-        .setKey(rankedNameApi.getKey())
-        .setName(rankedNameApi.getName())
-        .setRank(rankedNameApi.getRank())
-        .build();
+    RankedName rankedName = supplier.get();
+    rankedName.setKey(rankedNameApi.getKey());
+    rankedName.setName(rankedNameApi.getName());
+    rankedName.setRank(rankedNameApi.getRank());
+    return rankedName;
   }
 
-  private static Diagnostic convertDiagnostics(NameUsageMatchResponse.Diagnostics diagnosticsApi) {
+  private static Diagnostics convertDiagnostics(NameUsageMatchResponse.Diagnostics diagnosticsApi) {
     if (diagnosticsApi == null) {
       return null;
     }
@@ -98,7 +105,7 @@ public class TaxonRecordConverter {
 
     Diagnostic.Builder builder =
         Diagnostic.newBuilder()
-            .setAlternatives(alternatives)
+            //            .setAlternatives(alternatives)
             .setConfidence(diagnosticsApi.getConfidence())
             .setMatchType(MatchType.valueOf(diagnosticsApi.getMatchType().name()))
             .setNote(diagnosticsApi.getNote())

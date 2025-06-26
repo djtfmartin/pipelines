@@ -20,25 +20,9 @@ import org.gbif.api.model.Constants;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
 import org.gbif.pipelines.core.interpreters.core.TaxonomyInterpreter;
+import org.gbif.pipelines.core.interpreters.json.OccurrenceJsonRecord;
+import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.utils.SortUtils;
-import org.gbif.pipelines.io.avro.BasicRecord;
-import org.gbif.pipelines.io.avro.ClusteringRecord;
-import org.gbif.pipelines.io.avro.DnaDerivedData;
-import org.gbif.pipelines.io.avro.DnaDerivedDataRecord;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.IdentifierRecord;
-import org.gbif.pipelines.io.avro.LocationRecord;
-import org.gbif.pipelines.io.avro.MetadataRecord;
-import org.gbif.pipelines.io.avro.MultiTaxonRecord;
-import org.gbif.pipelines.io.avro.MultimediaRecord;
-import org.gbif.pipelines.io.avro.TaxonRecord;
-import org.gbif.pipelines.io.avro.TemporalRecord;
-import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
-import org.gbif.pipelines.io.avro.grscicoll.Match;
-import org.gbif.pipelines.io.avro.json.Classification;
-import org.gbif.pipelines.io.avro.json.GeologicalContext;
-import org.gbif.pipelines.io.avro.json.GeologicalRange;
-import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 
 @Slf4j
 @Builder
@@ -207,12 +191,12 @@ public class OccurrenceJsonConverter {
               .setBed(gx.getBed());
 
       gcb.setLithostratigraphy(
-          Stream.of(gcb.getBed(), gcb.getFormation(), gcb.getGroup(), gcb.getMember())
+          Stream.of(gx.getBed(), gx.getFormation(), gx.getGroup(), gx.getMember())
               .filter(Objects::nonNull)
               .collect(Collectors.toList()));
 
       gcb.setBiostratigraphy(
-          Stream.of(gcb.getLowestBiostratigraphicZone(), gcb.getHighestBiostratigraphicZone())
+          Stream.of(gx.getLowestBiostratigraphicZone(), gx.getHighestBiostratigraphicZone())
               .filter(Objects::nonNull)
               .collect(Collectors.toList()));
 
@@ -418,9 +402,10 @@ public class OccurrenceJsonConverter {
     extractLengthAwareOptValue(verbatim, DwcTerm.previousIdentifications)
         .ifPresent(builder::setPreviousIdentifications);
 
-    if (builder.getGbifClassification() != null) {
+    OccurrenceJsonRecord partial = builder.build(); // partial content needed, to continue build
+    if (partial.getGbifClassification() != null) {
       extractLengthAwareOptValue(verbatim, DwcTerm.taxonConceptID)
-          .ifPresent(builder.getGbifClassification()::setTaxonConceptID);
+          .ifPresent(partial.getGbifClassification()::setTaxonConceptID);
     }
   }
 
@@ -456,7 +441,6 @@ public class OccurrenceJsonConverter {
   private void mapCreated(OccurrenceJsonRecord.Builder builder) {
     JsonConverter.getMaxCreationDate(
             metadata,
-            identifier,
             clustering,
             basic,
             temporal,
@@ -469,8 +453,9 @@ public class OccurrenceJsonConverter {
   }
 
   private void mapSortField(OccurrenceJsonRecord.Builder builder) {
+    OccurrenceJsonRecord partial = builder.build(); // partial content needed, to continue build
     builder.setYearMonthGbifIdSort(
         SortUtils.yearDescMonthAscGbifIdAscSortKey(
-            builder.getYear(), builder.getMonth(), builder.getGbifId()));
+            partial.getYear(), partial.getMonth(), partial.getGbifId()));
   }
 }

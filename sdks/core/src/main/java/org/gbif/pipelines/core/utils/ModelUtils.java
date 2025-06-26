@@ -2,21 +2,17 @@ package org.gbif.pipelines.core.utils;
 
 import static org.gbif.pipelines.core.utils.IdentificationUtils.extractFromIdentificationExtension;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.dwc.terms.Term;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.Issues;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.Issues;
+//import org.gbif.pipelines.io.avro.ExtendedRecord;
+//import org.gbif.pipelines.io.avro.Issues;
 
 /** Helps to work with org.gbif.pipelines.io.avro models */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -124,6 +120,13 @@ public class ModelUtils {
   }
 
   public static void addIssue(Issues model, String issue) {
+    // TODO: Explore why these are not defaulting to empty values
+    if (model.getIssues() == null) {
+      model.setIssues(org.gbif.pipelines.io.avro.IssueRecord.newBuilder().build());
+    }
+    if (model.getIssues().getIssueList() == null) {
+      model.getIssues().setIssueList(new ArrayList<>());
+    }
     if (!model.getIssues().getIssueList().contains(issue)) {
       model.getIssues().getIssueList().add(issue);
     }

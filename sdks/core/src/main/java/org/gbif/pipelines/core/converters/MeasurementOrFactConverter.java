@@ -14,14 +14,14 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.parsers.vertnet.DynamicProperty;
 import org.gbif.pipelines.core.parsers.vertnet.LengthParser;
 import org.gbif.pipelines.core.parsers.vertnet.MassParser;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MeasurementOrFactConverter {
 
   public static List<Map<String, String>> extractFromDynamicProperties(ExtendedRecord er) {
     if (hasValueNullAware(er, DwcTerm.dynamicProperties)) {
-      String value = extractNullAwareValue(er, DwcTerm.dynamicProperties);
+      String value = er.extractNullAwareValue(DwcTerm.dynamicProperties);
       List<Map<String, String>> map = new ArrayList<>(2);
       LengthParser.parse(value).map(MeasurementOrFactConverter::map).ifPresent(map::add);
       MassParser.parse(value).map(MeasurementOrFactConverter::map).ifPresent(map::add);

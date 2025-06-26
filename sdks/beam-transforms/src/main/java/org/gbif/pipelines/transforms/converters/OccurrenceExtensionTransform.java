@@ -12,7 +12,7 @@ import org.apache.beam.sdk.transforms.ParDo.SingleOutput;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.converters.OccurrenceExtensionConverter;
 import org.gbif.pipelines.core.functions.SerializableConsumer;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 
 /**
  * A transformation that will extract occurrence records from any format of ExtendedRecord input. If

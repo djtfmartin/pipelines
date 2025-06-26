@@ -3,14 +3,10 @@ package org.gbif.pipelines.core.interpreters.extension;
 import java.util.Objects;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.common.Strings;
 import org.gbif.api.util.DnaUtils;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.dwc.terms.GbifDnaTerm;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
-import org.gbif.pipelines.io.avro.DnaDerivedData;
-import org.gbif.pipelines.io.avro.DnaDerivedDataRecord;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
 
 @Builder(buildMethodName = "create")
 @Slf4j

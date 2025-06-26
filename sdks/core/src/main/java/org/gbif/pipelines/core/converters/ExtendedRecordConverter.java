@@ -11,7 +11,7 @@ import org.gbif.dwc.record.Record;
 import org.gbif.dwc.record.StarRecord;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 
 /** Converters from *.class to {@link ExtendedRecord} */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -59,9 +59,11 @@ public class ExtendedRecordConverter {
       return core.id();
     }
 
-    String institutionCode = builder.getCoreTerms().get(DwcTerm.institutionCode.qualifiedName());
-    String collectionCode = builder.getCoreTerms().get(DwcTerm.collectionCode.qualifiedName());
-    String catalogNumber = builder.getCoreTerms().get(DwcTerm.catalogNumber.qualifiedName());
+    ExtendedRecord partial = builder.build(); // build the partial record to access core terms
+
+    String institutionCode = partial.getCoreTerms().get(DwcTerm.institutionCode.qualifiedName());
+    String collectionCode = partial.getCoreTerms().get(DwcTerm.collectionCode.qualifiedName());
+    String catalogNumber = partial.getCoreTerms().get(DwcTerm.catalogNumber.qualifiedName());
 
     if (institutionCode == null || collectionCode == null || catalogNumber == null) {
       return RECORD_ID_ERROR;

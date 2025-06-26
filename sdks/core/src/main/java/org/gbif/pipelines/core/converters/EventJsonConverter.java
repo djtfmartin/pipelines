@@ -8,16 +8,16 @@ import java.util.Optional;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.io.avro.EventCoreRecord;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.IdentifierRecord;
-import org.gbif.pipelines.io.avro.LocationRecord;
-import org.gbif.pipelines.io.avro.MetadataRecord;
-import org.gbif.pipelines.io.avro.MultimediaRecord;
-import org.gbif.pipelines.io.avro.TaxonRecord;
-import org.gbif.pipelines.io.avro.TemporalRecord;
-import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
-import org.gbif.pipelines.io.avro.json.EventJsonRecord;
+import org.gbif.pipelines.core.interpreters.model.EventCoreRecord;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.IdentifierRecord;
+import org.gbif.pipelines.core.interpreters.model.LocationRecord;
+import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
+import org.gbif.pipelines.core.interpreters.model.MultimediaRecord;
+import org.gbif.pipelines.core.interpreters.model.TaxonRecord;
+import org.gbif.pipelines.core.interpreters.model.TemporalRecord;
+import org.gbif.pipelines.core.interpreters.model.GrscicollRecord;
+import org.gbif.pipelines.core.interpreters.json.EventJsonRecord;
 
 @Slf4j
 @Builder
