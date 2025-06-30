@@ -29,4 +29,10 @@ public interface ExtendedRecord extends Record {
     Map<String, String> getCoreTerms();
 
     String getCoreRowType();
+
+    void setCoreRowType(String s);
+
+    void setCoreTerms(Map<String, String> stringStringMap);
+
+    void setExtensions(Map<String, List<Map<String, String>>> collect);
 }

@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -35,11 +36,13 @@ public class ExtendedRecordConverter {
   }
 
   /** Converts {@link StarRecord} to {@link ExtendedRecord} */
-  public static ExtendedRecord from(Record core, Map<Term, List<Record>> extensions) {
-    ExtendedRecord.Builder builder = ExtendedRecord.newBuilder();
-    Optional.ofNullable(core.rowType()).ifPresent(x -> builder.setCoreRowType(x.qualifiedName()));
-    builder.setCoreTerms(convertToMap(core));
-    builder.setExtensions(
+  public static ExtendedRecord from(Record core,
+                                    Map<Term, List<Record>> extensions,
+                                    Supplier<ExtendedRecord> extendedRecordSupplier) {
+    ExtendedRecord extendedRecord = extendedRecordSupplier.get();
+    Optional.ofNullable(core.rowType()).ifPresent(x -> extendedRecord.setCoreRowType(x.qualifiedName()));
+    extendedRecord.setCoreTerms(convertToMap(core));
+    extendedRecord.setExtensions(
         extensions.entrySet().stream()
             .collect(
                 Collectors.toMap(
@@ -49,17 +52,15 @@ public class ExtendedRecordConverter {
                             .map(ExtendedRecordConverter::convertToMap)
                             .collect(Collectors.toList()))));
 
-    builder.setId(getId(core, builder));
-    return builder.build();
+    extendedRecord.setId(getId(core, extendedRecord));
+    return extendedRecord;
   }
 
   /** If id is null, use triplet as an id */
-  private static String getId(Record core, ExtendedRecord.Builder builder) {
+  private static String getId(Record core, ExtendedRecord partial) {
     if (core.id() != null) {
       return core.id();
     }
-
-    ExtendedRecord partial = builder.build(); // build the partial record to access core terms
 
     String institutionCode = partial.getCoreTerms().get(DwcTerm.institutionCode.qualifiedName());
     String collectionCode = partial.getCoreTerms().get(DwcTerm.collectionCode.qualifiedName());
