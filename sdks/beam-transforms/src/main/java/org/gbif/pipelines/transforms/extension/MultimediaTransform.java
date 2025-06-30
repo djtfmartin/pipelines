@@ -8,6 +8,8 @@ import static org.gbif.pipelines.core.utils.ModelUtils.hasValueNullAware;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
+
 import lombok.Builder;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.KV;
@@ -19,8 +21,8 @@ import org.gbif.pipelines.core.functions.SerializableConsumer;
 import org.gbif.pipelines.core.functions.SerializableFunction;
 import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.extension.MultimediaInterpreter;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.MultimediaRecord;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.MultimediaRecord;
 import org.gbif.pipelines.transforms.Transform;
 
 /**
@@ -81,14 +83,15 @@ public class MultimediaTransform extends Transform<ExtendedRecord, MultimediaRec
   }
 
   @Override
-  public Optional<MultimediaRecord> convert(ExtendedRecord source) {
+  public Optional<MultimediaRecord> convert(ExtendedRecord source, Supplier<MultimediaRecord> supplier) {
     return Interpretation.from(source)
         .to(
-            er ->
-                MultimediaRecord.newBuilder()
-                    .setId(er.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
+            er -> {
+                    MultimediaRecord mr = supplier.get();
+                    mr.setId(er.getId());
+                    mr.setCreated(Instant.now().toEpochMilli());
+                    return mr;
+            })
         .when(
             er ->
                 hasExtension(er, Extension.MULTIMEDIA)

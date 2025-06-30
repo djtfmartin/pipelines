@@ -134,7 +134,7 @@ public class TaxonomyInterpreter {
 
       // copy any issues asserted by the lookup itself
       if (usageMatch.getDiagnostics().getIssues() != null) {
-        tr.addIssueSet(
+        tr.addIssues(
             usageMatch.getDiagnostics().getIssues().stream()
                 .map(org.gbif.api.vocabulary.OccurrenceIssue::valueOf)
                 .collect(Collectors.toSet()));

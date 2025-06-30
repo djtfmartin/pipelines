@@ -6,7 +6,4 @@ public interface MultimediaRecord extends Record {
 
     List<Multimedia> getMultimediaItems();
     void setMultimediaItems(List<Multimedia> multimediaItems);
-
-    IssueRecord getIssues();
-    void setIssues(IssueRecord issues);
 }

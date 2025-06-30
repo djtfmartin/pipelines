@@ -19,4 +19,20 @@ public interface GeologicalContext {
     void setLowestBiostratigraphicZone(String s);
     void setMember(String s);
     void setStartAge(Float start);
+
+    String getLowestBiostratigraphicZone();
+
+    String getHighestBiostratigraphicZone();
+
+    String getGroup();
+
+    String getFormation();
+
+    String getMember();
+
+    String getBed();
+
+    VocabularyConcept getEarliestEonOrLowestEonothem();
+
+    VocabularyConcept getLatestEonOrHighestEonothem();
 }

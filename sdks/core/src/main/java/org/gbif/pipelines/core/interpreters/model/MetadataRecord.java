@@ -58,7 +58,4 @@ public interface MetadataRecord extends Record {
 
     List<MachineTag> getMachineTags();
     void setMachineTags(List<MachineTag> machineTags);
-
-    IssueRecord getIssues();
-    void setIssues(IssueRecord issues);
 }

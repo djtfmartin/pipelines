@@ -27,8 +27,7 @@ import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
  * <pre>
  *   1) Set extension name {@link ExtensionInterpretation#extension(Extension)}
  *   or {@link ExtensionInterpretation#extension(String)}, basically, it will try to filter map by given {@link String} value
- *   2) Add a supplier of a target model {@link ExtensionInterpretation#to(Supplier)}
- *   3) Map the Term to a field in a target model, the order is important, in general, it is a sequence of calls:
+ *   2) Map the Term to a field in a target model, the order is important, in general, it is a sequence of calls:
  *    {@link TargetHandler#map(Term, BiConsumer)}
  *    {@link TargetHandler#map(String, BiConsumer...)}
  *    {@link TargetHandler#map(Term, BiFunction)}
@@ -41,9 +40,6 @@ import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
  *    {@link TargetHandler#postMapOne(Function)}
  *   5) Skip whole record if some important conditions are violated {@link TargetHandler#skipIf(Function)}
  *   6) Use convert and pass a source of data:
- *    {@link TargetHandler#convert(ExtendedRecord)}
- *    {@link TargetHandler#convert(Map)}
- *    {@link TargetHandler#convert(List)}
  *   7) Process the result of the conversion {@link Result}
  * </pre>
  *
@@ -96,12 +92,17 @@ public class ExtensionInterpretation {
    * @param supplier of a target object, as example - Image::new
    */
   public <T> TargetHandler<T> to(Supplier<T> supplier) {
-    return new TargetHandler<>(supplier);
+    return new TargetHandler<>();
+  }
+
+
+  public <T> TargetHandler<T> newHandler() {
+    return new TargetHandler<>();
   }
 
   public class TargetHandler<T> {
 
-    private final Supplier<T> supplier;
+//    private final Supplier<T> supplier;
 
     private final Map<String, BiFunction<T, String, List<String>>> mapperMap =
         new LinkedHashMap<>();
@@ -110,12 +111,12 @@ public class ExtensionInterpretation {
 
     private final Set<Function<T, Optional<String>>> validatorSet = new LinkedHashSet<>();
 
-    /**
-     * @param supplier of a target object, as example - Image::new
-     */
-    private TargetHandler(Supplier<T> supplier) {
-      this.supplier = supplier;
-    }
+//    /**
+//     * @param supplier of a target object, as example - Image::new
+//     */
+//    private TargetHandler(Supplier<T> supplier) {
+//      this.supplier = supplier;
+//    }
 
     /**
      * Maps the {@link Term} to a field in a target model, can't process an issue
@@ -269,7 +270,7 @@ public class ExtensionInterpretation {
      * @param extensions a list of maps as source of data
      * @return result of conversion
      */
-    public Result<T> convert(List<Map<String, String>> extensions) {
+    public Result<T> convert(List<Map<String, String>> extensions, Supplier<T> supplier) {
       List<T> result = new ArrayList<>();
       Set<String> issues = new TreeSet<>();
 
@@ -323,18 +324,18 @@ public class ExtensionInterpretation {
      * @param extension a map as source of data
      * @return result of conversion
      */
-    public Result<T> convert(Map<String, String> extension) {
+    public Result<T> convert(Map<String, String> extension, Supplier<T> supplier) {
       List<Map<String, String>> extensions = Collections.singletonList(extension);
-      return convert(extensions);
+      return convert(extensions, supplier);
     }
 
     /**
      * @param record an ExtendedRecord instance as source of data
      * @return result of conversion
      */
-    public Result<T> convert(ExtendedRecord record) {
+    public Result<T> convert(ExtendedRecord record, Supplier<T> supplier) {
       List<Map<String, String>> extensions = record.getExtensions().get(extension);
-      return convert(extensions);
+      return convert(extensions, supplier);
     }
   }
 

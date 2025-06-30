@@ -1,5 +1,7 @@
 package org.gbif.pipelines.core.interpreters.model;
 
+import org.gbif.api.vocabulary.OccurrenceIssue;
+
 import java.util.List;
 
 public interface BasicRecord extends Record {
@@ -100,6 +102,5 @@ public interface BasicRecord extends Record {
     List<String> getAssociatedSequences();
     void setAssociatedSequences(List<String> associatedSequences);
 
-    IssueRecord getIssues();
-    void setIssues(IssueRecord issues);
+    GeologicalContext createGeologicalContext();
 }

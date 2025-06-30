@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.MeasurementOrFactRecord;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.MeasurementOrFactRecord;
 import org.junit.Assert;
 import org.junit.Test;
 

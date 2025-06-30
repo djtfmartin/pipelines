@@ -56,10 +56,6 @@ public interface TaxonRecord extends Record {
 //    ParsedName getUsageParsedName();
 //    void setUsageParsedName(ParsedName usageParsedName);
 
-    // issues
-    IssueRecord getIssues();
-    void setIssues(IssueRecord issues);
-
     // iucnRedListCategoryCode
     String getIucnRedListCategoryCode();
     void setIucnRedListCategoryCode(String code);

@@ -23,6 +23,7 @@ import org.gbif.api.vocabulary.License;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.common.parsers.date.TemporalAccessorUtils;
 import org.gbif.dwc.terms.DwcTerm;
+import org.gbif.nameparser.api.Rank;
 import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
 import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.pipelines.core.utils.TemporalConverter;
@@ -406,79 +407,79 @@ public class JsonConverter {
         .map(Optional::get)
         .collect(Collectors.toList());
   }
-
-  public static Optional<ParsedName> convertParsedName(
-      org.gbif.pipelines.core.interpreters.model.ParsedName parsedName) {
-
-    if (parsedName == null) {
-      return Optional.empty();
-    }
-
-    Builder builder =
-        ParsedName.newBuilder()
-            .setAbbreviated(parsedName.getAbbreviated())
-            .setAutonym(parsedName.getAutonym())
-            .setBinomial(parsedName.getBinomial())
-            .setCandidatus(parsedName.getCandidatus())
-            .setCode(parsedName.getCode() != null ? parsedName.getCode().name() : null)
-            .setDoubtful(parsedName.getDoubtful())
-            .setGenus(parsedName.getGenus())
-            .setIncomplete(parsedName.getIncomplete())
-            .setIndetermined(parsedName.getIndetermined())
-            .setInfraspecificEpithet(parsedName.getInfraspecificEpithet())
-            .setNotho(parsedName.getNotho() != null ? parsedName.getNotho().name() : null)
-            .setRank(parsedName.getRank() != null ? parsedName.getRank().name() : null)
-            .setSpecificEpithet(parsedName.getSpecificEpithet())
-            .setState(parsedName.getState() != null ? parsedName.getState().name() : null)
-            .setTerminalEpithet(parsedName.getTerminalEpithet())
-            .setTrinomial(parsedName.getTrinomial())
-            .setType(parsedName.getType() != null ? parsedName.getType().name() : null)
-            .setUninomial(parsedName.getUninomial());
-
-    convertAuthorship(parsedName.getBasionymAuthorship()).ifPresent(builder::setBasionymAuthorship);
-    convertAuthorship(parsedName.getCombinationAuthorship())
-        .ifPresent(builder::setCombinationAuthorship);
-
-    return Optional.of(builder.build());
-  }
-
-  public static Optional<Authorship> convertAuthorship(
-      org.gbif.pipelines.core.interpreters.model.Authorship authorship) {
-    return Optional.ofNullable(authorship)
-        .map(
-            a ->
-                Authorship.newBuilder()
-                    .setAuthors(a.getAuthors())
-                    .setExAuthors(a.getAuthors())
-                    .setEmpty(a.getEmpty())
-                    .setYear(a.getYear())
-                    .build());
-  }
-
-  public static Optional<Diagnostic> convertDiagnostic(
-      org.gbif.pipelines.core.interpreters.model.Diagnostic diagnostic) {
-    if (diagnostic == null) {
-      return Optional.empty();
-    }
-
-    Diagnostic build =
-        Diagnostic.newBuilder()
-            .setMatchType(
-                diagnostic.getMatchType() != null ? diagnostic.getMatchType().name() : null)
-            .setNote(diagnostic.getNote())
-            .setStatus(diagnostic.getStatus() != null ? diagnostic.getStatus().name() : null)
-            .build();
-
-    return Optional.of(build);
-  }
+//
+//  public static Optional<ParsedName> convertParsedName(
+//      org.gbif.pipelines.core.interpreters.model.ParsedName parsedName) {
+//
+//    if (parsedName == null) {
+//      return Optional.empty();
+//    }
+//
+//    Builder builder =
+//        ParsedName.newBuilder()
+//            .setAbbreviated(parsedName.getAbbreviated())
+//            .setAutonym(parsedName.getAutonym())
+//            .setBinomial(parsedName.getBinomial())
+//            .setCandidatus(parsedName.getCandidatus())
+//            .setCode(parsedName.getCode() != null ? parsedName.getCode().name() : null)
+//            .setDoubtful(parsedName.getDoubtful())
+//            .setGenus(parsedName.getGenus())
+//            .setIncomplete(parsedName.getIncomplete())
+//            .setIndetermined(parsedName.getIndetermined())
+//            .setInfraspecificEpithet(parsedName.getInfraspecificEpithet())
+//            .setNotho(parsedName.getNotho() != null ? parsedName.getNotho().name() : null)
+//            .setRank(parsedName.getRank() != null ? parsedName.getRank().name() : null)
+//            .setSpecificEpithet(parsedName.getSpecificEpithet())
+//            .setState(parsedName.getState() != null ? parsedName.getState().name() : null)
+//            .setTerminalEpithet(parsedName.getTerminalEpithet())
+//            .setTrinomial(parsedName.getTrinomial())
+//            .setType(parsedName.getType() != null ? parsedName.getType().name() : null)
+//            .setUninomial(parsedName.getUninomial());
+//
+//    convertAuthorship(parsedName.getBasionymAuthorship()).ifPresent(builder::setBasionymAuthorship);
+//    convertAuthorship(parsedName.getCombinationAuthorship())
+//        .ifPresent(builder::setCombinationAuthorship);
+//
+//    return Optional.of(builder.build());
+//  }
+//
+//  public static Optional<Authorship> convertAuthorship(
+//      org.gbif.pipelines.core.interpreters.model.Authorship authorship) {
+//    return Optional.ofNullable(authorship)
+//        .map(
+//            a ->
+//                Authorship.newBuilder()
+//                    .setAuthors(a.getAuthors())
+//                    .setExAuthors(a.getAuthors())
+//                    .setEmpty(a.getEmpty())
+//                    .setYear(a.getYear())
+//                    .build());
+//  }
+//
+//  public static Optional<Diagnostic> convertDiagnostic(
+//      org.gbif.pipelines.core.interpreters.model.Diagnostic diagnostic) {
+//    if (diagnostic == null) {
+//      return Optional.empty();
+//    }
+//
+//    Diagnostic build =
+//        Diagnostic.newBuilder()
+//            .setMatchType(
+//                diagnostic.getMatchType() != null ? diagnostic.getMatchType().name() : null)
+//            .setNote(diagnostic.getNote())
+//            .setStatus(diagnostic.getStatus() != null ? diagnostic.getStatus().name() : null)
+//            .build();
+//
+//    return Optional.of(build);
+//  }
 
   public static Optional<String> convertGenericNameFromParsedName(TaxonRecord taxonRecord) {
     // only set generic name for genus or more specific
     if (Objects.nonNull(taxonRecord.getUsage())) {
       try {
         if (Rank.GENUS.compareTo(Rank.valueOf(taxonRecord.getUsage().getRank())) <= 0) {
-          return Optional.ofNullable(taxonRecord.getUsageParsedName())
-              .map(upn -> upn.getGenus() != null ? upn.getGenus() : upn.getUninomial());
+          return Optional.ofNullable(taxonRecord.getUsage())
+              .map(upn -> upn.get() != null ? upn.getGenus() : upn.getUninomial());
         }
       } catch (java.lang.IllegalArgumentException ex) {
         // throw if rank unrecognised - more common now with xcol
@@ -557,10 +558,6 @@ public class JsonConverter {
       classificationBuilder.setIssues(Collections.emptyList());
     }
 
-    if (taxon.getDiagnostics() != null && taxon.getDiagnostics().getStatus() != null) {
-      classificationBuilder.setStatus(taxon.getDiagnostics().getStatus().name());
-    }
-
     JsonConverter.convertClassificationDepth(taxon)
         .ifPresent(classificationBuilder::setClassificationDepth);
 
@@ -587,100 +584,100 @@ public class JsonConverter {
 
   public static GbifClassification convertToGbifClassification(
       ExtendedRecord verbatim, TaxonRecord taxon) {
-
-    GbifClassification.Builder classificationBuilder =
-        GbifClassification.newBuilder()
-            .setSynonym(taxon.getSynonym())
-            .setIucnRedListCategoryCode(taxon.getIucnRedListCategoryCode())
-            .setClassification(JsonConverter.convertRankedNames(taxon.getClassification()))
-            .setTaxonKey(JsonConverter.convertTaxonKey(taxon));
-
-    JsonConverter.convertRankedName(taxon.getUsage()).ifPresent(classificationBuilder::setUsage);
-
-    JsonConverter.convertRankedName(taxon.getAcceptedUsage())
-        .ifPresent(classificationBuilder::setAcceptedUsage);
-
-    JsonConverter.convertDiagnostic(taxon.getDiagnostics())
-        .ifPresent(classificationBuilder::setDiagnostics);
-
-    JsonConverter.convertParsedName(taxon.getUsageParsedName())
-        .ifPresent(classificationBuilder::setUsageParsedName);
-
-    JsonConverter.convertGenericNameFromParsedName(taxon)
-        .ifPresent(
-            genericName -> {
-              GbifClassification partial = classificationBuilder.build();
-              ParsedName existing = partial.getUsageParsedName();
-              if (existing != null) {
-                existing.setGenericName(genericName);
-                classificationBuilder.setUsageParsedName(existing);
-              }
-            });
-
-    JsonConverter.convertClassificationPath(taxon)
-        .ifPresent(classificationBuilder::setClassificationPath);
-
-    // Classification
-    if (taxon.getClassification() != null) {
-      for (org.gbif.pipelines.core.interpreters.model.RankedName rankedName : taxon.getClassification()) {
-        String rank = rankedName.getRank();
-        switch (rank) {
-          case "KINGDOM":
-            classificationBuilder.setKingdom(rankedName.getName());
-            Optional.ofNullable(rankedName.getKey())
-                .map(String::valueOf)
-                .ifPresent(classificationBuilder::setKingdomKey);
-            break;
-          case "PHYLUM":
-            classificationBuilder.setPhylum(rankedName.getName());
-            Optional.ofNullable(rankedName.getKey())
-                .map(String::valueOf)
-                .ifPresent(classificationBuilder::setPhylumKey);
-            break;
-          case "CLASS":
-            classificationBuilder.setClass$(rankedName.getName());
-            Optional.ofNullable(rankedName.getKey())
-                .map(String::valueOf)
-                .ifPresent(classificationBuilder::setClassKey);
-            break;
-          case "ORDER":
-            classificationBuilder.setOrder(rankedName.getName());
-            Optional.ofNullable(rankedName.getKey())
-                .map(String::valueOf)
-                .ifPresent(classificationBuilder::setOrderKey);
-            break;
-          case "FAMILY":
-            classificationBuilder.setFamily(rankedName.getName());
-            Optional.ofNullable(rankedName.getKey())
-                .map(String::valueOf)
-                .ifPresent(classificationBuilder::setFamilyKey);
-            break;
-          case "GENUS":
-            classificationBuilder.setGenus(rankedName.getName());
-            Optional.ofNullable(rankedName.getKey())
-                .map(String::valueOf)
-                .ifPresent(classificationBuilder::setGenusKey);
-            break;
-          case "SPECIES":
-            classificationBuilder.setSpecies(rankedName.getName());
-            Optional.ofNullable(rankedName.getKey())
-                .map(String::valueOf)
-                .ifPresent(classificationBuilder::setSpeciesKey);
-            break;
-          default:
-            // NOP
-        }
-      }
-    }
-
-    // Raw to index classification
-    if (verbatim != null) {
-      extractOptValue(verbatim, DwcTerm.taxonID).ifPresent(classificationBuilder::setTaxonID);
-      extractOptValue(verbatim, DwcTerm.scientificName)
-          .ifPresent(classificationBuilder::setVerbatimScientificName);
-    }
-
-    return classificationBuilder.build();
+//
+//    GbifClassification.Builder classificationBuilder =
+//        GbifClassification.newBuilder()
+//            .setSynonym(taxon.getSynonym())
+//            .setIucnRedListCategoryCode(taxon.getIucnRedListCategoryCode())
+//            .setClassification(JsonConverter.convertRankedNames(taxon.getClassification()))
+//            .setTaxonKey(JsonConverter.convertTaxonKey(taxon));
+//
+//    JsonConverter.convertRankedName(taxon.getUsage()).ifPresent(classificationBuilder::setUsage);
+//
+//    JsonConverter.convertRankedName(taxon.getAcceptedUsage())
+//        .ifPresent(classificationBuilder::setAcceptedUsage);
+//
+//    JsonConverter.convertDiagnostic(taxon.getDiagnostics())
+//        .ifPresent(classificationBuilder::setDiagnostics);
+//
+//    JsonConverter.convertParsedName(taxon.getUsageParsedName())
+//        .ifPresent(classificationBuilder::setUsageParsedName);
+//
+//    JsonConverter.convertGenericNameFromParsedName(taxon)
+//        .ifPresent(
+//            genericName -> {
+//              GbifClassification partial = classificationBuilder.build();
+//              ParsedName existing = partial.getUsageParsedName();
+//              if (existing != null) {
+//                existing.setGenericName(genericName);
+//                classificationBuilder.setUsageParsedName(existing);
+//              }
+//            });
+//
+//    JsonConverter.convertClassificationPath(taxon)
+//        .ifPresent(classificationBuilder::setClassificationPath);
+//
+//    // Classification
+//    if (taxon.getClassification() != null) {
+//      for (org.gbif.pipelines.core.interpreters.model.RankedName rankedName : taxon.getClassification()) {
+//        String rank = rankedName.getRank();
+//        switch (rank) {
+//          case "KINGDOM":
+//            classificationBuilder.setKingdom(rankedName.getName());
+//            Optional.ofNullable(rankedName.getKey())
+//                .map(String::valueOf)
+//                .ifPresent(classificationBuilder::setKingdomKey);
+//            break;
+//          case "PHYLUM":
+//            classificationBuilder.setPhylum(rankedName.getName());
+//            Optional.ofNullable(rankedName.getKey())
+//                .map(String::valueOf)
+//                .ifPresent(classificationBuilder::setPhylumKey);
+//            break;
+//          case "CLASS":
+//            classificationBuilder.setClass$(rankedName.getName());
+//            Optional.ofNullable(rankedName.getKey())
+//                .map(String::valueOf)
+//                .ifPresent(classificationBuilder::setClassKey);
+//            break;
+//          case "ORDER":
+//            classificationBuilder.setOrder(rankedName.getName());
+//            Optional.ofNullable(rankedName.getKey())
+//                .map(String::valueOf)
+//                .ifPresent(classificationBuilder::setOrderKey);
+//            break;
+//          case "FAMILY":
+//            classificationBuilder.setFamily(rankedName.getName());
+//            Optional.ofNullable(rankedName.getKey())
+//                .map(String::valueOf)
+//                .ifPresent(classificationBuilder::setFamilyKey);
+//            break;
+//          case "GENUS":
+//            classificationBuilder.setGenus(rankedName.getName());
+//            Optional.ofNullable(rankedName.getKey())
+//                .map(String::valueOf)
+//                .ifPresent(classificationBuilder::setGenusKey);
+//            break;
+//          case "SPECIES":
+//            classificationBuilder.setSpecies(rankedName.getName());
+//            Optional.ofNullable(rankedName.getKey())
+//                .map(String::valueOf)
+//                .ifPresent(classificationBuilder::setSpeciesKey);
+//            break;
+//          default:
+//            // NOP
+//        }
+//      }
+//    }
+//
+//    // Raw to index classification
+//    if (verbatim != null) {
+//      extractOptValue(verbatim, DwcTerm.taxonID).ifPresent(classificationBuilder::setTaxonID);
+//      extractOptValue(verbatim, DwcTerm.scientificName)
+//          .ifPresent(classificationBuilder::setVerbatimScientificName);
+//    }
+    return null;
+//    return classificationBuilder.build();
   }
 
   /**

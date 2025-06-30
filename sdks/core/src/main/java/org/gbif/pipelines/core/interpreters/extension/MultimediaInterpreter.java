@@ -13,6 +13,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+
 import lombok.Builder;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.api.vocabulary.MediaType;
@@ -30,7 +32,9 @@ import org.gbif.pipelines.core.functions.SerializableFunction;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.Result;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.interpreters.model.Multimedia;
+import org.gbif.pipelines.core.interpreters.model.MultimediaRecord;
 
 /**
  * Interpreter for the multimedia extension, Interprets form {@link ExtendedRecord} to {@link
@@ -47,7 +51,7 @@ public class MultimediaInterpreter implements Serializable {
 
   private final TargetHandler<Multimedia> handler =
       ExtensionInterpretation.extension(Extension.MULTIMEDIA)
-          .to(Multimedia::new)
+          .<Multimedia>newHandler()
           .map(DcTerm.references, MultimediaInterpreter::parseAndSetReferences)
           .mapOne(DcTerm.identifier, MultimediaInterpreter::parseAndSetIdentifier)
           .mapOne(DcTerm.created, this::parseAndSetCreated)
@@ -81,17 +85,17 @@ public class MultimediaInterpreter implements Serializable {
    * Interprets the multimedia of a {@link ExtendedRecord} and populates a {@link MultimediaRecord}
    * with the interpreted values.
    */
-  public void interpret(ExtendedRecord er, MultimediaRecord mr) {
+  public void interpret(ExtendedRecord er, MultimediaRecord mr, Supplier<Multimedia> supplier) {
     Objects.requireNonNull(er);
     Objects.requireNonNull(mr);
 
-    Result<Multimedia> result = handler.convert(er);
+    Result<Multimedia> result = handler.convert(er, supplier);
 
     mr.setMultimediaItems(result.getList());
     mr.getIssues().setIssueList(result.getIssuesAsList());
   }
 
-  public static void interpretAssociatedMedia(ExtendedRecord er, MultimediaRecord mr) {
+  public static void interpretAssociatedMedia(ExtendedRecord er, MultimediaRecord mr, Supplier<Multimedia> supplier) {
 
     Predicate<URI> prFn =
         uri ->
@@ -112,7 +116,7 @@ public class MultimediaInterpreter implements Serializable {
                           if (uri == null) {
                             mr.getIssues().getIssueList().add(MULTIMEDIA_URI_INVALID.name());
                           } else if (!prFn.test(uri)) {
-                            Multimedia multimedia = new Multimedia();
+                            Multimedia multimedia = supplier.get();
                             multimedia.setIdentifier(uri.toString());
                             parseAndSetFormatAndType(multimedia, null);
                             mr.getMultimediaItems().add(multimedia);

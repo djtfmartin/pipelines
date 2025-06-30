@@ -9,4 +9,6 @@ public interface MultiTaxonRecord extends Record {
     void setTaxonRecords(List<TaxonRecord> trs);
     void setCoreId(@NotNull String s);
     void setParentId(@NotNull String s);
+
+    List<TaxonRecord> getTaxonRecords();
 }

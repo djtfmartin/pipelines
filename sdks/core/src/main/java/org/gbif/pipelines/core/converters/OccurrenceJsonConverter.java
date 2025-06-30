@@ -17,6 +17,7 @@ import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.api.model.Constants;
+import org.gbif.api.model.common.Classification;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
 import org.gbif.pipelines.core.interpreters.core.TaxonomyInterpreter;
@@ -178,11 +179,11 @@ public class OccurrenceJsonConverter {
         .ifPresent(builder::setOtherCatalogNumbersJoined);
 
     // Geological context
-    org.gbif.pipelines.io.avro.GeologicalContext gx = basic.getGeologicalContext();
+    org.gbif.pipelines.core.interpreters.model.GeologicalContext gx = basic.getGeologicalContext();
     if (gx != null) {
 
-      GeologicalContext.Builder gcb =
-          GeologicalContext.newBuilder()
+      org.gbif.pipelines.core.interpreters.json.GeologicalContext.Builder gcb =
+              org.gbif.pipelines.core.interpreters.json.GeologicalContext.newBuilder()
               .setLowestBiostratigraphicZone(gx.getLowestBiostratigraphicZone())
               .setHighestBiostratigraphicZone(gx.getHighestBiostratigraphicZone())
               .setGroup(gx.getGroup())

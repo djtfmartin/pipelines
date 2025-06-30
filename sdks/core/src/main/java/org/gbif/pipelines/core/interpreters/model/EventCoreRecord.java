@@ -55,8 +55,4 @@ public interface EventCoreRecord extends Record {
     // locationID
     String getLocationID();
     void setLocationID(String locationID);
-
-    // issues
-    IssueRecord getIssues();
-    void setIssues(IssueRecord issues);
 }

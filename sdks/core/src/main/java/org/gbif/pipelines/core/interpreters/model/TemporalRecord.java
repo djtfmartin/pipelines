@@ -1,10 +1,5 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-import org.gbif.api.vocabulary.OccurrenceIssue;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.Set;
-
 public interface TemporalRecord extends Record {
 
     // id
@@ -58,8 +53,4 @@ public interface TemporalRecord extends Record {
     // datePrecision
     String getDatePrecision();
     void setDatePrecision(String datePrecision);
-
-    // issues
-    IssueRecord getIssues();
-    void setIssues(IssueRecord issues);
 }

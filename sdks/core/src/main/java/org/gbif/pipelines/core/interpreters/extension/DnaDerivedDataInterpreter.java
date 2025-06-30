@@ -7,6 +7,7 @@ import org.gbif.api.util.DnaUtils;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.dwc.terms.GbifDnaTerm;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
+import org.gbif.pipelines.core.interpreters.model.*;
 
 @Builder(buildMethodName = "create")
 @Slf4j
@@ -30,7 +31,7 @@ public class DnaDerivedDataInterpreter {
   }
 
   private static void interpretDnaSequence(DnaDerivedData dnaDerivedData, String rawValue) {
-    if (!Strings.isNullOrEmpty(rawValue)) {
+    if (rawValue != null && !rawValue.isEmpty()) {
       dnaDerivedData.setDnaSequenceID(DnaUtils.convertDnaSequenceToID(rawValue));
     }
   }

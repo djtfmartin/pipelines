@@ -1,7 +1,6 @@
 package org.gbif.pipelines.core.converters;
 
 import com.fasterxml.jackson.databind.node.TextNode;
-import com.google.common.base.Strings;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.LocalDate;

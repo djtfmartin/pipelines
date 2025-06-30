@@ -6,7 +6,4 @@ public interface ImageRecord extends Record {
 
     List<Image> getImageItems();
     void setImageItems(List<Image> imageItems);
-
-    IssueRecord getIssues();
-    void setIssues(IssueRecord issues);
 }
