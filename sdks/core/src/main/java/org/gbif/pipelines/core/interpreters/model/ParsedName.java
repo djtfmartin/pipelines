@@ -1,4 +1,3 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-public interface ParsedName {
-}
+public interface ParsedName {}

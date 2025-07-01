@@ -1,22 +1,21 @@
 package org.gbif.pipelines.core.interpreters.model;
 
+import java.util.Set;
 import org.gbif.api.vocabulary.InterpretationRemark;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 
-import java.util.Set;
-
 public interface Issues {
-    IssueRecord getIssues();
+  IssueRecord getIssues();
 
-    void setIssues(IssueRecord issues);
+  void setIssues(IssueRecord issues);
 
-    void addIssue(Set<String> issues);
+  void addIssue(Set<String> issues);
 
-    void addIssues(Set<InterpretationRemark> issues);
+  void addIssues(Set<InterpretationRemark> issues);
 
-    void addIssueSet(Set<OccurrenceIssue> issues);
+  void addIssueSet(Set<OccurrenceIssue> issues);
 
-    void addIssue(InterpretationRemark issue);
+  void addIssue(InterpretationRemark issue);
 
-    void addIssue(String issue);
+  void addIssue(String issue);
 }

@@ -23,7 +23,6 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
 import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 
-
 /** Utility class to help with the extraction of the identification fields. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class IdentificationUtils {

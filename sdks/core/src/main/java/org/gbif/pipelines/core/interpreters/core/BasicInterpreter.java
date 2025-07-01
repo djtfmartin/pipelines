@@ -16,10 +16,7 @@ import com.google.common.base.Strings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,17 +30,13 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.GbifTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.pipelines.core.interpreters.Interpretation;
+import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.SimpleTypeParser;
 import org.gbif.pipelines.core.parsers.VocabularyParser;
 import org.gbif.pipelines.core.parsers.identifier.AgentIdentifierParser;
-import org.gbif.pipelines.core.interpreters.model.BasicRecord;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
 
-/**
- * Interpreting function that receives a Record instance and applies an interpretation to
- * it.
- */
+/** Interpreting function that receives a Record instance and applies an interpretation to it. */
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class BasicInterpreter {
@@ -51,40 +44,51 @@ public class BasicInterpreter {
   private static final Parsable<String> TYPE_NAME_PARSER =
       org.gbif.common.parsers.TypifiedNameParser.getInstance();
 
-
-  public static void interpret(ExtendedRecord er, BasicRecord br, VocabularyService vocabularyService, KeyValueStore<String, OccurrenceStatus> occStatusKvStore) {
-          Interpretation.from(er).to(br)
-            .via(BasicInterpreter::interpretBasisOfRecord)
-            .via(BasicInterpreter::interpretTypifiedName)
-            .via(VocabularyInterpreter.interpretSex(vocabularyService))
-            .via(VocabularyInterpreter.interpretTypeStatus(vocabularyService))
-            .via(BasicInterpreter::interpretIndividualCount)
-            .via((e, r) -> CoreInterpreter.interpretReferences(e, r, r::setReferences))
-            .via(BasicInterpreter::interpretOrganismQuantity)
-            .via(BasicInterpreter::interpretOrganismQuantityType)
-            .via((e, r) -> CoreInterpreter.interpretSampleSizeUnit(e, r::setSampleSizeUnit))
-            .via((e, r) -> CoreInterpreter.interpretSampleSizeValue(e, r::setSampleSizeValue))
-            .via(BasicInterpreter::interpretRelativeOrganismQuantity)
-            .via((e, r) -> CoreInterpreter.interpretLicense(e, r::setLicense))
-            .via(BasicInterpreter::interpretIdentifiedByIds)
-            .via(BasicInterpreter::interpretRecordedByIds)
-            .via(BasicInterpreter.interpretOccurrenceStatus(occStatusKvStore))
-            .via(VocabularyInterpreter.interpretEstablishmentMeans(vocabularyService))
-            .via(VocabularyInterpreter.interpretLifeStage(vocabularyService))
-            .via(VocabularyInterpreter.interpretPathway(vocabularyService))
-            .via(VocabularyInterpreter.interpretDegreeOfEstablishment(vocabularyService))
-            .via((e, r) -> CoreInterpreter.interpretDatasetID(e, r::setDatasetID))
-            .via((e, r) -> CoreInterpreter.interpretDatasetName(e, r::setDatasetName))
-            .via(BasicInterpreter::interpretOtherCatalogNumbers)
-            .via(BasicInterpreter::interpretRecordedBy)
-            .via(BasicInterpreter::interpretIdentifiedBy)
-            .via(BasicInterpreter::interpretPreparations)
-            .via((e, r) -> CoreInterpreter.interpretSamplingProtocol(e, r::setSamplingProtocol))
-            .via(BasicInterpreter::interpretProjectId)
-            .via(BasicInterpreter::interpretIsSequenced)
-            .via(BasicInterpreter::interpretAssociatedSequences).getOfNullable();
+  public static void interpret(
+      ExtendedRecord er,
+      BasicRecord br,
+      VocabularyService vocabularyService,
+      KeyValueStore<String, OccurrenceStatus> occStatusKvStore,
+      Supplier<AgentIdentifier> agentIdentifierSupplier,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
+    Interpretation.from(er)
+        .to(br)
+        .via(BasicInterpreter::interpretBasisOfRecord)
+        .via(BasicInterpreter::interpretTypifiedName)
+        .via(VocabularyInterpreter.interpretSex(vocabularyService, supplier, supplierTag))
+        .via(VocabularyInterpreter.interpretTypeStatus(vocabularyService, supplier, supplierTag))
+        .via(BasicInterpreter::interpretIndividualCount)
+        .via((e, r) -> CoreInterpreter.interpretReferences(e, r, r::setReferences))
+        .via(BasicInterpreter::interpretOrganismQuantity)
+        .via(BasicInterpreter::interpretOrganismQuantityType)
+        .via((e, r) -> CoreInterpreter.interpretSampleSizeUnit(e, r::setSampleSizeUnit))
+        .via((e, r) -> CoreInterpreter.interpretSampleSizeValue(e, r::setSampleSizeValue))
+        .via(BasicInterpreter::interpretRelativeOrganismQuantity)
+        .via((e, r) -> CoreInterpreter.interpretLicense(e, r::setLicense))
+        .via(r -> BasicInterpreter.interpretIdentifiedByIds(er, r, agentIdentifierSupplier))
+        .via(r -> BasicInterpreter.interpretRecordedByIds(er, r, agentIdentifierSupplier))
+        .via(BasicInterpreter.interpretOccurrenceStatus(occStatusKvStore))
+        .via(
+            VocabularyInterpreter.interpretEstablishmentMeans(
+                vocabularyService, supplier, supplierTag))
+        .via(VocabularyInterpreter.interpretLifeStage(vocabularyService, supplier, supplierTag))
+        .via(VocabularyInterpreter.interpretPathway(vocabularyService, supplier, supplierTag))
+        .via(
+            VocabularyInterpreter.interpretDegreeOfEstablishment(
+                vocabularyService, supplier, supplierTag))
+        .via((e, r) -> CoreInterpreter.interpretDatasetID(e, r::setDatasetID))
+        .via((e, r) -> CoreInterpreter.interpretDatasetName(e, r::setDatasetName))
+        .via(BasicInterpreter::interpretOtherCatalogNumbers)
+        .via(BasicInterpreter::interpretRecordedBy)
+        .via(BasicInterpreter::interpretIdentifiedBy)
+        .via(BasicInterpreter::interpretPreparations)
+        .via((e, r) -> CoreInterpreter.interpretSamplingProtocol(e, r::setSamplingProtocol))
+        .via(BasicInterpreter::interpretProjectId)
+        .via(BasicInterpreter::interpretIsSequenced)
+        .via(BasicInterpreter::interpretAssociatedSequences)
+        .getOfNullable();
   }
-
 
   /** {@link DwcTerm#individualCount} interpretation. */
   public static void interpretIndividualCount(ExtendedRecord er, BasicRecord br) {
@@ -177,19 +181,21 @@ public class BasicInterpreter {
   }
 
   /** {@link DwcTerm#identifiedByID}. */
-  public static void interpretIdentifiedByIds(ExtendedRecord er, BasicRecord br) {
+  public static void interpretIdentifiedByIds(
+      ExtendedRecord er, BasicRecord br, Supplier<AgentIdentifier> supplier) {
     er.extractOptValue(DwcTerm.identifiedByID)
         .filter(x -> !x.isEmpty())
-        .map(AgentIdentifierParser::parse)
+        .map(x -> AgentIdentifierParser.parse(x, supplier))
         .map(ArrayList::new)
         .ifPresent(br::setIdentifiedByIds);
   }
 
   /** {@link DwcTerm#recordedByID} interpretation. */
-  public static void interpretRecordedByIds(ExtendedRecord er, BasicRecord br) {
+  public static void interpretRecordedByIds(
+      ExtendedRecord er, BasicRecord br, Supplier<AgentIdentifier> supplier) {
     er.extractOptValue(DwcTerm.recordedByID)
         .filter(x -> !x.isEmpty())
-        .map(AgentIdentifierParser::parse)
+        .map(x -> AgentIdentifierParser.parse(x, supplier))
         .map(ArrayList::new)
         .ifPresent(br::setRecordedByIds);
   }
@@ -221,8 +227,7 @@ public class BasicInterpreter {
 
       // https://github.com/gbif/pipelines/issues/392
       boolean isSpecimen =
-          Optional
-              .ofNullable(br.getBasisOfRecord())
+          Optional.ofNullable(br.getBasisOfRecord())
               .map(BasisOfRecord::valueOf)
               .map(
                   x ->
@@ -288,7 +293,7 @@ public class BasicInterpreter {
 
   /** {@link DwcTerm#otherCatalogNumbers} interpretation. */
   public static void interpretOtherCatalogNumbers(ExtendedRecord er, BasicRecord br) {
-    List<String> list = er.extractListValue(DEFAULT_SEPARATOR + "|;",  DwcTerm.otherCatalogNumbers);
+    List<String> list = er.extractListValue(DEFAULT_SEPARATOR + "|;", DwcTerm.otherCatalogNumbers);
     if (!list.isEmpty()) {
       br.setOtherCatalogNumbers(list);
     }
@@ -345,7 +350,7 @@ public class BasicInterpreter {
     }
 
     boolean hasAssociatedSequences =
-            er.extractNullAwareOptValue(DwcTerm.associatedSequences).isPresent();
+        er.extractNullAwareOptValue(DwcTerm.associatedSequences).isPresent();
 
     br.setIsSequenced(hasExt || hasAssociatedSequences);
   }
@@ -358,8 +363,8 @@ public class BasicInterpreter {
     }
   }
 
-//  /** Sets the coreId field. */
-//  public static void setCoreId(ExtendedRecord er, BasicRecord br) {
-//    Optional.ofNullable(er.getCoreId()).ifPresent(br::setCoreId);
-//  }
+  //  /** Sets the coreId field. */
+  //  public static void setCoreId(ExtendedRecord er, BasicRecord br) {
+  //    Optional.ofNullable(er.getCoreId()).ifPresent(br::setCoreId);
+  //  }
 }

@@ -4,7 +4,6 @@ import static org.gbif.pipelines.core.utils.ModelUtils.extractLengthAwareOptValu
 import static org.gbif.pipelines.core.utils.ModelUtils.extractOptValue;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,10 +16,11 @@ import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.api.model.Constants;
-import org.gbif.api.model.common.Classification;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
 import org.gbif.pipelines.core.interpreters.core.TaxonomyInterpreter;
+import org.gbif.pipelines.core.interpreters.json.Classification;
+import org.gbif.pipelines.core.interpreters.json.GeologicalRange;
 import org.gbif.pipelines.core.interpreters.json.OccurrenceJsonRecord;
 import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.utils.SortUtils;
@@ -183,7 +183,7 @@ public class OccurrenceJsonConverter {
     if (gx != null) {
 
       org.gbif.pipelines.core.interpreters.json.GeologicalContext.Builder gcb =
-              org.gbif.pipelines.core.interpreters.json.GeologicalContext.newBuilder()
+          org.gbif.pipelines.core.interpreters.json.GeologicalContext.newBuilder()
               .setLowestBiostratigraphicZone(gx.getLowestBiostratigraphicZone())
               .setHighestBiostratigraphicZone(gx.getHighestBiostratigraphicZone())
               .setGroup(gx.getGroup())
@@ -418,23 +418,13 @@ public class OccurrenceJsonConverter {
             .findFirst();
 
     JsonConverter.mapIssues(
-        Arrays.asList(
-            metadata,
-            identifier,
-            clustering,
-            basic,
-            temporal,
-            location,
-            gbifRecord.orElse(TaxonRecord.newBuilder().build()),
-            grscicoll,
-            multimedia),
+        List.of(metadata, identifier, clustering, basic, temporal, location, grscicoll, multimedia),
         builder::setIssues,
         builder::setNotIssues);
 
     // populate the non-taxonomic issues field
     JsonConverter.mapIssues(
-        Arrays.asList(
-            metadata, identifier, clustering, basic, temporal, location, grscicoll, multimedia),
+        List.of(metadata, identifier, clustering, basic, temporal, location, grscicoll, multimedia),
         builder::setNonTaxonomicIssues,
         v -> {});
   }

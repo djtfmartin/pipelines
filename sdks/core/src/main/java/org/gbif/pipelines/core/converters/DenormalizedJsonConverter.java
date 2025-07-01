@@ -3,27 +3,26 @@ package org.gbif.pipelines.core.converters;
 import static org.gbif.pipelines.core.utils.ModelUtils.extractOptValue;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.utils.HashConverter;
+import org.gbif.pipelines.core.interpreters.json.EventJsonRecord;
+import org.gbif.pipelines.core.interpreters.json.JoinRecord;
+import org.gbif.pipelines.core.interpreters.json.MetadataJsonRecord;
+import org.gbif.pipelines.core.interpreters.json.OccurrenceJsonRecord;
+import org.gbif.pipelines.core.interpreters.json.ParentJsonRecord;
 import org.gbif.pipelines.core.interpreters.model.EventCoreRecord;
 import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.GrscicollRecord;
 import org.gbif.pipelines.core.interpreters.model.IdentifierRecord;
 import org.gbif.pipelines.core.interpreters.model.LocationRecord;
 import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
 import org.gbif.pipelines.core.interpreters.model.MultimediaRecord;
 import org.gbif.pipelines.core.interpreters.model.TaxonRecord;
 import org.gbif.pipelines.core.interpreters.model.TemporalRecord;
-import org.gbif.pipelines.core.interpreters.model.GrscicollRecord;
-import org.gbif.pipelines.core.interpreters.json.EventJsonRecord;
-import org.gbif.pipelines.core.interpreters.json.JoinRecord;
-import org.gbif.pipelines.core.interpreters.json.MetadataJsonRecord;
-import org.gbif.pipelines.core.interpreters.json.OccurrenceJsonRecord;
-import org.gbif.pipelines.core.interpreters.json.ParentJsonRecord;
+import org.gbif.pipelines.core.utils.HashConverter;
 
 @Slf4j
 @Builder

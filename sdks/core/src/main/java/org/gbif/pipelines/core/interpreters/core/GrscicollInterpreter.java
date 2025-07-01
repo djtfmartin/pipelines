@@ -1,14 +1,12 @@
 package org.gbif.pipelines.core.interpreters.core;
 
 import static org.gbif.api.model.collections.lookup.Match.Reason.DIFFERENT_OWNER;
-import static org.gbif.pipelines.core.utils.ModelUtils.addIssue;
-import static org.gbif.pipelines.core.utils.ModelUtils.checkNullOrEmpty;
-import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +22,6 @@ import org.gbif.pipelines.core.interpreters.model.GrscicollRecord;
 import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
 import org.gbif.pipelines.core.parsers.VocabularyParser;
 import org.gbif.rest.client.grscicoll.GrscicollLookupResponse;
-import org.gbif.rest.client.grscicoll.GrscicollLookupResponse.Match;
 import org.gbif.rest.client.grscicoll.GrscicollLookupResponse.Status;
 
 @Slf4j
@@ -32,13 +29,15 @@ import org.gbif.rest.client.grscicoll.GrscicollLookupResponse.Status;
 public class GrscicollInterpreter {
 
   public static BiConsumer<ExtendedRecord, GrscicollRecord> grscicollInterpreter(
-      KeyValueStore<GrscicollLookupRequest, GrscicollLookupResponse> kvStore, MetadataRecord mdr) {
+      KeyValueStore<GrscicollLookupRequest, GrscicollLookupResponse> kvStore,
+      MetadataRecord mdr,
+      Supplier<org.gbif.pipelines.core.interpreters.model.Match> matchSupplier) {
     return (er, gr) -> {
       if (kvStore == null || mdr == null) {
         return;
       }
 
-      if (er == null){
+      if (er == null) {
         throw new IllegalArgumentException("Grscicoll interpreter can't be null");
       }
       er.checkEmpty();
@@ -85,7 +84,7 @@ public class GrscicollInterpreter {
       gr.setId(er.getId());
 
       // institution match
-      Match institutionMatchResponse = lookupResponse.getInstitutionMatch();
+      GrscicollLookupResponse.Match institutionMatchResponse = lookupResponse.getInstitutionMatch();
       if (institutionMatchResponse.getMatchType() == GrscicollLookupResponse.MatchType.NONE) {
         gr.addIssue(getInstitutionMatchNoneIssue(institutionMatchResponse.getStatus()));
 
@@ -93,7 +92,8 @@ public class GrscicollInterpreter {
         return;
       }
 
-      gr.setInstitutionMatch(GrscicollRecordConverter.convertMatch(institutionMatchResponse));
+      gr.setInstitutionMatch(
+          GrscicollRecordConverter.convertMatch(institutionMatchResponse, matchSupplier));
 
       if (institutionMatchResponse.getMatchType() == GrscicollLookupResponse.MatchType.FUZZY) {
         gr.addIssue(OccurrenceIssue.INSTITUTION_MATCH_FUZZY);
@@ -107,11 +107,12 @@ public class GrscicollInterpreter {
       }
 
       // collection match
-      Match collectionMatchResponse = lookupResponse.getCollectionMatch();
+      GrscicollLookupResponse.Match collectionMatchResponse = lookupResponse.getCollectionMatch();
       if (collectionMatchResponse.getMatchType() == GrscicollLookupResponse.MatchType.NONE) {
         gr.addIssue(getCollectionMatchNoneIssue(collectionMatchResponse.getStatus()));
       } else {
-        gr.setCollectionMatch(GrscicollRecordConverter.convertMatch(collectionMatchResponse));
+        gr.setCollectionMatch(
+            GrscicollRecordConverter.convertMatch(collectionMatchResponse, matchSupplier));
 
         if (collectionMatchResponse.getMatchType() == GrscicollLookupResponse.MatchType.FUZZY) {
           gr.addIssue(OccurrenceIssue.COLLECTION_MATCH_FUZZY);

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -26,13 +27,14 @@ import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class OccurrenceExtensionConverter {
 
-  public static List<ExtendedRecord> convert(ExtendedRecord er) {
+  public static List<ExtendedRecord> convert(
+      ExtendedRecord er, Supplier<ExtendedRecord> extendedRecordSupplier) {
 
     Map<String, String> coreTerms = er.getCoreTerms();
     Map<String, Map<String, List<Map<String, String>>>> occIdExtMap = collectExtensions(er);
 
     return er.getExtensions().get(DwcTerm.Occurrence.qualifiedName()).stream()
-        .map(occExt -> merge(er.getId(), coreTerms, occExt, occIdExtMap))
+        .map(occExt -> merge(er.getId(), coreTerms, occExt, occIdExtMap, extendedRecordSupplier))
         .filter(Optional::isPresent)
         .map(Optional::get)
         .collect(Collectors.toList());
@@ -43,10 +45,12 @@ public class OccurrenceExtensionConverter {
       String coreId,
       Map<String, String> coreMap,
       Map<String, String> extCoreMap,
-      Map<String, Map<String, List<Map<String, String>>>> occIdExtMap) {
+      Map<String, Map<String, List<Map<String, String>>>> occIdExtMap,
+      Supplier<ExtendedRecord> extendedRecordSupplier) {
     String id = extCoreMap.get(DwcTerm.occurrenceID.qualifiedName());
     if (!Strings.isNullOrEmpty(id)) {
-      ExtendedRecord extendedRecord = ExtendedRecord.newBuilder().setId(id).build();
+      ExtendedRecord extendedRecord = extendedRecordSupplier.get();
+      extendedRecord.setId(id);
       extendedRecord.getCoreTerms().putAll(coreMap);
       extendedRecord.getCoreTerms().putAll(extCoreMap);
       extendedRecord.setCoreId(coreId);

@@ -31,9 +31,9 @@ public class MetadataInterpreter {
 
   /** Gets information from GBIF API by datasetId */
   public static BiConsumer<String, MetadataRecord> interpret(
-          MetadataServiceClient client,
-          TriFunction<String, String, String, MachineTag> createMachineTagFn
-          ) {
+      MetadataServiceClient client,
+      TriFunction<String, String, String, org.gbif.pipelines.core.interpreters.model.MachineTag>
+          createMachineTagFn) {
     return (datasetId, mdr) -> {
 
       // Set required metadata properties
@@ -143,16 +143,18 @@ public class MetadataInterpreter {
   }
 
   /** Copy MachineTags into the Avro Metadata record. */
-  private static void copyMachineTags(List<MachineTag> machineTags,
-                                      MetadataRecord mdr,
-                                      TriFunction<String, String, String, MachineTag> createMachineTagFn) {
+  private static void copyMachineTags(
+      List<MachineTag> machineTags,
+      MetadataRecord mdr,
+      TriFunction<String, String, String, org.gbif.pipelines.core.interpreters.model.MachineTag>
+          createMachineTagFn) {
     if (Objects.nonNull(machineTags) && !machineTags.isEmpty()) {
       mdr.setMachineTags(
           machineTags.stream()
               .map(
                   machineTag ->
-                          createMachineTagFn.apply(machineTag.getNamespace(),
-                                  machineTag.getName(), machineTag.getValue()))
+                      createMachineTagFn.apply(
+                          machineTag.getNamespace(), machineTag.getName(), machineTag.getValue()))
               .collect(Collectors.toList()));
     }
   }

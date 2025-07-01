@@ -1,14 +1,13 @@
 package org.gbif.pipelines.core.interpreters.json;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
-
-import java.util.List;
 
 @Data
 @Builder(builderClassName = "Builder", builderMethodName = "newBuilder", setterPrefix = "set")
 public class DerivedMetadataRecord {
-    String wktConvexHull;
-    EventDate temporalCoverage;
-    List<GbifClassification> getTaxonomicCoverage;
+  String wktConvexHull;
+  EventDate temporalCoverage;
+  List<GbifClassification> getTaxonomicCoverage;
 }

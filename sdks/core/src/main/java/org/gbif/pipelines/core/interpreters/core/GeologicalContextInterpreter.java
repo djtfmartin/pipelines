@@ -2,28 +2,22 @@ package org.gbif.pipelines.core.interpreters.core;
 
 import static org.gbif.dwc.terms.DwcTerm.earliestEraOrLowestErathem;
 import static org.gbif.dwc.terms.DwcTerm.latestEraOrHighestErathem;
-import static org.gbif.pipelines.core.utils.ModelUtils.addIssue;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
-import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.pipelines.core.utils.VocabularyConceptFactory;
-import org.gbif.pipelines.core.interpreters.model.BasicRecord;
-import org.gbif.pipelines.core.interpreters.model.GeologicalContext;
-import org.gbif.pipelines.core.interpreters.model.VocabularyConcept;
 import org.gbif.vocabulary.lookup.LookupConcept;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,7 +43,9 @@ public class GeologicalContextInterpreter {
    * DwcTerm#latestAgeOrHighestStage} and {@link DwcTerm#earliestAgeOrLowestStage} interpretation.
    */
   public static BiConsumer<ExtendedRecord, BasicRecord> interpretChronostratigraphy(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> vocabularyConceptSupplier,
+      Supplier<VocabularyTag> vocabularyTagSupplier) {
     return (er, br) -> {
       GeologicalContext gx = br.getGeologicalContext();
       if (gx == null) {
@@ -67,7 +63,9 @@ public class GeologicalContextInterpreter {
                   DwcTerm.latestEonOrHighestEonothem,
                   GeologicalContext::setEarliestEonOrLowestEonothem,
                   GeologicalContext::setLatestEonOrHighestEonothem),
-              vocabularyService);
+              vocabularyService,
+              vocabularyConceptSupplier,
+              vocabularyTagSupplier);
       Range eraRange =
           interpretTermPair(
               er,
@@ -78,7 +76,9 @@ public class GeologicalContextInterpreter {
                   latestEraOrHighestErathem,
                   GeologicalContext::setEarliestEraOrLowestErathem,
                   GeologicalContext::setLatestEraOrHighestErathem),
-              vocabularyService);
+              vocabularyService,
+              vocabularyConceptSupplier,
+              vocabularyTagSupplier);
       Range periodRange =
           interpretTermPair(
               er,
@@ -89,7 +89,9 @@ public class GeologicalContextInterpreter {
                   DwcTerm.latestPeriodOrHighestSystem,
                   GeologicalContext::setEarliestPeriodOrLowestSystem,
                   GeologicalContext::setLatestPeriodOrHighestSystem),
-              vocabularyService);
+              vocabularyService,
+              vocabularyConceptSupplier,
+              vocabularyTagSupplier);
       Range epochRange =
           interpretTermPair(
               er,
@@ -100,7 +102,9 @@ public class GeologicalContextInterpreter {
                   DwcTerm.latestEpochOrHighestSeries,
                   GeologicalContext::setEarliestEpochOrLowestSeries,
                   GeologicalContext::setLatestEpochOrHighestSeries),
-              vocabularyService);
+              vocabularyService,
+              vocabularyConceptSupplier,
+              vocabularyTagSupplier);
       Range ageRange =
           interpretTermPair(
               er,
@@ -111,7 +115,9 @@ public class GeologicalContextInterpreter {
                   DwcTerm.latestAgeOrHighestStage,
                   GeologicalContext::setEarliestAgeOrLowestStage,
                   GeologicalContext::setLatestAgeOrHighestStage),
-              vocabularyService);
+              vocabularyService,
+              vocabularyConceptSupplier,
+              vocabularyTagSupplier);
 
       chooseFirst(ageRange, epochRange, periodRange, eraRange, eonRange)
           .ifPresent(
@@ -168,8 +174,7 @@ public class GeologicalContextInterpreter {
       ExtendedRecord er,
       BasicRecord br,
       DwcTerm term,
-      BiConsumer<GeologicalContext, String> setFn
-      ) {
+      BiConsumer<GeologicalContext, String> setFn) {
     er.extractNullAwareOptValue(term)
         .ifPresent(
             v -> {
@@ -192,16 +197,36 @@ public class GeologicalContextInterpreter {
   }
 
   private static Range interpretTermPair(
-          ExtendedRecord er, BasicRecord br, TermPair termPair, VocabularyService vocabularyService) {
+      ExtendedRecord er,
+      BasicRecord br,
+      TermPair termPair,
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> vocabularyConceptSupplier,
+      Supplier<VocabularyTag> vocabularyTagSupplier) {
+
     Optional<VocabularyConcept> earliestVocabularyConceptOpt =
-            er.extractNullAwareOptValue(termPair.earliestTerm)
+        er.extractNullAwareOptValue(termPair.earliestTerm)
             .flatMap(v -> vocabularyService.get(termPair.earliestTerm).flatMap(l -> l.lookup(v)))
-            .flatMap(l -> getVocabularyConcept(l, termPair.earliestTerm, br));
+            .flatMap(
+                l ->
+                    getVocabularyConcept(
+                        l,
+                        termPair.earliestTerm,
+                        br,
+                        vocabularyConceptSupplier,
+                        vocabularyTagSupplier));
 
     Optional<VocabularyConcept> latestVocabularyConceptOpt =
-            er.extractNullAwareOptValue(termPair.latestTerm)
+        er.extractNullAwareOptValue(termPair.latestTerm)
             .flatMap(v -> vocabularyService.get(termPair.latestTerm).flatMap(l -> l.lookup(v)))
-            .flatMap(l -> getVocabularyConcept(l, termPair.earliestTerm, br));
+            .flatMap(
+                l ->
+                    getVocabularyConcept(
+                        l,
+                        termPair.earliestTerm,
+                        br,
+                        vocabularyConceptSupplier,
+                        vocabularyTagSupplier));
 
     if (earliestVocabularyConceptOpt.isEmpty() && latestVocabularyConceptOpt.isEmpty()) {
       return Range.empty();
@@ -260,11 +285,17 @@ public class GeologicalContextInterpreter {
   }
 
   private static Optional<VocabularyConcept> getVocabularyConcept(
-      LookupConcept lookupConcept, DwcTerm term, BasicRecord br) {
+      LookupConcept lookupConcept,
+      DwcTerm term,
+      BasicRecord br,
+      Supplier<VocabularyConcept> vocabularyConceptSupplier,
+      Supplier<VocabularyTag> vocabularyTagSupplier) {
     Map<String, String> tagsMap = getTagsMap(lookupConcept.getTags());
     String termRank = getTermData(term).rank;
     if (tagsMap.get(RANK_TAG).equals(termRank)) {
-      return Optional.of(VocabularyConceptFactory.createConcept(lookupConcept, tagsMap));
+      return Optional.of(
+          VocabularyConceptFactory.createConcept(
+              lookupConcept, tagsMap, vocabularyConceptSupplier, vocabularyTagSupplier));
     } else {
       // rank doesn't match
       if (RANK_HIERARCHY.indexOf(tagsMap.get(RANK_TAG)) > RANK_HIERARCHY.indexOf(termRank)) {
@@ -282,7 +313,11 @@ public class GeologicalContextInterpreter {
               allParents.subList(allParents.indexOf(parent) + 1, allParents.size());
           return Optional.of(
               VocabularyConceptFactory.createConcept(
-                  parent.getName(), filteredParents, getTagsMap(parent.getTags())));
+                  parent.getName(),
+                  filteredParents,
+                  getTagsMap(parent.getTags()),
+                  vocabularyConceptSupplier,
+                  vocabularyTagSupplier));
         }
       } else {
         Optional.ofNullable(getTermData(term).rankMismatch).ifPresent(br::addIssue);

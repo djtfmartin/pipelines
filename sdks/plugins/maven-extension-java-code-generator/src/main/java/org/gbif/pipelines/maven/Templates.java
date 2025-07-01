@@ -15,7 +15,7 @@ public class Templates {
           + "import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;\n"
           + "import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;\n"
           + "import org.gbif.pipelines.core.pojo.ErIdrMdrContainer;\n"
-          + "import ${namespace}.ExtendedRecord;\n"
+          + "import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;\n"
           + "import ${namespace}.${extensionPackage}.${tableName};\n"
           + "\n"
           + "import lombok.AccessLevel;\n"

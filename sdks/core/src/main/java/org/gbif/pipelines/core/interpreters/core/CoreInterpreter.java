@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
+import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,22 +23,17 @@ import org.gbif.common.parsers.NumberParser;
 import org.gbif.common.parsers.UrlParser;
 import org.gbif.dwc.terms.DcTerm;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.BasicRecord;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.Parent;
+import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
-import org.gbif.pipelines.core.interpreters.model.EventCoreRecord;
 
-/**
- * Interpreting function that receives a Record instance and applies an interpretation to
- */
+/** Interpreting function that receives a Record instance and applies an interpretation to */
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CoreInterpreter {
 
   /** {@link DcTerm#references} interpretation. */
   public static void interpretReferences(
-          ExtendedRecord er, BasicRecord br, Consumer<String> consumer) {
+      ExtendedRecord er, BasicRecord br, Consumer<String> consumer) {
     String value = er.extractValue(DcTerm.references);
     if (!Strings.isNullOrEmpty(value)) {
       URI parseResult = UrlParser.parse(value);
@@ -67,7 +62,7 @@ public class CoreInterpreter {
   /** {@link DcTerm#license} interpretation. */
   public static void interpretLicense(ExtendedRecord er, Consumer<String> consumer) {
     String license =
-          er.extractOptValue(DcTerm.license)
+        er.extractOptValue(DcTerm.license)
             .map(CoreInterpreter::getLicense)
             .map(License::name)
             .orElse(License.UNSPECIFIED.name());
@@ -99,8 +94,9 @@ public class CoreInterpreter {
   public static BiConsumer<ExtendedRecord, EventCoreRecord> interpretLineages(
       Map<String, Map<String, String>> erWithParents,
       VocabularyService vocabularyService,
-      Function<Void, Parent> createParentFn
-    ) {
+      Function<Void, Parent> createParentFn,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
 
     return (er, evr) -> {
       String parentEventID = er.extractValue(DwcTerm.parentEventID);
@@ -131,7 +127,11 @@ public class CoreInterpreter {
         Parent parent = createParentFn.apply(null);
         parent.setId(parentEventID);
         VocabularyInterpreter.interpretVocabulary(
-                DwcTerm.eventType, parentValues.get(DwcTerm.eventType.name()), vocabularyService)
+                DwcTerm.eventType,
+                parentValues.get(DwcTerm.eventType.name()),
+                vocabularyService,
+                supplier,
+                supplierTag)
             .ifPresent(c -> parent.setEventType(c.getConcept()));
 
         // allow the raw event type value through if not matched to vocab

@@ -13,7 +13,7 @@
   <packaging>maven-plugin</packaging>
 
   <name>Pipelines :: Sdks :: Plugins :: Maven Java code generator</name>
-  <description>Maven plugin generates java classes for raw extensions conveters</description>
+  <description>Maven plugin generates java classes for raw extensions converters</description>
 
   <properties>
     <sonar.coverage.exclusions>**/Templates.java</sonar.coverage.exclusions>

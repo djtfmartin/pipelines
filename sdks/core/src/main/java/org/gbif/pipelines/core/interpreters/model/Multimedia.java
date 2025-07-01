@@ -2,49 +2,63 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface Multimedia {
 
+  String getType();
 
-    String getType();
-    void setType(String type);
+  void setType(String type);
 
-    String getFormat();
-    void setFormat(String format);
+  String getFormat();
 
-    String getIdentifier();
-    void setIdentifier(String identifier);
+  void setFormat(String format);
 
-    String getReferences();
-    void setReferences(String references);
+  String getIdentifier();
 
-    String getTitle();
-    void setTitle(String title);
+  void setIdentifier(String identifier);
 
-    String getDescription();
-    void setDescription(String description);
+  String getReferences();
 
-    String getSource();
-    void setSource(String source);
+  void setReferences(String references);
 
-    String getAudience();
-    void setAudience(String audience);
+  String getTitle();
 
-    String getCreated();
-    void setCreated(String created);
+  void setTitle(String title);
 
-    String getCreator();
-    void setCreator(String creator);
+  String getDescription();
 
-    String getContributor();
-    void setContributor(String contributor);
+  void setDescription(String description);
 
-    String getPublisher();
-    void setPublisher(String publisher);
+  String getSource();
 
-    String getLicense();
-    void setLicense(String license);
+  void setSource(String source);
 
-    String getRightsHolder();
-    void setRightsHolder(String rightsHolder);
+  String getAudience();
 
-    String getDatasetId();
-    void setDatasetId(String datasetId);
+  void setAudience(String audience);
+
+  String getCreated();
+
+  void setCreated(String created);
+
+  String getCreator();
+
+  void setCreator(String creator);
+
+  String getContributor();
+
+  void setContributor(String contributor);
+
+  String getPublisher();
+
+  void setPublisher(String publisher);
+
+  String getLicense();
+
+  void setLicense(String license);
+
+  String getRightsHolder();
+
+  void setRightsHolder(String rightsHolder);
+
+  String getDatasetId();
+
+  void setDatasetId(String datasetId);
 }

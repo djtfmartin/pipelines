@@ -67,9 +67,9 @@ public class DwcaToAvroConverter extends ConverterToVerbatim {
       } else {
         tmp = inputPath.getParent().resolve("tmp").toString();
       }
-      reader = DwcaExtendedRecordReader.fromCompressed(realPath, tmp);
+      reader = DwcaExtendedRecordReader.fromCompressed(realPath, tmp, ExtendedRecordImpl::new);
     } else {
-      reader = DwcaExtendedRecordReader.fromLocation(realPath);
+      reader = DwcaExtendedRecordReader.fromLocation(realPath, ExtendedRecordImpl::new);
     }
 
     log.info("Exporting the DwC Archive to Avro started {}", realPath);

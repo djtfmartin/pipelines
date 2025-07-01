@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -20,10 +21,15 @@ import org.gbif.pipelines.core.interpreters.model.MultimediaRecord;
 public class MultimediaConverter {
 
   public static MultimediaRecord merge(
-      @NonNull MultimediaRecord mr, @NonNull ImageRecord ir, @NonNull AudubonRecord ar) {
+      @NonNull MultimediaRecord mr,
+      @NonNull ImageRecord ir,
+      @NonNull AudubonRecord ar,
+      Supplier<MultimediaRecord> supplier,
+      Supplier<Multimedia> mSupplier) {
 
-    MultimediaRecord record =
-        MultimediaRecord.newBuilder().setId(mr.getId()).setCreated(mr.getCreated()).build();
+    MultimediaRecord record = supplier.get();
+    record.setId(mr.getId());
+    record.setCreated(mr.getCreated());
 
     boolean isMrEmpty = mr.getMultimediaItems() == null && mr.getIssues().getIssueList().isEmpty();
     boolean isIrEmpty = ir.getImageItems() == null && ir.getIssues().getIssueList().isEmpty();
@@ -40,8 +46,8 @@ public class MultimediaConverter {
 
     Map<String, Multimedia> multimediaMap = new HashMap<>();
     // The orders of puts is important
-    putAllAudubonRecord(multimediaMap, ar);
-    putAllImageRecord(multimediaMap, ir);
+    putAllAudubonRecord(multimediaMap, ar, mSupplier);
+    putAllImageRecord(multimediaMap, ir, mSupplier);
     putAllMultimediaRecord(multimediaMap, mr);
 
     if (!multimediaMap.isEmpty()) {
@@ -73,7 +79,8 @@ public class MultimediaConverter {
                         }));
   }
 
-  private static void putAllImageRecord(Map<String, Multimedia> map, ImageRecord ir) {
+  private static void putAllImageRecord(
+      Map<String, Multimedia> map, ImageRecord ir, Supplier<Multimedia> supplier) {
     Optional.ofNullable(ir.getImageItems())
         .filter(i -> !i.isEmpty())
         .ifPresent(
@@ -87,28 +94,27 @@ public class MultimediaConverter {
                         r -> {
                           String key =
                               Optional.ofNullable(r.getIdentifier()).orElse(r.getReferences());
-                          Multimedia multimedia =
-                              Multimedia.newBuilder()
-                                  .setAudience(r.getAudience())
-                                  .setContributor(r.getContributor())
-                                  .setCreated(r.getCreated())
-                                  .setCreator(r.getCreator())
-                                  .setDatasetId(r.getDatasetId())
-                                  .setDescription(r.getDescription())
-                                  .setFormat(r.getFormat())
-                                  .setIdentifier(r.getIdentifier())
-                                  .setLicense(r.getLicense())
-                                  .setPublisher(r.getPublisher())
-                                  .setReferences(r.getReferences())
-                                  .setRightsHolder(r.getRightsHolder())
-                                  .setTitle(r.getTitle())
-                                  .setType(MediaType.StillImage.name())
-                                  .build();
+                          Multimedia multimedia = supplier.get();
+                          multimedia.setAudience(r.getAudience());
+                          multimedia.setContributor(r.getContributor());
+                          multimedia.setCreated(r.getCreated());
+                          multimedia.setCreator(r.getCreator());
+                          multimedia.setDatasetId(r.getDatasetId());
+                          multimedia.setDescription(r.getDescription());
+                          multimedia.setFormat(r.getFormat());
+                          multimedia.setIdentifier(r.getIdentifier());
+                          multimedia.setLicense(r.getLicense());
+                          multimedia.setPublisher(r.getPublisher());
+                          multimedia.setReferences(r.getReferences());
+                          multimedia.setRightsHolder(r.getRightsHolder());
+                          multimedia.setTitle(r.getTitle());
+                          multimedia.setType(MediaType.StillImage.name());
                           map.putIfAbsent(key, multimedia);
                         }));
   }
 
-  private static void putAllAudubonRecord(Map<String, Multimedia> map, AudubonRecord ar) {
+  private static void putAllAudubonRecord(
+      Map<String, Multimedia> map, AudubonRecord ar, Supplier<Multimedia> supplier) {
     Optional.ofNullable(ar.getAudubonItems())
         .filter(i -> !i.isEmpty())
         .ifPresent(
@@ -130,21 +136,19 @@ public class MultimediaConverter {
                               Strings.isNullOrEmpty(r.getAccessUri())
                                   ? r.getIdentifier()
                                   : r.getAccessUri();
-                          Multimedia multimedia =
-                              Multimedia.newBuilder()
-                                  .setCreated(r.getCreateDate())
-                                  .setCreator(creator)
-                                  .setDescription(desc)
-                                  .setFormat(r.getFormat())
-                                  .setIdentifier(identifier)
-                                  .setLicense(r.getRights())
-                                  .setRightsHolder(r.getOwner())
-                                  .setSource(r.getSource())
-                                  .setTitle(r.getTitle())
-                                  .setType(r.getType())
-                                  .setSource(r.getSource())
-                                  .setPublisher(r.getProviderLiteral())
-                                  .build();
+                          Multimedia multimedia = supplier.get();
+                          multimedia.setCreated(r.getCreateDate());
+                          multimedia.setCreator(creator);
+                          multimedia.setDescription(desc);
+                          multimedia.setFormat(r.getFormat());
+                          multimedia.setIdentifier(identifier);
+                          multimedia.setLicense(r.getRights());
+                          multimedia.setRightsHolder(r.getOwner());
+                          multimedia.setSource(r.getSource());
+                          multimedia.setTitle(r.getTitle());
+                          multimedia.setType(r.getType());
+                          multimedia.setSource(r.getSource());
+                          multimedia.setPublisher(r.getProviderLiteral());
                           map.putIfAbsent(key, multimedia);
                         }));
   }

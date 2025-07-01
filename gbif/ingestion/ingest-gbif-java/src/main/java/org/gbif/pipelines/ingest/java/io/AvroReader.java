@@ -1,4 +1,4 @@
-package org.gbif.pipelines.core.io;
+package org.gbif.pipelines.ingest.java.io;
 
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.AVRO_EXTENSION;
 

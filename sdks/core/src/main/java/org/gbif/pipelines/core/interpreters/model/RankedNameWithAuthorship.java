@@ -2,36 +2,47 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface RankedNameWithAuthorship {
 
-    String getKey();
-    void setKey(String key);
+  String getKey();
 
-    String getName();
-    void setName(String name);
+  void setKey(String key);
 
-    String getCanonicalName();
-    void setCanonicalName(String canonicalName);
+  String getName();
 
-    String getRank();
-    void setRank(String rank);
+  void setName(String name);
 
-    String getAuthorship();
-    void setAuthorship(String authorship);
+  String getCanonicalName();
 
-    String getCode();
-    void setCode(String code);
+  void setCanonicalName(String canonicalName);
 
-    String getStatus();
-    void setStatus(String status);
+  String getRank();
 
-    String getInfragenericEpithet();
-    void setInfragenericEpithet(String infragenericEpithet);
+  void setRank(String rank);
 
-    String getSpecificEpithet();
-    void setSpecificEpithet(String specificEpithet);
+  String getAuthorship();
 
-    String getInfraspecificEpithet();
-    void setInfraspecificEpithet(String infraspecificEpithet);
+  void setAuthorship(String authorship);
 
-    String getFormattedName();
-    void setFormattedName(String formattedName);
+  String getCode();
+
+  void setCode(String code);
+
+  String getStatus();
+
+  void setStatus(String status);
+
+  String getInfragenericEpithet();
+
+  void setInfragenericEpithet(String infragenericEpithet);
+
+  String getSpecificEpithet();
+
+  void setSpecificEpithet(String specificEpithet);
+
+  String getInfraspecificEpithet();
+
+  void setInfraspecificEpithet(String infraspecificEpithet);
+
+  String getFormattedName();
+
+  void setFormattedName(String formattedName);
 }

@@ -5,17 +5,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
+import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
 import org.gbif.pipelines.core.utils.VocabularyConceptFactory;
-import org.gbif.pipelines.core.interpreters.model.BasicRecord;
-import org.gbif.pipelines.core.interpreters.model.EventCoreRecord;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.VocabularyConcept;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class VocabularyInterpreter {
@@ -26,46 +24,63 @@ public class VocabularyInterpreter {
 
   /** {@link DwcTerm#lifeStage} interpretation. */
   public static BiConsumer<ExtendedRecord, BasicRecord> interpretLifeStage(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
     return (er, br) ->
-        interpretVocabulary(er, DwcTerm.lifeStage, vocabularyService).ifPresent(br::setLifeStage);
+        interpretVocabulary(er, DwcTerm.lifeStage, vocabularyService, supplier, supplierTag)
+            .ifPresent(br::setLifeStage);
   }
 
   /** {@link DwcTerm#establishmentMeans} interpretation. */
   public static BiConsumer<ExtendedRecord, BasicRecord> interpretEstablishmentMeans(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
     return (er, br) ->
-        interpretVocabulary(er, DwcTerm.establishmentMeans, vocabularyService)
+        interpretVocabulary(
+                er, DwcTerm.establishmentMeans, vocabularyService, supplier, supplierTag)
             .ifPresent(br::setEstablishmentMeans);
   }
 
   /** {@link DwcTerm#degreeOfEstablishment} interpretation. */
   public static BiConsumer<ExtendedRecord, BasicRecord> interpretDegreeOfEstablishment(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
     return (er, br) ->
-        interpretVocabulary(er, DwcTerm.degreeOfEstablishment, vocabularyService)
+        interpretVocabulary(
+                er, DwcTerm.degreeOfEstablishment, vocabularyService, supplier, supplierTag)
             .ifPresent(br::setDegreeOfEstablishment);
   }
 
   /** {@link DwcTerm#pathway} interpretation. */
   public static BiConsumer<ExtendedRecord, BasicRecord> interpretPathway(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
     return (er, br) ->
-        interpretVocabulary(er, DwcTerm.pathway, vocabularyService).ifPresent(br::setPathway);
+        interpretVocabulary(er, DwcTerm.pathway, vocabularyService, supplier, supplierTag)
+            .ifPresent(br::setPathway);
   }
 
   /** {@link DwcTerm#pathway} interpretation. */
   public static BiConsumer<ExtendedRecord, EventCoreRecord> interpretEventType(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
     return (er, ecr) ->
-        interpretVocabulary(er, DwcTerm.eventType, vocabularyService).ifPresent(ecr::setEventType);
+        interpretVocabulary(er, DwcTerm.eventType, vocabularyService, supplier, supplierTag)
+            .ifPresent(ecr::setEventType);
   }
 
   /** {@link DwcTerm#typeStatus} interpretation. */
   public static BiConsumer<ExtendedRecord, BasicRecord> interpretTypeStatus(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
     return (er, br) ->
-            er.extractListValue(DwcTerm.typeStatus)
+        er.extractListValue(DwcTerm.typeStatus)
             .forEach(
                 value ->
                     interpretVocabulary(
@@ -79,7 +94,9 @@ public class VocabularyInterpreter {
                               } else {
                                 br.addIssue(OccurrenceIssue.TYPE_STATUS_INVALID);
                               }
-                            })
+                            },
+                            supplier,
+                            supplierTag)
                         .ifPresent(
                             v -> {
                               if (br.getTypeStatus() == null) {
@@ -91,28 +108,52 @@ public class VocabularyInterpreter {
 
   /** {@link DwcTerm#sex} interpretation. */
   public static BiConsumer<ExtendedRecord, BasicRecord> interpretSex(
-      VocabularyService vocabularyService) {
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
     return (er, br) ->
-        interpretVocabulary(er, DwcTerm.sex, vocabularyService).ifPresent(br::setSex);
+        interpretVocabulary(er, DwcTerm.sex, vocabularyService, supplier, supplierTag)
+            .ifPresent(br::setSex);
   }
 
   private static Optional<VocabularyConcept> interpretVocabulary(
-          ExtendedRecord er, Term term, VocabularyService vocabularyService) {
-    return interpretVocabulary(term, er.extractNullAwareValue(term), vocabularyService, null);
+      ExtendedRecord er,
+      Term term,
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
+    return interpretVocabulary(
+        term, er.extractNullAwareValue(term), vocabularyService, null, supplier, supplierTag);
   }
 
   static Optional<VocabularyConcept> interpretVocabulary(
-      Term term, String value, VocabularyService vocabularyService) {
-    return interpretVocabulary(term, value, vocabularyService, null);
+      Term term,
+      String value,
+      VocabularyService vocabularyService,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
+    return interpretVocabulary(term, value, vocabularyService, null, supplier, supplierTag);
   }
 
   private static Optional<VocabularyConcept> interpretVocabulary(
-          ExtendedRecord er, Term term, VocabularyService vocabularyService, Consumer<String> issueFn) {
-    return interpretVocabulary(term, er.extractNullAwareValue(term), vocabularyService, issueFn);
+      ExtendedRecord er,
+      Term term,
+      VocabularyService vocabularyService,
+      Consumer<String> issueFn,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
+    return interpretVocabulary(
+        term, er.extractNullAwareValue(term), vocabularyService, issueFn, supplier, supplierTag);
   }
 
   static Optional<VocabularyConcept> interpretVocabulary(
-      Term term, String value, VocabularyService vocabularyService, Consumer<String> issueFn) {
+      Term term,
+      String value,
+      VocabularyService vocabularyService,
+      Consumer<String> issueFn,
+      Supplier<VocabularyConcept> supplier,
+      Supplier<VocabularyTag> supplierTag) {
+
     if (vocabularyService == null) {
       return Optional.empty();
     }
@@ -122,7 +163,7 @@ public class VocabularyInterpreter {
           vocabularyService
               .get(term)
               .flatMap(lookup -> Optional.of(value).flatMap(lookup::lookup))
-              .map(VocabularyConceptFactory::createConcept);
+              .map(t -> VocabularyConceptFactory.createConcept(t, supplier, supplierTag));
       if (result.isEmpty() && issueFn != null) {
         issueFn.accept(value);
       }

@@ -4,18 +4,23 @@ import java.util.List;
 
 public interface Diagnostics {
 
-    String getMatchType();
-    void setMatchType(String matchType);
+  String getMatchType();
 
-    Integer getConfidence();
-    void setConfidence(Integer confidence);
+  void setMatchType(String matchType);
 
-    String getStatus();
-    void setStatus(String status);
+  Integer getConfidence();
 
-    List<String> getLineage();
-    void setLineage(List<String> lineage);
+  void setConfidence(Integer confidence);
 
-    String getNote();
-    void setNote(String note);
+  String getStatus();
+
+  void setStatus(String status);
+
+  List<String> getLineage();
+
+  void setLineage(List<String> lineage);
+
+  String getNote();
+
+  void setNote(String note);
 }

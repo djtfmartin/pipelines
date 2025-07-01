@@ -1,7 +1,5 @@
 package org.gbif.pipelines.core.parsers.location.parser;
 
-import static org.gbif.pipelines.core.utils.ModelUtils.extractValue;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -22,8 +20,7 @@ class CoordinatesParser {
   private static final Function<ExtendedRecord, ParsedField<GeocodeRequest>> DECIMAL_LAT_LNG_FN =
       (er ->
           CoordinateParseUtils.parseLatLng(
-                  er.extractValue(DwcTerm.decimalLatitude),
-                  er.extractValue(DwcTerm.decimalLongitude)));
+              er.extractValue(DwcTerm.decimalLatitude), er.extractValue(DwcTerm.decimalLongitude)));
 
   // parses footprint WKT field (if it contains only a single point)
   private static final Function<ExtendedRecord, ParsedField<GeocodeRequest>> FOOTPRINT_WKT_FN =
@@ -34,13 +31,13 @@ class CoordinatesParser {
       (er ->
           CoordinateParseUtils.parseLatLng(
               er.extractValue(DwcTerm.verbatimLatitude),
-                  er.extractValue(DwcTerm.verbatimLongitude)));
+              er.extractValue(DwcTerm.verbatimLongitude)));
 
   // parses verbatim coordinates fields
   private static final Function<ExtendedRecord, ParsedField<GeocodeRequest>> VERBATIM_COORDS_FN =
       (er ->
           CoordinateParseUtils.parseVerbatimCoordinates(
-                  er.extractValue(DwcTerm.verbatimCoordinates)));
+              er.extractValue(DwcTerm.verbatimCoordinates)));
 
   // list with all the parsing functions
   private static final List<Function<ExtendedRecord, ParsedField<GeocodeRequest>>>

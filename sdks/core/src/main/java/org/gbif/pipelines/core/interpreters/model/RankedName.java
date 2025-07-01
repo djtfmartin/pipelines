@@ -2,12 +2,15 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface RankedName {
 
-    String getKey();
-    void setKey(String key);
+  String getKey();
 
-    String getName();
-    void setName(String name);
+  void setKey(String key);
 
-    String getRank();
-    void setRank(String rank);
+  String getName();
+
+  void setName(String name);
+
+  String getRank();
+
+  void setRank(String rank);
 }

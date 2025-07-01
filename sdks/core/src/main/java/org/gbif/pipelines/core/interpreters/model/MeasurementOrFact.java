@@ -2,30 +2,39 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface MeasurementOrFact {
 
-    String getMeasurementID();
-    void setMeasurementID(String measurementID);
+  String getMeasurementID();
 
-    String getMeasurementType();
-    void setMeasurementType(String measurementType);
+  void setMeasurementID(String measurementID);
 
-    String getMeasurementValue();
-    void setMeasurementValue(String measurementValue);
+  String getMeasurementType();
 
-    String getMeasurementUnit();
-    void setMeasurementUnit(String measurementUnit);
+  void setMeasurementType(String measurementType);
 
-    String getMeasurementAccuracy();
-    void setMeasurementAccuracy(String measurementAccuracy);
+  String getMeasurementValue();
 
-    String getMeasurementDeterminedBy();
-    void setMeasurementDeterminedBy(String measurementDeterminedBy);
+  void setMeasurementValue(String measurementValue);
 
-    String getMeasurementDeterminedDate();
-    void setMeasurementDeterminedDate(String measurementDeterminedDate);
+  String getMeasurementUnit();
 
-    String getMeasurementMethod();
-    void setMeasurementMethod(String measurementMethod);
+  void setMeasurementUnit(String measurementUnit);
 
-    String getMeasurementRemarks();
-    void setMeasurementRemarks(String measurementRemarks);
+  String getMeasurementAccuracy();
+
+  void setMeasurementAccuracy(String measurementAccuracy);
+
+  String getMeasurementDeterminedBy();
+
+  void setMeasurementDeterminedBy(String measurementDeterminedBy);
+
+  String getMeasurementDeterminedDate();
+
+  void setMeasurementDeterminedDate(String measurementDeterminedDate);
+
+  String getMeasurementMethod();
+
+  void setMeasurementMethod(String measurementMethod);
+
+  String getMeasurementRemarks();
+
+  void setMeasurementRemarks(String measurementRemarks);
 }

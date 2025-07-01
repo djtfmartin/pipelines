@@ -2,291 +2,387 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface Audubon {
 
-    String getCreator();
-    void setCreator(String creator);
+  String getCreator();
 
-    String getCreatorUri();
-    void setCreatorUri(String creatorUri);
+  void setCreator(String creator);
 
-    String getProviderLiteral();
-    void setProviderLiteral(String providerLiteral);
+  String getCreatorUri();
 
-    String getProvider();
-    void setProvider(String provider);
+  void setCreatorUri(String creatorUri);
 
-    String getMetadataCreatorLiteral();
-    void setMetadataCreatorLiteral(String metadataCreatorLiteral);
+  String getProviderLiteral();
 
-    String getMetadataCreator();
-    void setMetadataCreator(String metadataCreator);
+  void setProviderLiteral(String providerLiteral);
 
-    String getMetadataProviderLiteral();
-    void setMetadataProviderLiteral(String metadataProviderLiteral);
+  String getProvider();
 
-    String getMetadataProvider();
-    void setMetadataProvider(String metadataProvider);
+  void setProvider(String provider);
 
-    String getRights();
-    void setRights(String rights);
+  String getMetadataCreatorLiteral();
 
-    String getRightsUri();
-    void setRightsUri(String rightsUri);
+  void setMetadataCreatorLiteral(String metadataCreatorLiteral);
 
-    String getOwner();
-    void setOwner(String owner);
+  String getMetadataCreator();
 
-    String getUsageTerms();
-    void setUsageTerms(String usageTerms);
+  void setMetadataCreator(String metadataCreator);
 
-    String getWebStatement();
-    void setWebStatement(String webStatement);
+  String getMetadataProviderLiteral();
 
-    String getLicenseLogoUrl();
-    void setLicenseLogoUrl(String licenseLogoUrl);
+  void setMetadataProviderLiteral(String metadataProviderLiteral);
 
-    String getCredit();
-    void setCredit(String credit);
+  String getMetadataProvider();
 
-    String getAttributionLogoUrl();
-    void setAttributionLogoUrl(String attributionLogoUrl);
+  void setMetadataProvider(String metadataProvider);
 
-    String getAttributionLinkUrl();
-    void setAttributionLinkUrl(String attributionLinkUrl);
+  String getRights();
 
-    String getFundingAttribution();
-    void setFundingAttribution(String fundingAttribution);
+  void setRights(String rights);
 
-    String getSource();
-    void setSource(String source);
+  String getRightsUri();
 
-    String getSourceUri();
-    void setSourceUri(String sourceUri);
+  void setRightsUri(String rightsUri);
 
-    String getDescription();
-    void setDescription(String description);
+  String getOwner();
 
-    String getCaption();
-    void setCaption(String caption);
+  void setOwner(String owner);
 
-    String getLanguage();
-    void setLanguage(String language);
+  String getUsageTerms();
 
-    String getLanguageUri();
-    void setLanguageUri(String languageUri);
+  void setUsageTerms(String usageTerms);
 
-    String getPhysicalSetting();
-    void setPhysicalSetting(String physicalSetting);
+  String getWebStatement();
 
-    String getCvTerm();
-    void setCvTerm(String cvTerm);
+  void setWebStatement(String webStatement);
 
-    String getSubjectCategoryVocabulary();
-    void setSubjectCategoryVocabulary(String subjectCategoryVocabulary);
+  String getLicenseLogoUrl();
 
-    String getTag();
-    void setTag(String tag);
+  void setLicenseLogoUrl(String licenseLogoUrl);
 
-    String getLocationShown();
-    void setLocationShown(String locationShown);
+  String getCredit();
 
-    String getWorldRegion();
-    void setWorldRegion(String worldRegion);
+  void setCredit(String credit);
 
-    String getCountryCode();
-    void setCountryCode(String countryCode);
+  String getAttributionLogoUrl();
 
-    String getCountryName();
-    void setCountryName(String countryName);
+  void setAttributionLogoUrl(String attributionLogoUrl);
 
-    String getProvinceState();
-    void setProvinceState(String provinceState);
+  String getAttributionLinkUrl();
 
-    String getCity();
-    void setCity(String city);
+  void setAttributionLinkUrl(String attributionLinkUrl);
 
-    String getSublocation();
-    void setSublocation(String sublocation);
+  String getFundingAttribution();
 
-    String getIdentifier();
-    void setIdentifier(String identifier);
+  void setFundingAttribution(String fundingAttribution);
 
-    String getType();
-    void setType(String type);
+  String getSource();
 
-    String getTypeUri();
-    void setTypeUri(String typeUri);
+  void setSource(String source);
 
-    String getSubtypeLiteral();
-    void setSubtypeLiteral(String subtypeLiteral);
+  String getSourceUri();
 
-    String getSubtype();
-    void setSubtype(String subtype);
+  void setSourceUri(String sourceUri);
 
-    String getTitle();
-    void setTitle(String title);
+  String getDescription();
 
-    String getModified();
-    void setModified(String modified);
+  void setDescription(String description);
 
-    String getMetadataDate();
-    void setMetadataDate(String metadataDate);
+  String getCaption();
 
-    String getMetadataLanguageLiteral();
-    void setMetadataLanguageLiteral(String metadataLanguageLiteral);
+  void setCaption(String caption);
 
-    String getMetadataLanguage();
-    void setMetadataLanguage(String metadataLanguage);
+  String getLanguage();
 
-    String getProviderManagedId();
-    void setProviderManagedId(String providerManagedId);
+  void setLanguage(String language);
 
-    String getRating();
-    void setRating(String rating);
+  String getLanguageUri();
 
-    String getCommenterLiteral();
-    void setCommenterLiteral(String commenterLiteral);
+  void setLanguageUri(String languageUri);
 
-    String getCommenter();
-    void setCommenter(String commenter);
+  String getPhysicalSetting();
 
-    String getComments();
-    void setComments(String comments);
+  void setPhysicalSetting(String physicalSetting);
 
-    String getReviewerLiteral();
-    void setReviewerLiteral(String reviewerLiteral);
+  String getCvTerm();
 
-    String getReviewer();
-    void setReviewer(String reviewer);
+  void setCvTerm(String cvTerm);
 
-    String getReviewerComments();
-    void setReviewerComments(String reviewerComments);
+  String getSubjectCategoryVocabulary();
 
-    String getAvailable();
-    void setAvailable(String available);
+  void setSubjectCategoryVocabulary(String subjectCategoryVocabulary);
 
-    String getHasServiceAccessPoint();
-    void setHasServiceAccessPoint(String hasServiceAccessPoint);
+  String getTag();
 
-    String getIdOfContainingCollection();
-    void setIdOfContainingCollection(String idOfContainingCollection);
+  void setTag(String tag);
 
-    String getRelatedResourceId();
-    void setRelatedResourceId(String relatedResourceId);
+  String getLocationShown();
 
-    String getProviderId();
-    void setProviderId(String providerId);
+  void setLocationShown(String locationShown);
 
-    String getDerivedFrom();
-    void setDerivedFrom(String derivedFrom);
+  String getWorldRegion();
 
-    String getAssociatedSpecimenReference();
-    void setAssociatedSpecimenReference(String associatedSpecimenReference);
+  void setWorldRegion(String worldRegion);
 
-    String getAssociatedObservationReference();
-    void setAssociatedObservationReference(String associatedObservationReference);
+  String getCountryCode();
 
-    String getLocationCreated();
-    void setLocationCreated(String locationCreated);
+  void setCountryCode(String countryCode);
 
-    String getDigitizationDate();
-    void setDigitizationDate(String digitizationDate);
+  String getCountryName();
 
-    String getCaptureDevice();
-    void setCaptureDevice(String captureDevice);
+  void setCountryName(String countryName);
 
-    String getResourceCreationTechnique();
-    void setResourceCreationTechnique(String resourceCreationTechnique);
+  String getProvinceState();
 
-    String getAccessUri();
-    void setAccessUri(String accessUri);
+  void setProvinceState(String provinceState);
 
-    String getFormat();
-    void setFormat(String format);
+  String getCity();
 
-    String getFormatUri();
-    void setFormatUri(String formatUri);
+  void setCity(String city);
 
-    String getVariantLiteral();
-    void setVariantLiteral(String variantLiteral);
+  String getSublocation();
 
-    String getVariant();
-    void setVariant(String variant);
+  void setSublocation(String sublocation);
 
-    String getVariantDescription();
-    void setVariantDescription(String variantDescription);
+  String getIdentifier();
 
-    String getFurtherInformationUrl();
-    void setFurtherInformationUrl(String furtherInformationUrl);
+  void setIdentifier(String identifier);
 
-    String getLicensingException();
-    void setLicensingException(String licensingException);
+  String getType();
 
-    String getServiceExpectation();
-    void setServiceExpectation(String serviceExpectation);
+  void setType(String type);
 
-    String getHashFunction();
-    void setHashFunction(String hashFunction);
+  String getTypeUri();
 
-    String getHashValue();
-    void setHashValue(String hashValue);
+  void setTypeUri(String typeUri);
 
-    String getPixelXDimension();
-    void setPixelXDimension(String pixelXDimension);
+  String getSubtypeLiteral();
 
-    String getPixelYDimension();
-    void setPixelYDimension(String pixelYDimension);
+  void setSubtypeLiteral(String subtypeLiteral);
 
-    String getTaxonCoverage();
-    void setTaxonCoverage(String taxonCoverage);
+  String getSubtype();
 
-    String getScientificName();
-    void setScientificName(String scientificName);
+  void setSubtype(String subtype);
 
-    String getIdentificationQualifier();
-    void setIdentificationQualifier(String identificationQualifier);
+  String getTitle();
 
-    String getVernacularName();
-    void setVernacularName(String vernacularName);
+  void setTitle(String title);
 
-    String getNameAccordingTo();
-    void setNameAccordingTo(String nameAccordingTo);
+  String getModified();
 
-    String getScientificNameId();
-    void setScientificNameId(String scientificNameId);
+  void setModified(String modified);
 
-    String getOtherScientificName();
-    void setOtherScientificName(String otherScientificName);
+  String getMetadataDate();
 
-    String getIdentifiedBy();
-    void setIdentifiedBy(String identifiedBy);
+  void setMetadataDate(String metadataDate);
 
-    String getDateIdentified();
-    void setDateIdentified(String dateIdentified);
+  String getMetadataLanguageLiteral();
 
-    String getTaxonCount();
-    void setTaxonCount(String taxonCount);
+  void setMetadataLanguageLiteral(String metadataLanguageLiteral);
 
-    String getSubjectPart();
-    void setSubjectPart(String subjectPart);
+  String getMetadataLanguage();
 
-    String getSex();
-    void setSex(String sex);
+  void setMetadataLanguage(String metadataLanguage);
 
-    String getLifeStage();
-    void setLifeStage(String lifeStage);
+  String getProviderManagedId();
 
-    String getSubjectOrientation();
-    void setSubjectOrientation(String subjectOrientation);
+  void setProviderManagedId(String providerManagedId);
 
-    String getPreparations();
-    void setPreparations(String preparations);
+  String getRating();
 
-    String getTemporal();
-    void setTemporal(String temporal);
+  void setRating(String rating);
 
-    String getCreateDate();
-    void setCreateDate(String createDate);
+  String getCommenterLiteral();
 
-    String getTimeOfDay();
-    void setTimeOfDay(String timeOfDay);    
+  void setCommenterLiteral(String commenterLiteral);
+
+  String getCommenter();
+
+  void setCommenter(String commenter);
+
+  String getComments();
+
+  void setComments(String comments);
+
+  String getReviewerLiteral();
+
+  void setReviewerLiteral(String reviewerLiteral);
+
+  String getReviewer();
+
+  void setReviewer(String reviewer);
+
+  String getReviewerComments();
+
+  void setReviewerComments(String reviewerComments);
+
+  String getAvailable();
+
+  void setAvailable(String available);
+
+  String getHasServiceAccessPoint();
+
+  void setHasServiceAccessPoint(String hasServiceAccessPoint);
+
+  String getIdOfContainingCollection();
+
+  void setIdOfContainingCollection(String idOfContainingCollection);
+
+  String getRelatedResourceId();
+
+  void setRelatedResourceId(String relatedResourceId);
+
+  String getProviderId();
+
+  void setProviderId(String providerId);
+
+  String getDerivedFrom();
+
+  void setDerivedFrom(String derivedFrom);
+
+  String getAssociatedSpecimenReference();
+
+  void setAssociatedSpecimenReference(String associatedSpecimenReference);
+
+  String getAssociatedObservationReference();
+
+  void setAssociatedObservationReference(String associatedObservationReference);
+
+  String getLocationCreated();
+
+  void setLocationCreated(String locationCreated);
+
+  String getDigitizationDate();
+
+  void setDigitizationDate(String digitizationDate);
+
+  String getCaptureDevice();
+
+  void setCaptureDevice(String captureDevice);
+
+  String getResourceCreationTechnique();
+
+  void setResourceCreationTechnique(String resourceCreationTechnique);
+
+  String getAccessUri();
+
+  void setAccessUri(String accessUri);
+
+  String getFormat();
+
+  void setFormat(String format);
+
+  String getFormatUri();
+
+  void setFormatUri(String formatUri);
+
+  String getVariantLiteral();
+
+  void setVariantLiteral(String variantLiteral);
+
+  String getVariant();
+
+  void setVariant(String variant);
+
+  String getVariantDescription();
+
+  void setVariantDescription(String variantDescription);
+
+  String getFurtherInformationUrl();
+
+  void setFurtherInformationUrl(String furtherInformationUrl);
+
+  String getLicensingException();
+
+  void setLicensingException(String licensingException);
+
+  String getServiceExpectation();
+
+  void setServiceExpectation(String serviceExpectation);
+
+  String getHashFunction();
+
+  void setHashFunction(String hashFunction);
+
+  String getHashValue();
+
+  void setHashValue(String hashValue);
+
+  String getPixelXDimension();
+
+  void setPixelXDimension(String pixelXDimension);
+
+  String getPixelYDimension();
+
+  void setPixelYDimension(String pixelYDimension);
+
+  String getTaxonCoverage();
+
+  void setTaxonCoverage(String taxonCoverage);
+
+  String getScientificName();
+
+  void setScientificName(String scientificName);
+
+  String getIdentificationQualifier();
+
+  void setIdentificationQualifier(String identificationQualifier);
+
+  String getVernacularName();
+
+  void setVernacularName(String vernacularName);
+
+  String getNameAccordingTo();
+
+  void setNameAccordingTo(String nameAccordingTo);
+
+  String getScientificNameId();
+
+  void setScientificNameId(String scientificNameId);
+
+  String getOtherScientificName();
+
+  void setOtherScientificName(String otherScientificName);
+
+  String getIdentifiedBy();
+
+  void setIdentifiedBy(String identifiedBy);
+
+  String getDateIdentified();
+
+  void setDateIdentified(String dateIdentified);
+
+  String getTaxonCount();
+
+  void setTaxonCount(String taxonCount);
+
+  String getSubjectPart();
+
+  void setSubjectPart(String subjectPart);
+
+  String getSex();
+
+  void setSex(String sex);
+
+  String getLifeStage();
+
+  void setLifeStage(String lifeStage);
+
+  String getSubjectOrientation();
+
+  void setSubjectOrientation(String subjectOrientation);
+
+  String getPreparations();
+
+  void setPreparations(String preparations);
+
+  String getTemporal();
+
+  void setTemporal(String temporal);
+
+  String getCreateDate();
+
+  void setCreateDate(String createDate);
+
+  String getTimeOfDay();
+
+  void setTimeOfDay(String timeOfDay);
 }

@@ -36,11 +36,13 @@ public class ExtendedRecordConverter {
   }
 
   /** Converts {@link StarRecord} to {@link ExtendedRecord} */
-  public static ExtendedRecord from(Record core,
-                                    Map<Term, List<Record>> extensions,
-                                    Supplier<ExtendedRecord> extendedRecordSupplier) {
+  public static ExtendedRecord from(
+      Record core,
+      Map<Term, List<Record>> extensions,
+      Supplier<ExtendedRecord> extendedRecordSupplier) {
     ExtendedRecord extendedRecord = extendedRecordSupplier.get();
-    Optional.ofNullable(core.rowType()).ifPresent(x -> extendedRecord.setCoreRowType(x.qualifiedName()));
+    Optional.ofNullable(core.rowType())
+        .ifPresent(x -> extendedRecord.setCoreRowType(x.qualifiedName()));
     extendedRecord.setCoreTerms(convertToMap(core));
     extendedRecord.setExtensions(
         extensions.entrySet().stream()

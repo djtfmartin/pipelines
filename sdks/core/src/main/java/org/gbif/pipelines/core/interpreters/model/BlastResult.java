@@ -2,45 +2,59 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface BlastResult {
 
-    String getName();
-    void setName(String name);
+  String getName();
 
-    Integer getIdentity();
-    void setIdentity(Integer identity);
+  void setName(String name);
 
-    String getAppliedScientificName();
-    void setAppliedScientificName(String appliedScientificName);
+  Integer getIdentity();
 
-    String getMatchType();
-    void setMatchType(String matchType);
+  void setIdentity(Integer identity);
 
-    Integer getBitScore();
-    void setBitScore(Integer bitScore);
+  String getAppliedScientificName();
 
-    Integer getExpectValue();
-    void setExpectValue(Integer expectValue);
+  void setAppliedScientificName(String appliedScientificName);
 
-    String getQuerySequence();
-    void setQuerySequence(String querySequence);
+  String getMatchType();
 
-    String getSubjectSequence();
-    void setSubjectSequence(String subjectSequence);
+  void setMatchType(String matchType);
 
-    Integer getQstart();
-    void setQstart(Integer qstart);
+  Integer getBitScore();
 
-    Integer getQend();
-    void setQend(Integer qend);
+  void setBitScore(Integer bitScore);
 
-    Integer getSstart();
-    void setSstart(Integer sstart);
+  Integer getExpectValue();
 
-    Integer getSend();
-    void setSend(Integer send);
+  void setExpectValue(Integer expectValue);
 
-    String getDistanceToBestMatch();
-    void setDistanceToBestMatch(String distanceToBestMatch);
+  String getQuerySequence();
 
-    Integer getSequenceLength();
-    void setSequenceLength(Integer sequenceLength);
+  void setQuerySequence(String querySequence);
+
+  String getSubjectSequence();
+
+  void setSubjectSequence(String subjectSequence);
+
+  Integer getQstart();
+
+  void setQstart(Integer qstart);
+
+  Integer getQend();
+
+  void setQend(Integer qend);
+
+  Integer getSstart();
+
+  void setSstart(Integer sstart);
+
+  Integer getSend();
+
+  void setSend(Integer send);
+
+  String getDistanceToBestMatch();
+
+  void setDistanceToBestMatch(String distanceToBestMatch);
+
+  Integer getSequenceLength();
+
+  void setSequenceLength(Integer sequenceLength);
 }

@@ -20,7 +20,6 @@ import org.gbif.kvs.geocode.GeocodeRequest;
 import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.parsers.VocabularyParser;
 import org.gbif.pipelines.core.parsers.common.ParsedField;
-import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 
 /**
@@ -32,7 +31,7 @@ import org.gbif.rest.client.geocode.GeocodeResponse;
 public class LocationParser {
 
   public static ParsedField<ParsedLocation> parse(
-          ExtendedRecord er, KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore) {
+      ExtendedRecord er, KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore) {
     Objects.requireNonNull(er);
     Objects.requireNonNull(kvStore, "GeocodeService kvStore is required");
     er.checkEmpty();

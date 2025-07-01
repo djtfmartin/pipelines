@@ -5,18 +5,14 @@ import static org.gbif.pipelines.core.interpreters.core.TaxonomyInterpreter.crea
 
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
-
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.NameUsageMatchRequest;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.MultiTaxonRecord;
-import org.gbif.pipelines.core.interpreters.model.TaxonRecord;
+import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 /**
@@ -38,15 +34,16 @@ public class MultiTaxonomyInterpreter {
   public static BiConsumer<ExtendedRecord, MultiTaxonRecord> interpretMultiTaxonomy(
       KeyValueStore<NameUsageMatchRequest, NameUsageMatchResponse> kvStore,
       List<String> checklistKeys,
-      Supplier<TaxonRecord> createTaxonRecordFn
-  ) {
+      Supplier<TaxonRecord> createTaxonRecordFn,
+      Supplier<RankedNameWithAuthorship> rankedNameWithAuthorshipSupplier,
+      Supplier<RankedName> rankedNameSupplier) {
 
     return (er, mtr) -> {
       if (kvStore == null) {
         return;
       }
 
-      if (er == null){
+      if (er == null) {
         throw new IllegalArgumentException("er is null");
       }
       er.checkEmpty();
@@ -59,7 +56,12 @@ public class MultiTaxonomyInterpreter {
         TaxonRecord taxonRecord = createTaxonRecordFn.get();
         taxonRecord.setId(er.getId());
         taxonRecord.setDatasetKey(checklistKey);
-        createTaxonRecord(nameUsageMatchRequest, kvStore, taxonRecord);
+        createTaxonRecord(
+            nameUsageMatchRequest,
+            kvStore,
+            taxonRecord,
+            rankedNameWithAuthorshipSupplier,
+            rankedNameSupplier);
         trs.add(taxonRecord);
       }
 

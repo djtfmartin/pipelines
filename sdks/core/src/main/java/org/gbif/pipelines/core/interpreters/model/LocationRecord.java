@@ -2,153 +2,143 @@ package org.gbif.pipelines.core.interpreters.model;
 
 import java.util.List;
 
-public interface LocationRecord extends Record {
+public interface LocationRecord extends Record, Issues {
 
-    String getId();
+  String getParentId();
 
-    void setId(String id);
+  void setParentId(String parentId);
 
-    String getCoreId();
+  String getContinent();
 
-    void setCoreId(String coreId);
+  void setContinent(String continent);
 
-    String getParentId();
+  String getWaterBody();
 
-    void setParentId(String parentId);
+  void setWaterBody(String waterBody);
 
-    Long getCreated();
+  String getCountry();
 
-    void setCreated(Long created);
+  void setCountry(String country);
 
-    String getContinent();
+  String getCountryCode();
 
-    void setContinent(String continent);
+  void setCountryCode(String countryCode);
 
-    String getWaterBody();
+  String getPublishingCountry();
 
-    void setWaterBody(String waterBody);
+  void setPublishingCountry(String publishingCountry);
 
-    String getCountry();
+  String getGbifRegion();
 
-    void setCountry(String country);
+  void setGbifRegion(String gbifRegion);
 
-    String getCountryCode();
+  String getPublishedByGbifRegion();
 
-    void setCountryCode(String countryCode);
+  void setPublishedByGbifRegion(String publishedByGbifRegion);
 
-    String getPublishingCountry();
+  String getStateProvince();
 
-    void setPublishingCountry(String publishingCountry);
+  void setStateProvince(String stateProvince);
 
-    String getGbifRegion();
+  Double getMinimumElevationInMeters();
 
-    void setGbifRegion(String gbifRegion);
+  void setMinimumElevationInMeters(Double minimumElevationInMeters);
 
-    String getPublishedByGbifRegion();
+  Double getMaximumElevationInMeters();
 
-    void setPublishedByGbifRegion(String publishedByGbifRegion);
+  void setMaximumElevationInMeters(Double maximumElevationInMeters);
 
-    String getStateProvince();
+  Double getElevation();
 
-    void setStateProvince(String stateProvince);
+  void setElevation(Double elevation);
 
-    Double getMinimumElevationInMeters();
+  Double getElevationAccuracy();
 
-    void setMinimumElevationInMeters(Double minimumElevationInMeters);
+  void setElevationAccuracy(Double elevationAccuracy);
 
-    Double getMaximumElevationInMeters();
+  Double getMinimumDepthInMeters();
 
-    void setMaximumElevationInMeters(Double maximumElevationInMeters);
+  void setMinimumDepthInMeters(Double minimumDepthInMeters);
 
-    Double getElevation();
+  Double getMaximumDepthInMeters();
 
-    void setElevation(Double elevation);
+  void setMaximumDepthInMeters(Double maximumDepthInMeters);
 
-    Double getElevationAccuracy();
+  Double getDepth();
 
-    void setElevationAccuracy(Double elevationAccuracy);
+  void setDepth(Double depth);
 
-    Double getMinimumDepthInMeters();
+  Double getDepthAccuracy();
 
-    void setMinimumDepthInMeters(Double minimumDepthInMeters);
+  void setDepthAccuracy(Double depthAccuracy);
 
-    Double getMaximumDepthInMeters();
+  Double getMinimumDistanceAboveSurfaceInMeters();
 
-    void setMaximumDepthInMeters(Double maximumDepthInMeters);
+  void setMinimumDistanceAboveSurfaceInMeters(Double minimumDistanceAboveSurfaceInMeters);
 
-    Double getDepth();
+  Double getMaximumDistanceAboveSurfaceInMeters();
 
-    void setDepth(Double depth);
+  void setMaximumDistanceAboveSurfaceInMeters(Double maximumDistanceAboveSurfaceInMeters);
 
-    Double getDepthAccuracy();
+  Double getDecimalLatitude();
 
-    void setDepthAccuracy(Double depthAccuracy);
+  void setDecimalLatitude(Double decimalLatitude);
 
-    Double getMinimumDistanceAboveSurfaceInMeters();
+  Double getDecimalLongitude();
 
-    void setMinimumDistanceAboveSurfaceInMeters(Double minimumDistanceAboveSurfaceInMeters);
+  void setDecimalLongitude(Double decimalLongitude);
 
-    Double getMaximumDistanceAboveSurfaceInMeters();
+  Double getCoordinateUncertaintyInMeters();
 
-    void setMaximumDistanceAboveSurfaceInMeters(Double maximumDistanceAboveSurfaceInMeters);
+  void setCoordinateUncertaintyInMeters(Double coordinateUncertaintyInMeters);
 
-    Double getDecimalLatitude();
+  Double getCoordinatePrecision();
 
-    void setDecimalLatitude(Double decimalLatitude);
+  void setCoordinatePrecision(Double coordinatePrecision);
 
-    Double getDecimalLongitude();
+  Boolean getHasCoordinate();
 
-    void setDecimalLongitude(Double decimalLongitude);
+  void setHasCoordinate(Boolean hasCoordinate);
 
-    Double getCoordinateUncertaintyInMeters();
+  Boolean getRepatriated();
 
-    void setCoordinateUncertaintyInMeters(Double coordinateUncertaintyInMeters);
+  void setRepatriated(Boolean repatriated);
 
-    Double getCoordinatePrecision();
+  Boolean getHasGeospatialIssue();
 
-    void setCoordinatePrecision(Double coordinatePrecision);
+  void setHasGeospatialIssue(Boolean hasGeospatialIssue);
 
-    Boolean getHasCoordinate();
+  String getLocality();
 
-    void setHasCoordinate(Boolean hasCoordinate);
+  void setLocality(String locality);
 
-    Boolean getRepatriated();
+  String getGeoreferencedDate(); // Logical type for timestamp, often mapped to String or
 
-    void setRepatriated(Boolean repatriated);
+  // java.time.Instant
 
-    Boolean getHasGeospatialIssue();
+  void setGeoreferencedDate(String georeferencedDate);
 
-    void setHasGeospatialIssue(Boolean hasGeospatialIssue);
+  GadmFeatures getGadm();
 
-    String getLocality();
+  void setGadm(GadmFeatures gadm);
 
-    void setLocality(String locality);
+  String getFootprintWKT();
 
-    String getGeoreferencedDate(); // Logical type for timestamp, often mapped to String or java.time.Instant
+  void setFootprintWKT(String footprintWKT);
 
-    void setGeoreferencedDate(String georeferencedDate);
+  String getBiome();
 
-    GadmFeatures getGadm();
+  void setBiome(String biome);
 
-    void setGadm(GadmFeatures gadm);
+  Double getDistanceFromCentroidInMeters();
 
-    String getFootprintWKT();
+  void setDistanceFromCentroidInMeters(Double distanceFromCentroidInMeters);
 
-    void setFootprintWKT(String footprintWKT);
+  List<String> getHigherGeography();
 
-    String getBiome();
+  void setHigherGeography(List<String> higherGeography);
 
-    void setBiome(String biome);
+  List<String> getGeoreferencedBy();
 
-    Double getDistanceFromCentroidInMeters();
-
-    void setDistanceFromCentroidInMeters(Double distanceFromCentroidInMeters);
-
-    List<String> getHigherGeography();
-
-    void setHigherGeography(List<String> higherGeography);
-
-    List<String> getGeoreferencedBy();
-
-    void setGeoreferencedBy(List<String> georeferencedBy);
+  void setGeoreferencedBy(List<String> georeferencedBy);
 }

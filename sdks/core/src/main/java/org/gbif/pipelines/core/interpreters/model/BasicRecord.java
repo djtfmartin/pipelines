@@ -1,106 +1,128 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-import org.gbif.api.vocabulary.OccurrenceIssue;
-
 import java.util.List;
 
-public interface BasicRecord extends Record {
+public interface BasicRecord extends Record, Issues {
 
-    String getCoreId();
-    void setCoreId(String coreId);
+  String getBasisOfRecord();
 
-    Long getCreated();
-    void setCreated(Long created);
+  void setBasisOfRecord(String basisOfRecord);
 
-    String getBasisOfRecord();
-    void setBasisOfRecord(String basisOfRecord);
+  VocabularyConcept getSex();
 
-    VocabularyConcept getSex();
-    void setSex(VocabularyConcept sex);
+  void setSex(VocabularyConcept sex);
 
-    VocabularyConcept getLifeStage();
-    void setLifeStage(VocabularyConcept lifeStage);
+  VocabularyConcept getLifeStage();
 
-    VocabularyConcept getEstablishmentMeans();
-    void setEstablishmentMeans(VocabularyConcept establishmentMeans);
+  void setLifeStage(VocabularyConcept lifeStage);
 
-    VocabularyConcept getDegreeOfEstablishment();
-    void setDegreeOfEstablishment(VocabularyConcept degreeOfEstablishment);
+  VocabularyConcept getEstablishmentMeans();
 
-    VocabularyConcept getPathway();
-    void setPathway(VocabularyConcept pathway);
+  void setEstablishmentMeans(VocabularyConcept establishmentMeans);
 
-    Integer getIndividualCount();
-    void setIndividualCount(Integer individualCount);
+  VocabularyConcept getDegreeOfEstablishment();
 
-    List<VocabularyConcept> getTypeStatus();
-    void setTypeStatus(List<VocabularyConcept> typeStatus);
+  void setDegreeOfEstablishment(VocabularyConcept degreeOfEstablishment);
 
-    String getTypifiedName();
-    void setTypifiedName(String typifiedName);
+  VocabularyConcept getPathway();
 
-    Double getSampleSizeValue();
-    void setSampleSizeValue(Double sampleSizeValue);
+  void setPathway(VocabularyConcept pathway);
 
-    String getSampleSizeUnit();
-    void setSampleSizeUnit(String sampleSizeUnit);
+  Integer getIndividualCount();
 
-    Double getOrganismQuantity();
-    void setOrganismQuantity(Double organismQuantity);
+  void setIndividualCount(Integer individualCount);
 
-    String getOrganismQuantityType();
-    void setOrganismQuantityType(String organismQuantityType);
+  List<VocabularyConcept> getTypeStatus();
 
-    Double getRelativeOrganismQuantity();
-    void setRelativeOrganismQuantity(Double relativeOrganismQuantity);
+  void setTypeStatus(List<VocabularyConcept> typeStatus);
 
-    String getReferences();
-    void setReferences(String references);
+  String getTypifiedName();
 
-    String getLicense();
-    void setLicense(String license);
+  void setTypifiedName(String typifiedName);
 
-    List<AgentIdentifier> getIdentifiedByIds();
-    void setIdentifiedByIds(List<AgentIdentifier> identifiedByIds);
+  Double getSampleSizeValue();
 
-    List<String> getIdentifiedBy();
-    void setIdentifiedBy(List<String> identifiedBy);
+  void setSampleSizeValue(Double sampleSizeValue);
 
-    List<AgentIdentifier> getRecordedByIds();
-    void setRecordedByIds(List<AgentIdentifier> recordedByIds);
+  String getSampleSizeUnit();
 
-    List<String> getRecordedBy();
-    void setRecordedBy(List<String> recordedBy);
+  void setSampleSizeUnit(String sampleSizeUnit);
 
-    String getOccurrenceStatus();
-    void setOccurrenceStatus(String occurrenceStatus);
+  Double getOrganismQuantity();
 
-    List<String> getDatasetID();
-    void setDatasetID(List<String> datasetID);
+  void setOrganismQuantity(Double organismQuantity);
 
-    List<String> getDatasetName();
-    void setDatasetName(List<String> datasetName);
+  String getOrganismQuantityType();
 
-    List<String> getOtherCatalogNumbers();
-    void setOtherCatalogNumbers(List<String> otherCatalogNumbers);
+  void setOrganismQuantityType(String organismQuantityType);
 
-    List<String> getPreparations();
-    void setPreparations(List<String> preparations);
+  Double getRelativeOrganismQuantity();
 
-    List<String> getSamplingProtocol();
-    void setSamplingProtocol(List<String> samplingProtocol);
+  void setRelativeOrganismQuantity(Double relativeOrganismQuantity);
 
-    List<String> getProjectId();
-    void setProjectId(List<String> projectId);
+  String getReferences();
 
-    GeologicalContext getGeologicalContext();
-    void setGeologicalContext(GeologicalContext geologicalContext);
+  void setReferences(String references);
 
-    Boolean getIsSequenced();
-    void setIsSequenced(Boolean isSequenced);
+  String getLicense();
 
-    List<String> getAssociatedSequences();
-    void setAssociatedSequences(List<String> associatedSequences);
+  void setLicense(String license);
 
-    GeologicalContext createGeologicalContext();
+  List<AgentIdentifier> getIdentifiedByIds();
+
+  void setIdentifiedByIds(List<AgentIdentifier> identifiedByIds);
+
+  List<String> getIdentifiedBy();
+
+  void setIdentifiedBy(List<String> identifiedBy);
+
+  List<AgentIdentifier> getRecordedByIds();
+
+  void setRecordedByIds(List<AgentIdentifier> recordedByIds);
+
+  List<String> getRecordedBy();
+
+  void setRecordedBy(List<String> recordedBy);
+
+  String getOccurrenceStatus();
+
+  void setOccurrenceStatus(String occurrenceStatus);
+
+  List<String> getDatasetID();
+
+  void setDatasetID(List<String> datasetID);
+
+  List<String> getDatasetName();
+
+  void setDatasetName(List<String> datasetName);
+
+  List<String> getOtherCatalogNumbers();
+
+  void setOtherCatalogNumbers(List<String> otherCatalogNumbers);
+
+  List<String> getPreparations();
+
+  void setPreparations(List<String> preparations);
+
+  List<String> getSamplingProtocol();
+
+  void setSamplingProtocol(List<String> samplingProtocol);
+
+  List<String> getProjectId();
+
+  void setProjectId(List<String> projectId);
+
+  GeologicalContext getGeologicalContext();
+
+  void setGeologicalContext(GeologicalContext geologicalContext);
+
+  Boolean getIsSequenced();
+
+  void setIsSequenced(Boolean isSequenced);
+
+  List<String> getAssociatedSequences();
+
+  void setAssociatedSequences(List<String> associatedSequences);
+
+  GeologicalContext createGeologicalContext();
 }

@@ -4,9 +4,6 @@ import static org.gbif.api.vocabulary.OccurrenceIssue.COORDINATE_PRECISION_INVAL
 import static org.gbif.api.vocabulary.OccurrenceIssue.COORDINATE_UNCERTAINTY_METERS_INVALID;
 import static org.gbif.api.vocabulary.OccurrenceIssue.FOOTPRINT_SRS_INVALID;
 import static org.gbif.api.vocabulary.OccurrenceIssue.FOOTPRINT_WKT_MISMATCH;
-import static org.gbif.pipelines.core.utils.ModelUtils.addIssue;
-import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareOptValue;
-import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 
 import com.google.common.base.Strings;
 import java.util.List;
@@ -36,11 +33,11 @@ import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.geocode.GeocodeRequest;
 import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.interpreters.model.GadmFeatures;
+import org.gbif.pipelines.core.interpreters.model.LocationRecord;
+import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
 import org.gbif.pipelines.core.parsers.SimpleTypeParser;
 import org.gbif.pipelines.core.parsers.common.ParsedField;
 import org.gbif.pipelines.core.parsers.location.parser.*;
-import org.gbif.pipelines.core.interpreters.model.LocationRecord;
-import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
@@ -129,8 +126,7 @@ public class LocationInterpreter {
    */
   public static BiConsumer<ExtendedRecord, LocationRecord> interpretGadm(
       KeyValueStore<GeocodeRequest, GeocodeResponse> geocodeKvStore,
-      Function<Void, GadmFeatures> createGadm
-  ) {
+      Function<Void, GadmFeatures> createGadm) {
     return (er, lr) -> {
       if (geocodeKvStore != null && lr.getHasCoordinate()) {
         GadmParser.parseGadm(lr, geocodeKvStore, createGadm).ifPresent(lr::setGadm);
@@ -190,7 +186,7 @@ public class LocationInterpreter {
   private static Optional<String> interpretPublishingCountry(ExtendedRecord er, MetadataRecord mr) {
 
     Optional<String> verbatimPublishingCountryCode =
-            er.extractNullAwareOptValue(GbifTerm.publishingCountry);
+        er.extractNullAwareOptValue(GbifTerm.publishingCountry);
     if (verbatimPublishingCountryCode.isPresent()) {
       OccurrenceParseResult<Country> result =
           new OccurrenceParseResult<>(COUNTRY_PARSER.parse(verbatimPublishingCountryCode.get()));
@@ -311,7 +307,7 @@ public class LocationInterpreter {
 
   /** {@link DwcTerm#minimumDistanceAboveSurfaceInMeters} interpretation. */
   public static void interpretMinimumDistanceAboveSurfaceInMeters(
-          ExtendedRecord er, LocationRecord lr) {
+      ExtendedRecord er, LocationRecord lr) {
     String value = er.extractNullAwareValue(DwcTerm.minimumDistanceAboveSurfaceInMeters);
     if (!Strings.isNullOrEmpty(value)) {
       ParseResult<Double> parseResult = MeterRangeParser.parseMeters(value);
@@ -323,7 +319,7 @@ public class LocationInterpreter {
 
   /** {@link DwcTerm#maximumDistanceAboveSurfaceInMeters} interpretation. */
   public static void interpretMaximumDistanceAboveSurfaceInMeters(
-          ExtendedRecord er, LocationRecord lr) {
+      ExtendedRecord er, LocationRecord lr) {
     String value = er.extractNullAwareValue(DwcTerm.maximumDistanceAboveSurfaceInMeters);
     if (!Strings.isNullOrEmpty(value)) {
       ParseResult<Double> parseResult = MeterRangeParser.parseMeters(value);
@@ -412,15 +408,15 @@ public class LocationInterpreter {
     setGbifRegion(lr.getPublishingCountry(), lr::setPublishedByGbifRegion);
   }
 
-//  /** Sets the coreId field. */
-//  public static void setCoreId(ExtendedRecord er, LocationRecord lr) {
-//    Optional.ofNullable(er.getCoreId()).ifPresent(lr::setCoreId);
-//  }
-//
-//  /** Sets the parentEventId field. */
-//  public static void setParentEventId(ExtendedRecord er, LocationRecord lr) {
-//    extractOptValue(er, DwcTerm.parentEventID).ifPresent(lr::setParentId);
-//  }
+  //  /** Sets the coreId field. */
+  //  public static void setCoreId(ExtendedRecord er, LocationRecord lr) {
+  //    Optional.ofNullable(er.getCoreId()).ifPresent(lr::setCoreId);
+  //  }
+  //
+  //  /** Sets the parentEventId field. */
+  //  public static void setParentEventId(ExtendedRecord er, LocationRecord lr) {
+  //    extractOptValue(er, DwcTerm.parentEventID).ifPresent(lr::setParentId);
+  //  }
 
   private static void setGbifRegion(String countryIsoCode, Consumer<String> fn) {
     Optional.ofNullable(countryIsoCode)

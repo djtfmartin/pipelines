@@ -1,14 +1,16 @@
 package org.gbif.pipelines.core.interpreters.model;
 
+public interface Record {
 
-public interface Record extends Issues {
+  String getId();
 
-    String getId();
+  void setId(String id);
 
-    void setId(String id);
+  String getCoreId();
 
-    Long getCreated();
+  void setCoreId(String id);
 
-    void setCreated(Long created);
+  Long getCreated();
 
+  void setCreated(Long created);
 }

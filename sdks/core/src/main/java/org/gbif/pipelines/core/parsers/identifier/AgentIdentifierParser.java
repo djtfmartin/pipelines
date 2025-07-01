@@ -3,6 +3,7 @@ package org.gbif.pipelines.core.parsers.identifier;
 import com.google.common.base.Strings;
 import java.util.Collections;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
@@ -22,33 +23,33 @@ public class AgentIdentifierParser {
 
   private static final String DELIMITER = "[|,]";
 
-  public static Set<AgentIdentifier> parse(String raw) {
+  public static Set<AgentIdentifier> parse(String raw, Supplier<AgentIdentifier> supplier) {
     if (Strings.isNullOrEmpty(raw)) {
       return Collections.emptySet();
     }
     return Stream.of(raw.split(DELIMITER))
         .map(String::trim)
         .filter(x -> !x.isEmpty())
-        .map(AgentIdentifierParser::parseValue)
+        .map(y -> parseValue(y, supplier))
         .collect(Collectors.toSet());
   }
 
-  private static AgentIdentifier parseValue(String raw) {
+  private static AgentIdentifier parseValue(String raw, Supplier<AgentIdentifier> supplier) {
     if (ORCID_VALIDATOR.isValid(raw)) {
-      return AgentIdentifier.builder()
-          .type(AgentIdentifierType.ORCID.name())
-          .value(ORCID_VALIDATOR.normalize(raw))
-          .build();
+      return supplier
+          .get()
+          .setType(AgentIdentifierType.ORCID.name())
+          .setValue(ORCID_VALIDATOR.normalize(raw));
     }
     if (WIKIDATA_VALIDATOR.isValid(raw)) {
-      return AgentIdentifier.builder()
-          .type(AgentIdentifierType.WIKIDATA.name())
-          .value(WIKIDATA_VALIDATOR.normalize(raw))
-          .build();
+      return supplier
+          .get()
+          .setType(AgentIdentifierType.WIKIDATA.name())
+          .setValue(WIKIDATA_VALIDATOR.normalize(raw));
     }
-    return AgentIdentifier.builder()
-        .type(AgentIdentifierType.OTHER.name())
-        .value(OTHER_VALIDATOR.normalize(raw))
-        .build();
+    return supplier
+        .get()
+        .setType(AgentIdentifierType.OTHER.name())
+        .setValue(OTHER_VALIDATOR.normalize(raw));
   }
 }

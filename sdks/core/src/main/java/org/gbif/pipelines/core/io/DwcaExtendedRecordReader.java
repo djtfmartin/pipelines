@@ -10,6 +10,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.dwc.Archive;
@@ -36,21 +37,23 @@ public class DwcaExtendedRecordReader implements Closeable {
   private ExtendedRecord current;
 
   /** Creates a DwcaReader of an expanded archive. */
-  public static DwcaExtendedRecordReader fromLocation(String path) throws IOException {
-    return new DwcaExtendedRecordReader(DwcFiles.fromLocation(Paths.get(path)));
+  public static DwcaExtendedRecordReader fromLocation(
+      String path, Supplier<ExtendedRecord> supplier) throws IOException {
+    return new DwcaExtendedRecordReader(DwcFiles.fromLocation(Paths.get(path)), supplier);
   }
 
   /**
    * Creates a DwcaReader for a compressed archive that it will be expanded in a working directory.
    */
-  public static DwcaExtendedRecordReader fromCompressed(String source, String workingDir)
-      throws IOException {
+  public static DwcaExtendedRecordReader fromCompressed(
+      String source, String workingDir, Supplier<ExtendedRecord> supplier) throws IOException {
     return new DwcaExtendedRecordReader(
-        DwcFiles.fromCompressed(Paths.get(source), Paths.get(workingDir)));
+        DwcFiles.fromCompressed(Paths.get(source), Paths.get(workingDir)), supplier);
   }
 
   /** Creates and DwcaReader using a StarRecord iterator. */
-  private DwcaExtendedRecordReader(Archive archive) {
+  private DwcaExtendedRecordReader(Archive archive, Supplier<ExtendedRecord> supplier)
+      throws IOException {
 
     archive.getCore().getHeader().stream()
         .flatMap(Collection::stream)
@@ -60,13 +63,14 @@ public class DwcaExtendedRecordReader implements Closeable {
     if (archive.getExtensions().isEmpty()) {
       this.iterator = archive.getCore().iterator();
       this.convertFn =
-          dwcar -> ExtendedRecordConverter.from((Record) dwcar, Collections.emptyMap());
+          dwcar -> ExtendedRecordConverter.from((Record) dwcar, Collections.emptyMap(), supplier);
     } else {
       this.iterator = archive.iterator();
       this.convertFn =
           dwcar -> {
             StarRecord starRecord = (StarRecord) dwcar;
-            return ExtendedRecordConverter.from(starRecord.core(), starRecord.extensions());
+            return ExtendedRecordConverter.from(
+                starRecord.core(), starRecord.extensions(), supplier);
           };
     }
   }

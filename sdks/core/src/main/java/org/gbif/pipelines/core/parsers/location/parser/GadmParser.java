@@ -3,7 +3,6 @@ package org.gbif.pipelines.core.parsers.location.parser;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
-
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.kvs.KeyValueStore;
@@ -16,10 +15,9 @@ import org.gbif.rest.client.geocode.GeocodeResponse;
 public class GadmParser {
 
   public static Optional<GadmFeatures> parseGadm(
-          LocationRecord lr,
-          KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore,
-          Function<Void, GadmFeatures> createFn
-          ) {
+      LocationRecord lr,
+      KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore,
+      Function<Void, GadmFeatures> createFn) {
     Objects.requireNonNull(lr, "LocationRecord is required");
     Objects.requireNonNull(kvStore, "GeocodeService kvStore is required");
 

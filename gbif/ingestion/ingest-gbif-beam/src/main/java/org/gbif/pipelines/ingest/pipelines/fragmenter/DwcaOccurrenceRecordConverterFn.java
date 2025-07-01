@@ -15,8 +15,8 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
 import org.gbif.dwc.terms.TermFactory;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.fragmenter.record.DwcaOccurrenceRecord;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.keygen.identifier.OccurrenceKeyBuilder;
 
 @Slf4j
@@ -37,9 +37,9 @@ public class DwcaOccurrenceRecordConverterFn extends DoFn<ExtendedRecord, DwcaOc
   }
 
   private static String getTriplet(ExtendedRecord er) {
-    String ic = extractNullAwareValue(er, DwcTerm.institutionCode);
-    String cc = extractNullAwareValue(er, DwcTerm.collectionCode);
-    String cn = extractNullAwareValue(er, DwcTerm.catalogNumber);
+    String ic = er.extractNullAwareValue(DwcTerm.institutionCode);
+    String cc = er.extractNullAwareValue(DwcTerm.collectionCode);
+    String cn = er.extractNullAwareValue(DwcTerm.catalogNumber);
     return OccurrenceKeyBuilder.buildKey(ic, cc, cn).orElse(null);
   }
 

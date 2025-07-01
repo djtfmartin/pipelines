@@ -11,10 +11,10 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
 import org.gbif.pipelines.core.interpreters.json.*;
 import org.gbif.pipelines.core.interpreters.json.Parent;
-import org.gbif.pipelines.core.interpreters.model.MeasurementOrFactRecord;
-import org.gbif.pipelines.core.utils.HashConverter;
 import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.interpreters.model.GrscicollRecord;
+import org.gbif.pipelines.core.interpreters.model.MeasurementOrFactRecord;
+import org.gbif.pipelines.core.utils.HashConverter;
 
 @Slf4j
 @Builder
@@ -263,7 +263,9 @@ public class ParentJsonConverter {
   private List<String> getParentsLineageEventTypes() {
     List<String> eventTypes =
         eventCore.getParentsLineage().stream()
-            .sorted(Comparator.comparingInt(org.gbif.pipelines.core.interpreters.model.Parent::getOrder).reversed())
+            .sorted(
+                Comparator.comparingInt(org.gbif.pipelines.core.interpreters.model.Parent::getOrder)
+                    .reversed())
             .map(org.gbif.pipelines.core.interpreters.model.Parent::getEventType)
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
@@ -281,7 +283,9 @@ public class ParentJsonConverter {
 
     List<String> eventIDs =
         eventCore.getParentsLineage().stream()
-            .sorted(Comparator.comparingInt(org.gbif.pipelines.core.interpreters.model.Parent::getOrder).reversed())
+            .sorted(
+                Comparator.comparingInt(org.gbif.pipelines.core.interpreters.model.Parent::getOrder)
+                    .reversed())
             .map(org.gbif.pipelines.core.interpreters.model.Parent::getId)
             .collect(Collectors.toList());
     eventIDs.add(eventCore.getId());
@@ -322,7 +326,7 @@ public class ParentJsonConverter {
 
   private void mapIssues(EventJsonRecord.Builder builder) {
     JsonConverter.mapIssues(
-        Arrays.asList(metadata, eventCore, temporal, location, multimedia),
+        List.of(metadata, eventCore, temporal, location, multimedia),
         builder::setIssues,
         builder::setNotIssues);
   }
@@ -354,7 +358,8 @@ public class ParentJsonConverter {
     }
   }
 
-  protected static List<Parent> convertParents(List<org.gbif.pipelines.core.interpreters.model.Parent> parents) {
+  protected static List<Parent> convertParents(
+      List<org.gbif.pipelines.core.interpreters.model.Parent> parents) {
     if (parents == null) {
       return Collections.emptyList();
     }

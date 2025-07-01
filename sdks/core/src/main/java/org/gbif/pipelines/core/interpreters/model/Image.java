@@ -1,55 +1,72 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-public interface Image extends Record {
+public interface Image {
 
-    String getIdentifier();
-    void setIdentifier(String identifier);
+  String getIdentifier();
 
-    String getReferences();
-    void setReferences(String references);
+  void setIdentifier(String identifier);
 
-    String getTitle();
-    void setTitle(String title);
+  String getReferences();
 
-    String getDescription();
-    void setDescription(String description);
+  void setReferences(String references);
 
-    String getSpatial();
-    void setSpatial(String spatial);
+  String getTitle();
 
-    Double getLatitude();
-    void setLatitude(Double latitude);
+  void setTitle(String title);
 
-    Double getLongitude();
-    void setLongitude(Double longitude);
+  String getDescription();
 
-    String getFormat();
-    void setFormat(String format);
+  void setDescription(String description);
 
-    String getCreated();
-    void setCreated(String created);
+  String getSpatial();
 
-    String getCreator();
-    void setCreator(String creator);
+  void setSpatial(String spatial);
 
-    String getContributor();
-    void setContributor(String contributor);
+  Double getLatitude();
 
-    String getPublisher();
-    void setPublisher(String publisher);
+  void setLatitude(Double latitude);
 
-    String getAudience();
-    void setAudience(String audience);
+  Double getLongitude();
 
-    String getLicense();
-    void setLicense(String license);
+  void setLongitude(Double longitude);
 
-    String getRights();
-    void setRights(String rights);
+  String getFormat();
 
-    String getRightsHolder();
-    void setRightsHolder(String rightsHolder);
+  void setFormat(String format);
 
-    String getDatasetId();
-    void setDatasetId(String datasetId);
+  String getCreator();
+
+  void setCreator(String creator);
+
+  String getContributor();
+
+  void setContributor(String contributor);
+
+  String getPublisher();
+
+  void setPublisher(String publisher);
+
+  String getAudience();
+
+  void setAudience(String audience);
+
+  String getLicense();
+
+  void setLicense(String license);
+
+  String getRights();
+
+  void setRights(String rights);
+
+  String getRightsHolder();
+
+  void setRightsHolder(String rightsHolder);
+
+  String getDatasetId();
+
+  void setDatasetId(String datasetId);
+
+  String getCreated();
+
+  void setCreated(String created);
 }

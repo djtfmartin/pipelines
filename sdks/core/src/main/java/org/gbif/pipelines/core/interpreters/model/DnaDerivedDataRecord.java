@@ -4,15 +4,13 @@ import java.util.List;
 
 public interface DnaDerivedDataRecord extends Record {
 
+  /**
+   * @return list of DNA derived data items
+   */
+  List<DnaDerivedData> getDnaDerivedDataItems();
 
-    /**
-     * @return list of DNA derived data items
-     */
-    List<DnaDerivedData> getDnaDerivedDataItems();
-
-    /**
-     * @param items the list of DNA derived data items to set
-     */
-    void setDnaDerivedDataItems(List<DnaDerivedData> items);
-
+  /**
+   * @param items the list of DNA derived data items to set
+   */
+  void setDnaDerivedDataItems(List<DnaDerivedData> items);
 }

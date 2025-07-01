@@ -2,12 +2,15 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface MachineTag {
 
-    String getNamespace();
-    void setNamespace(String namespace);
+  String getNamespace();
 
-    String getName();
-    void setName(String name);
+  void setNamespace(String namespace);
 
-    String getValue();
-    void setValue(String value);
+  String getName();
+
+  void setName(String name);
+
+  String getValue();
+
+  void setValue(String value);
 }

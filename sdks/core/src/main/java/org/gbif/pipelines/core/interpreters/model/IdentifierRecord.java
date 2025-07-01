@@ -1,19 +1,21 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-public interface IdentifierRecord extends Record {
-    void setUniqueKey(String occurrenceId);
-    void setInternalId(String sha1);
-    String getInternalId();
+public interface IdentifierRecord extends Record, Issues {
+  void setUniqueKey(String occurrenceId);
 
-    void setAssociatedKey(String tr);
+  void setInternalId(String sha1);
 
-    void addIssue(String gbifIdAbsent);
+  String getInternalId();
 
-    String getUniqueKey();
+  void setAssociatedKey(String tr);
 
-    String getAssociatedKey();
+  void addIssue(String gbifIdAbsent);
 
-    IssueRecord getIssues();
+  String getUniqueKey();
 
-    Long getFirstLoaded();
+  String getAssociatedKey();
+
+  IssueRecord getIssues();
+
+  Long getFirstLoaded();
 }

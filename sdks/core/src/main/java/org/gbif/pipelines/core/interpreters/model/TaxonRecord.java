@@ -1,64 +1,55 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-import org.gbif.api.vocabulary.OccurrenceIssue;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.List;
-import java.util.Set;
 
-public interface TaxonRecord extends Record {
+public interface TaxonRecord extends Record, Issues {
 
-    // id
-    String getId();
-    void setId(String id);
+  // parentId
+  String getParentId();
 
-    // coreId
-    String getCoreId();
-    void setCoreId(String coreId);
+  void setParentId(String parentId);
 
-    // parentId
-    String getParentId();
-    void setParentId(String parentId);
+  // datasetKey
+  String getDatasetKey();
 
-    // datasetKey
-    String getDatasetKey();
-    void setDatasetKey(String datasetKey);
+  void setDatasetKey(String datasetKey);
 
-    // created
-    Long getCreated();
-    void setCreated(Long created);
+  // synonym
+  Boolean getSynonym();
 
-    // synonym
-    Boolean getSynonym();
-    void setSynonym(Boolean synonym);
+  void setSynonym(Boolean synonym);
 
-    // usage
-    RankedNameWithAuthorship getUsage();
-    void setUsage(RankedNameWithAuthorship usage);
+  // usage
+  RankedNameWithAuthorship getUsage();
 
-    // classification
-    List<RankedName> getClassification();
-    void setClassification(List<RankedName> classification);
+  void setUsage(RankedNameWithAuthorship usage);
 
-    // acceptedUsage
-    RankedNameWithAuthorship getAcceptedUsage();
-    void setAcceptedUsage(RankedNameWithAuthorship acceptedUsage);
+  // classification
+  List<RankedName> getClassification();
 
-//    // nomenclature
-//    Nomenclature getNomenclature();
-//    void setNomenclature(Nomenclature nomenclature);
-//
-//    // diagnostics
-//    Diagnostic getDiagnostics();
-//    void setDiagnostics(Diagnostic diagnostics);
-//
-//    // usageParsedName
-//    ParsedName getUsageParsedName();
-//    void setUsageParsedName(ParsedName usageParsedName);
+  void setClassification(List<RankedName> classification);
 
-    // iucnRedListCategoryCode
-    String getIucnRedListCategoryCode();
-    void setIucnRedListCategoryCode(String code);
+  // acceptedUsage
+  RankedNameWithAuthorship getAcceptedUsage();
 
-    void setDiagnostics(Diagnostics diagnostic);
+  void setAcceptedUsage(RankedNameWithAuthorship acceptedUsage);
+
+  //    // nomenclature
+  //    Nomenclature getNomenclature();
+  //    void setNomenclature(Nomenclature nomenclature);
+  //
+  //    // diagnostics
+  //    Diagnostic getDiagnostics();
+  //    void setDiagnostics(Diagnostic diagnostics);
+  //
+  //    // usageParsedName
+  //    ParsedName getUsageParsedName();
+  //    void setUsageParsedName(ParsedName usageParsedName);
+
+  // iucnRedListCategoryCode
+  String getIucnRedListCategoryCode();
+
+  void setIucnRedListCategoryCode(String code);
+
+  void setDiagnostics(Diagnostics diagnostic);
 }

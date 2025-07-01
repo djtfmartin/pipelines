@@ -1,56 +1,54 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-public interface TemporalRecord extends Record {
+public interface TemporalRecord extends Record, Issues {
 
-    // id
-    String getId();
-    void setId(String id);
+  // parentId
+  String getParentId();
 
-    // coreId
-    String getCoreId();
-    void setCoreId(String coreId);
+  void setParentId(String parentId);
 
-    // parentId
-    String getParentId();
-    void setParentId(String parentId);
+  // year
+  Integer getYear();
 
-    // created
-    Long getCreated();
-    void setCreated(Long created);
+  void setYear(Integer year);
 
-    // year
-    Integer getYear();
-    void setYear(Integer year);
+  // month
+  Integer getMonth();
 
-    // month
-    Integer getMonth();
-    void setMonth(Integer month);
+  void setMonth(Integer month);
 
-    // day
-    Integer getDay();
-    void setDay(Integer day);
+  // day
+  Integer getDay();
 
-    // eventDate
-    EventDate getEventDate();
-    void setEventDate(EventDate eventDate);
+  void setDay(Integer day);
 
-    // startDayOfYear
-    Integer getStartDayOfYear();
-    void setStartDayOfYear(Integer startDayOfYear);
+  // eventDate
+  EventDate getEventDate();
 
-    // endDayOfYear
-    Integer getEndDayOfYear();
-    void setEndDayOfYear(Integer endDayOfYear);
+  void setEventDate(EventDate eventDate);
 
-    // modified
-    String getModified();
-    void setModified(String modified);
+  // startDayOfYear
+  Integer getStartDayOfYear();
 
-    // dateIdentified
-    String getDateIdentified();
-    void setDateIdentified(String dateIdentified);
+  void setStartDayOfYear(Integer startDayOfYear);
 
-    // datePrecision
-    String getDatePrecision();
-    void setDatePrecision(String datePrecision);
+  // endDayOfYear
+  Integer getEndDayOfYear();
+
+  void setEndDayOfYear(Integer endDayOfYear);
+
+  // modified
+  String getModified();
+
+  void setModified(String modified);
+
+  // dateIdentified
+  String getDateIdentified();
+
+  void setDateIdentified(String dateIdentified);
+
+  // datePrecision
+  String getDatePrecision();
+
+  void setDatePrecision(String datePrecision);
 }

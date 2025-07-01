@@ -2,57 +2,60 @@ package org.gbif.pipelines.core.interpreters.model;
 
 import java.util.List;
 
-public interface EventCoreRecord extends Record {
+public interface EventCoreRecord extends Record, Issues {
 
-    // id
-    String getId();
-    void setId(String id);
+  // parentEventID
+  String getParentEventID();
 
-    // parentEventID
-    String getParentEventID();
-    void setParentEventID(String parentEventID);
+  void setParentEventID(String parentEventID);
 
-    // eventType
-    VocabularyConcept getEventType();
-    void setEventType(VocabularyConcept eventType);
+  // eventType
+  VocabularyConcept getEventType();
 
-    // created
-    Long getCreated();
-    void setCreated(Long created);
+  void setEventType(VocabularyConcept eventType);
 
-    // sampleSizeValue
-    Double getSampleSizeValue();
-    void setSampleSizeValue(Double sampleSizeValue);
+  // sampleSizeValue
+  Double getSampleSizeValue();
 
-    // sampleSizeUnit
-    String getSampleSizeUnit();
-    void setSampleSizeUnit(String sampleSizeUnit);
+  void setSampleSizeValue(Double sampleSizeValue);
 
-    // references
-    String getReferences();
-    void setReferences(String references);
+  // sampleSizeUnit
+  String getSampleSizeUnit();
 
-    // license
-    String getLicense();
-    void setLicense(String license);
+  void setSampleSizeUnit(String sampleSizeUnit);
 
-    // datasetID
-    List<String> getDatasetID();
-    void setDatasetID(List<String> datasetID);
+  // references
+  String getReferences();
 
-    // datasetName
-    List<String> getDatasetName();
-    void setDatasetName(List<String> datasetName);
+  void setReferences(String references);
 
-    // samplingProtocol
-    List<String> getSamplingProtocol();
-    void setSamplingProtocol(List<String> samplingProtocol);
+  // license
+  String getLicense();
 
-    // parentsLineage
-    List<Parent> getParentsLineage();
-    void setParentsLineage(List<Parent> parentsLineage);
+  void setLicense(String license);
 
-    // locationID
-    String getLocationID();
-    void setLocationID(String locationID);
+  // datasetID
+  List<String> getDatasetID();
+
+  void setDatasetID(List<String> datasetID);
+
+  // datasetName
+  List<String> getDatasetName();
+
+  void setDatasetName(List<String> datasetName);
+
+  // samplingProtocol
+  List<String> getSamplingProtocol();
+
+  void setSamplingProtocol(List<String> samplingProtocol);
+
+  // parentsLineage
+  List<Parent> getParentsLineage();
+
+  void setParentsLineage(List<Parent> parentsLineage);
+
+  // locationID
+  String getLocationID();
+
+  void setLocationID(String locationID);
 }

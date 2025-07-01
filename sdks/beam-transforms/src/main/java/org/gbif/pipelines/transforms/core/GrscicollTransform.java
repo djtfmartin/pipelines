@@ -120,7 +120,7 @@ public class GrscicollTransform extends Transform<ExtendedRecord, GrscicollRecor
     return Interpretation.from(source)
         .to(GrscicollRecord.newBuilder().setCreated(Instant.now().toEpochMilli()).build())
         .when(er -> !er.getCoreTerms().isEmpty())
-        .via(GrscicollInterpreter.grscicollInterpreter(kvStore, mdr))
+        .via(GrscicollInterpreter.grscicollInterpreter(kvStore, mdr, matchSupplier))
         .skipWhen(gr -> gr.getId() == null)
         .getOfNullable();
   }

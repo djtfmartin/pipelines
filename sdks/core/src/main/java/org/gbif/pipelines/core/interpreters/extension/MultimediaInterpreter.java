@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-
 import lombok.Builder;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.api.vocabulary.MediaType;
@@ -49,27 +49,28 @@ public class MultimediaInterpreter implements Serializable {
   private static final MediaParser MEDIA_PARSER = MediaParser.getInstance();
   private static final LicenseUriParser LICENSE_URI_PARSER = LicenseUriParser.getInstance();
 
-  private final TargetHandler<Multimedia> handler =
-      ExtensionInterpretation.extension(Extension.MULTIMEDIA)
-          .<Multimedia>newHandler()
-          .map(DcTerm.references, MultimediaInterpreter::parseAndSetReferences)
-          .mapOne(DcTerm.identifier, MultimediaInterpreter::parseAndSetIdentifier)
-          .mapOne(DcTerm.created, this::parseAndSetCreated)
-          .map(DcTerm.type, MultimediaInterpreter::parseAndSetType)
-          .map(DcTerm.license, MultimediaInterpreter::parseAndSetLicense)
-          .map(DcTerm.rights, MultimediaInterpreter::parseAndSetLicense)
-          .map(DcTerm.format, MultimediaInterpreter::parseAndSetFormatAndType)
-          .map(DcTerm.title, Multimedia::setTitle)
-          .map(DcTerm.description, Multimedia::setDescription)
-          .map(DcTerm.contributor, Multimedia::setContributor)
-          .map(DcTerm.publisher, Multimedia::setPublisher)
-          .map(DcTerm.audience, Multimedia::setAudience)
-          .map(DcTerm.creator, Multimedia::setCreator)
-          .map(DcTerm.rightsHolder, Multimedia::setRightsHolder)
-          .map(DcTerm.source, Multimedia::setSource)
-          .map(DwcTerm.datasetID, Multimedia::setDatasetId)
-          .postMap(MultimediaInterpreter::parseAndSetTypeFromReferences)
-          .skipIf(MultimediaInterpreter::checkLinks);
+  private final Function<Supplier<Multimedia>, TargetHandler<Multimedia>> HANDLER =
+      mft ->
+          ExtensionInterpretation.extension(Extension.MULTIMEDIA)
+              .to(mft)
+              .map(DcTerm.references, MultimediaInterpreter::parseAndSetReferences)
+              .mapOne(DcTerm.identifier, MultimediaInterpreter::parseAndSetIdentifier)
+              .mapOne(DcTerm.created, this::parseAndSetCreated)
+              .map(DcTerm.type, MultimediaInterpreter::parseAndSetType)
+              .map(DcTerm.license, MultimediaInterpreter::parseAndSetLicense)
+              .map(DcTerm.rights, MultimediaInterpreter::parseAndSetLicense)
+              .map(DcTerm.format, MultimediaInterpreter::parseAndSetFormatAndType)
+              .map(DcTerm.title, Multimedia::setTitle)
+              .map(DcTerm.description, Multimedia::setDescription)
+              .map(DcTerm.contributor, Multimedia::setContributor)
+              .map(DcTerm.publisher, Multimedia::setPublisher)
+              .map(DcTerm.audience, Multimedia::setAudience)
+              .map(DcTerm.creator, Multimedia::setCreator)
+              .map(DcTerm.rightsHolder, Multimedia::setRightsHolder)
+              .map(DcTerm.source, Multimedia::setSource)
+              .map(DwcTerm.datasetID, Multimedia::setDatasetId)
+              .postMap(MultimediaInterpreter::parseAndSetTypeFromReferences)
+              .skipIf(MultimediaInterpreter::checkLinks);
 
   private final MultiinputTemporalParser temporalParser;
   private final SerializableFunction<String, String> preprocessDateFn;
@@ -89,13 +90,14 @@ public class MultimediaInterpreter implements Serializable {
     Objects.requireNonNull(er);
     Objects.requireNonNull(mr);
 
-    Result<Multimedia> result = handler.convert(er, supplier);
+    Result<Multimedia> result = HANDLER.apply(supplier).convert(er);
 
     mr.setMultimediaItems(result.getList());
     mr.getIssues().setIssueList(result.getIssuesAsList());
   }
 
-  public static void interpretAssociatedMedia(ExtendedRecord er, MultimediaRecord mr, Supplier<Multimedia> supplier) {
+  public static void interpretAssociatedMedia(
+      ExtendedRecord er, MultimediaRecord mr, Supplier<Multimedia> supplier) {
 
     Predicate<URI> prFn =
         uri ->

@@ -7,23 +7,23 @@ import static org.gbif.pipelines.core.utils.ModelUtils.*;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ObjectUtils;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.NameUsageMatchRequest;
 import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.core.interpreters.model.RankedName;
+import org.gbif.pipelines.core.interpreters.model.RankedNameWithAuthorship;
 import org.gbif.pipelines.core.interpreters.model.TaxonRecord;
 import org.gbif.pipelines.core.parsers.taxonomy.TaxonRecordConverter;
 import org.gbif.pipelines.core.utils.IdentificationUtils;
-import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 /**
@@ -41,42 +41,46 @@ public class TaxonomyInterpreter {
   public static final String INCERTAE_SEDIS_NAME = "incertae sedis";
   public static final String INCERTAE_SEDIS_KEY = "0";
 
-//  private static final RankedNameWithAuthorship INCERTAE_SEDIS_WITH_AUTHORSHIP =
-//      RankedNameWithAuthorship.newBuilder()
-//          .setRank(KINGDOM_RANK)
-//          .setName(INCERTAE_SEDIS_NAME)
-//          .setKey(INCERTAE_SEDIS_KEY)
-//          .build();
-//
-//  private static final RankedName INCERTAE_SEDIS =
-//      RankedName.newBuilder()
-//          .setRank(KINGDOM_RANK)
-//          .setName(INCERTAE_SEDIS_NAME)
-//          .setKey(INCERTAE_SEDIS_KEY)
-//          .build();
+  //  private static final RankedNameWithAuthorship INCERTAE_SEDIS_WITH_AUTHORSHIP =
+  //      RankedNameWithAuthorship.newBuilder()
+  //          .setRank(KINGDOM_RANK)
+  //          .setName(INCERTAE_SEDIS_NAME)
+  //          .setKey(INCERTAE_SEDIS_KEY)
+  //          .build();
+  //
+  //  private static final RankedName INCERTAE_SEDIS =
+  //      RankedName.newBuilder()
+  //          .setRank(KINGDOM_RANK)
+  //          .setName(INCERTAE_SEDIS_NAME)
+  //          .setKey(INCERTAE_SEDIS_KEY)
+  //          .build();
 
   /**
    * Interprets a utils from the taxonomic fields specified in the {@link ExtendedRecord} received.
    */
   public static BiConsumer<ExtendedRecord, TaxonRecord> taxonomyInterpreter(
-      KeyValueStore<NameUsageMatchRequest, NameUsageMatchResponse> kvStore, String checklistKey) {
+      KeyValueStore<NameUsageMatchRequest, NameUsageMatchResponse> kvStore,
+      String checklistKey,
+      Supplier<RankedNameWithAuthorship> rankedNameWithAuthorshipSupplier,
+      Supplier<RankedName> rankedNameSupplier) {
     return (er, tr) -> {
       if (kvStore == null) {
         return;
       }
-      if (er == null){
+      if (er == null) {
         throw new IllegalArgumentException("er is null");
       }
       er.checkEmpty();
 
       NameUsageMatchRequest nameUsageMatchRequest = createNameUsageMatchRequest(er, checklistKey);
-      createTaxonRecord(nameUsageMatchRequest, kvStore, tr);
+      createTaxonRecord(
+          nameUsageMatchRequest, kvStore, tr, rankedNameWithAuthorshipSupplier, rankedNameSupplier);
       tr.setId(er.getId());
     };
   }
 
   protected static NameUsageMatchRequest createNameUsageMatchRequest(
-          ExtendedRecord er, String checklistKey) {
+      ExtendedRecord er, String checklistKey) {
     Map<String, String> termsSource = IdentificationUtils.getIdentificationFieldTermsSource(er);
     // https://github.com/gbif/portal-feedback/issues/4231
     String scientificName =
@@ -111,7 +115,9 @@ public class TaxonomyInterpreter {
   protected static void createTaxonRecord(
       NameUsageMatchRequest nameUsageMatchRequest,
       KeyValueStore<NameUsageMatchRequest, NameUsageMatchResponse> kvStore,
-      TaxonRecord tr) {
+      TaxonRecord tr,
+      Supplier<RankedNameWithAuthorship> rankedNameWithAuthorshipSupplier,
+      Supplier<RankedName> rankedNameSupplier) {
 
     NameUsageMatchResponse usageMatch = null;
     try {
@@ -126,8 +132,8 @@ public class TaxonomyInterpreter {
       // "NO_MATCHING_RESULTS". This
       // happens when we get an empty response from the WS
       tr.addIssue(TAXON_MATCH_NONE);
-//      tr.setUsage(INCERTAE_SEDIS_WITH_AUTHORSHIP);
-//      tr.setClassification(Collections.singletonList(INCERTAE_SEDIS));
+      //      tr.setUsage(INCERTAE_SEDIS_WITH_AUTHORSHIP);
+      //      tr.setClassification(Collections.singletonList(INCERTAE_SEDIS));
     } else {
 
       NameUsageMatchResponse.MatchType matchType = usageMatch.getDiagnostics().getMatchType();
@@ -148,10 +154,11 @@ public class TaxonomyInterpreter {
         tr.addIssue(TAXON_MATCH_HIGHERRANK);
       }
 
-//      tr.setUsageParsedName(toParsedNameAvro(usageMatch.getUsage()));
+      //      tr.setUsageParsedName(toParsedNameAvro(usageMatch.getUsage()));
 
       // convert taxon record
-      TaxonRecordConverter.convert(usageMatch, tr);
+      TaxonRecordConverter.convert(
+          usageMatch, tr, rankedNameWithAuthorshipSupplier, rankedNameSupplier);
     }
   }
 
@@ -183,28 +190,28 @@ public class TaxonomyInterpreter {
     return isFuzzy && isEmptyTaxa;
   }
 
-//  /**
-//   * Converts a {@link org.gbif.nameparser.api.ParsedName} into {@link
-//   * org.gbif.pipelines.io.avro.ParsedName}.
-//   */
-//  private static ParsedName toParsedNameAvro(NameUsageMatchResponse.Usage pn) {
-//
-//    ParsedName.Builder builder =
-//        ParsedName.newBuilder()
-//            .setGenus(pn.getGenericName())
-//            .setInfragenericEpithet(pn.getInfragenericEpithet())
-//            .setInfraspecificEpithet(pn.getInfraspecificEpithet())
-//            .setSpecificEpithet(pn.getSpecificEpithet());
-//
-//    // Nullable fields
-//    Optional.ofNullable(pn.getCode())
-//        .ifPresent(code -> builder.setCode(convertToEnum(NomCode.class, code)));
-//    Optional.ofNullable(pn.getType())
-//        .ifPresent(type -> builder.setType(convertToEnum(NameType.class, type)));
-//    Optional.ofNullable(pn.getRank())
-//        .ifPresent(rank -> builder.setRank(convertToEnum(NameRank.class, rank)));
-//    return builder.build();
-//  }
+  //  /**
+  //   * Converts a {@link org.gbif.nameparser.api.ParsedName} into {@link
+  //   * org.gbif.pipelines.io.avro.ParsedName}.
+  //   */
+  //  private static ParsedName toParsedNameAvro(NameUsageMatchResponse.Usage pn) {
+  //
+  //    ParsedName.Builder builder =
+  //        ParsedName.newBuilder()
+  //            .setGenus(pn.getGenericName())
+  //            .setInfragenericEpithet(pn.getInfragenericEpithet())
+  //            .setInfraspecificEpithet(pn.getInfraspecificEpithet())
+  //            .setSpecificEpithet(pn.getSpecificEpithet());
+  //
+  //    // Nullable fields
+  //    Optional.ofNullable(pn.getCode())
+  //        .ifPresent(code -> builder.setCode(convertToEnum(NomCode.class, code)));
+  //    Optional.ofNullable(pn.getType())
+  //        .ifPresent(type -> builder.setType(convertToEnum(NameType.class, type)));
+  //    Optional.ofNullable(pn.getRank())
+  //        .ifPresent(rank -> builder.setRank(convertToEnum(NameRank.class, rank)));
+  //    return builder.build();
+  //  }
 
   public static <T extends Enum<T>> T convertToEnum(Class<T> enumClass, String value) {
     try {

@@ -1,6 +1,7 @@
 package org.gbif.pipelines.core.interpreters.extension;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.api.util.DnaUtils;
@@ -17,13 +18,14 @@ public class DnaDerivedDataInterpreter {
    * Interprets audubon of a {@link ExtendedRecord} and populates a {@link DnaDerivedDataRecord}
    * with the interpreted values.
    */
-  public void interpret(ExtendedRecord er, DnaDerivedDataRecord dr) {
+  public void interpret(
+      ExtendedRecord er, DnaDerivedDataRecord dr, Supplier<DnaDerivedData> supplier) {
     Objects.requireNonNull(er);
     Objects.requireNonNull(dr);
 
     ExtensionInterpretation.Result<DnaDerivedData> result =
         ExtensionInterpretation.extension(Extension.DNA_DERIVED_DATA)
-            .to(DnaDerivedData::new)
+            .to(supplier)
             .map(GbifDnaTerm.dna_sequence, DnaDerivedDataInterpreter::interpretDnaSequence)
             .convert(er);
 

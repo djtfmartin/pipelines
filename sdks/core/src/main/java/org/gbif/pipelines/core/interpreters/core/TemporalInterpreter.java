@@ -8,9 +8,7 @@ import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.function.Supplier;
-
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.api.util.IsoDateInterval;
@@ -63,9 +61,7 @@ public class TemporalInterpreter implements Serializable {
   }
 
   public void interpretTemporal(
-          ExtendedRecord er,
-          TemporalRecord tr,
-          Supplier<EventDate> createEventDateFn) {
+      ExtendedRecord er, TemporalRecord tr, Supplier<EventDate> createEventDateFn) {
     String year = er.extractValue(DwcTerm.year);
     String month = er.extractValue(DwcTerm.month);
     String day = er.extractValue(DwcTerm.day);

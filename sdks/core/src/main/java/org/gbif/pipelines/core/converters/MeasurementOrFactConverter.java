@@ -1,6 +1,5 @@
 package org.gbif.pipelines.core.converters;
 
-import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 import static org.gbif.pipelines.core.utils.ModelUtils.hasValueNullAware;
 
 import java.util.ArrayList;
@@ -11,10 +10,10 @@ import java.util.Map;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.dwc.terms.DwcTerm;
+import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.parsers.vertnet.DynamicProperty;
 import org.gbif.pipelines.core.parsers.vertnet.LengthParser;
 import org.gbif.pipelines.core.parsers.vertnet.MassParser;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MeasurementOrFactConverter {

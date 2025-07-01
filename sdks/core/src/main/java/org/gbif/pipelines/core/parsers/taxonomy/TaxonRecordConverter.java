@@ -24,26 +24,35 @@ public class TaxonRecordConverter {
    * I modify the parameter instead of creating a new one and returning it because the lambda
    * parameters are final used in Interpreter.
    */
-  public static void convert(NameUsageMatchResponse nameUsageMatch, TaxonRecord taxonRecord) {
+  public static void convert(
+      NameUsageMatchResponse nameUsageMatch,
+      TaxonRecord taxonRecord,
+      Supplier<RankedNameWithAuthorship> rankedNameWithAuthorshipSupplier,
+      Supplier<RankedName> rankedNameSupplier) {
     Objects.requireNonNull(nameUsageMatch);
-    convertInternal(nameUsageMatch, taxonRecord);
+    convertInternal(
+        nameUsageMatch, taxonRecord, rankedNameWithAuthorshipSupplier, rankedNameSupplier);
   }
 
   private static TaxonRecord convertInternal(
-      NameUsageMatchResponse source, TaxonRecord taxonRecord) {
+      NameUsageMatchResponse source,
+      TaxonRecord taxonRecord,
+      Supplier<RankedNameWithAuthorship> rankedNameWithAuthorshipSupplier,
+      Supplier<RankedName> rankedNameSupplier) {
 
     List<RankedName> classifications =
         source.getClassification().stream()
-            .map(TaxonRecordConverter::convertRankedName)
+            .map(t -> convertRankedName(t, rankedNameSupplier))
             .collect(Collectors.toList());
 
     taxonRecord.setClassification(classifications);
     taxonRecord.setSynonym(source.isSynonym());
-    taxonRecord.setUsage(convertUsage(source.getUsage()));
+    taxonRecord.setUsage(convertUsage(source.getUsage(), rankedNameWithAuthorshipSupplier));
 
     // Usage is set as the accepted usage if the accepted usage is null
     taxonRecord.setAcceptedUsage(
-        Optional.ofNullable(convertUsage(source.getAcceptedUsage()))
+        Optional.ofNullable(
+                convertUsage(source.getAcceptedUsage(), rankedNameWithAuthorshipSupplier))
             .orElse(taxonRecord.getUsage()));
 
     taxonRecord.setDiagnostics(convertDiagnostics(source.getDiagnostics()));
@@ -58,8 +67,8 @@ public class TaxonRecordConverter {
     return taxonRecord;
   }
 
-  private static RankedNameWithAuthorship convertUsage(NameUsageMatchResponse.Usage rankedNameApi,
-                                                       Supplier<RankedNameWithAuthorship> supplier) {
+  private static RankedNameWithAuthorship convertUsage(
+      NameUsageMatchResponse.Usage rankedNameApi, Supplier<RankedNameWithAuthorship> supplier) {
     if (rankedNameApi == null) {
       return null;
     }
@@ -79,8 +88,8 @@ public class TaxonRecordConverter {
     return rankedNameWithAuthorship;
   }
 
-  private static RankedName convertRankedName(NameUsageMatchResponse.RankedName rankedNameApi,
-                                              Supplier<RankedName> supplier) {
+  private static RankedName convertRankedName(
+      NameUsageMatchResponse.RankedName rankedNameApi, Supplier<RankedName> supplier) {
     if (rankedNameApi == null) {
       return null;
     }
@@ -93,24 +102,26 @@ public class TaxonRecordConverter {
   }
 
   private static Diagnostics convertDiagnostics(NameUsageMatchResponse.Diagnostics diagnosticsApi) {
-    if (diagnosticsApi == null) {
-      return null;
-    }
+    return null;
 
-    // alternatives
-    List<TaxonRecord> alternatives =
-        diagnosticsApi.getAlternatives().stream()
-            .map(match -> convertInternal(match, TaxonRecord.newBuilder().build()))
-            .collect(Collectors.toList());
-
-    Diagnostic.Builder builder =
-        Diagnostic.newBuilder()
-            //            .setAlternatives(alternatives)
-            .setConfidence(diagnosticsApi.getConfidence())
-            .setMatchType(MatchType.valueOf(diagnosticsApi.getMatchType().name()))
-            .setNote(diagnosticsApi.getNote())
-            .setLineage(List.of());
-
-    return builder.build();
+    //    if (diagnosticsApi == null) {
+    //      return null;
+    //    }
+    //
+    //    // alternatives
+    //    List<TaxonRecord> alternatives =
+    //        diagnosticsApi.getAlternatives().stream()
+    //            .map(match -> convertInternal(match, TaxonRecord.newBuilder().build()))
+    //            .collect(Collectors.toList());
+    //
+    //    Diagnostic.Builder builder =
+    //        Diagnostic.newBuilder()
+    //            //            .setAlternatives(alternatives)
+    //            .setConfidence(diagnosticsApi.getConfidence())
+    //            .setMatchType(MatchType.valueOf(diagnosticsApi.getMatchType().name()))
+    //            .setNote(diagnosticsApi.getNote())
+    //            .setLineage(List.of());
+    //
+    //    return builder.build();
   }
 }

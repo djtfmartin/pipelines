@@ -1,61 +1,70 @@
 package org.gbif.pipelines.core.interpreters.model;
 
-
 import java.util.List;
 
-public interface MetadataRecord extends Record {
+public interface MetadataRecord extends Record, Issues {
 
-    String getId();
-    void setId(String id);
+  Long getLastCrawled();
 
-    Long getCreated();
-    void setCreated(Long created);
+  void setLastCrawled(Long lastCrawled);
 
-    Long getLastCrawled();
-    void setLastCrawled(Long lastCrawled);
+  String getDatasetKey();
 
-    String getDatasetKey();
-    void setDatasetKey(String datasetKey);
+  void setDatasetKey(String datasetKey);
 
-    Integer getCrawlId();
-    void setCrawlId(Integer crawlId);
+  Integer getCrawlId();
 
-    String getDatasetTitle();
-    void setDatasetTitle(String datasetTitle);
+  void setCrawlId(Integer crawlId);
 
-    String getInstallationKey();
-    void setInstallationKey(String installationKey);
+  String getDatasetTitle();
 
-    String getPublisherTitle();
-    void setPublisherTitle(String publisherTitle);
+  void setDatasetTitle(String datasetTitle);
 
-    String getPublishingOrganizationKey();
-    void setPublishingOrganizationKey(String publishingOrganizationKey);
+  String getInstallationKey();
 
-    String getEndorsingNodeKey();
-    void setEndorsingNodeKey(String endorsingNodeKey);
+  void setInstallationKey(String installationKey);
 
-    String getProjectId();
-    void setProjectId(String projectId);
+  String getPublisherTitle();
 
-    String getProgrammeAcronym();
-    void setProgrammeAcronym(String programmeAcronym);
+  void setPublisherTitle(String publisherTitle);
 
-    String getProtocol();
-    void setProtocol(String protocol);
+  String getPublishingOrganizationKey();
 
-    String getLicense();
-    void setLicense(String license);
+  void setPublishingOrganizationKey(String publishingOrganizationKey);
 
-    String getDatasetPublishingCountry();
-    void setDatasetPublishingCountry(String datasetPublishingCountry);
+  String getEndorsingNodeKey();
 
-    String getHostingOrganizationKey();
-    void setHostingOrganizationKey(String hostingOrganizationKey);
+  void setEndorsingNodeKey(String endorsingNodeKey);
 
-    List<String> getNetworkKeys();
-    void setNetworkKeys(List<String> networkKeys);
+  String getProjectId();
 
-    List<MachineTag> getMachineTags();
-    void setMachineTags(List<MachineTag> machineTags);
+  void setProjectId(String projectId);
+
+  String getProgrammeAcronym();
+
+  void setProgrammeAcronym(String programmeAcronym);
+
+  String getProtocol();
+
+  void setProtocol(String protocol);
+
+  String getLicense();
+
+  void setLicense(String license);
+
+  String getDatasetPublishingCountry();
+
+  void setDatasetPublishingCountry(String datasetPublishingCountry);
+
+  String getHostingOrganizationKey();
+
+  void setHostingOrganizationKey(String hostingOrganizationKey);
+
+  List<String> getNetworkKeys();
+
+  void setNetworkKeys(List<String> networkKeys);
+
+  List<MachineTag> getMachineTags();
+
+  void setMachineTags(List<MachineTag> machineTags);
 }

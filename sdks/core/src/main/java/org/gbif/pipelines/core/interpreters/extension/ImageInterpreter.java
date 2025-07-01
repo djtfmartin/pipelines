@@ -9,6 +9,8 @@ import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.Builder;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.api.vocabulary.OccurrenceIssue;
@@ -26,9 +28,7 @@ import org.gbif.pipelines.core.functions.SerializableFunction;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.Result;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.Image;
-import org.gbif.pipelines.core.interpreters.model.ImageRecord;
+import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.common.ParsedField;
 import org.gbif.pipelines.core.parsers.location.parser.CoordinateParseUtils;
 
@@ -42,31 +42,32 @@ public class ImageInterpreter {
 
   private static final LicenseUriParser LICENSE_URI_PARSER = LicenseUriParser.getInstance();
 
-  private final TargetHandler<Image> handler =
-      ExtensionInterpretation.extension(Extension.IMAGE)
-          .to(Image::new)
-          .mapOne(DcTerm.identifier, ImageInterpreter::parseAndSetIdentifier)
-          .map(DcTerm.references, ImageInterpreter::parseAndSetReferences)
-          .mapOne(DcTerm.created, this::parseAndSetCreated)
-          .map(DcTerm.license, ImageInterpreter::parseAndSetLicense)
-          .map(DcTerm.title, Image::setTitle)
-          .map(DcTerm.description, Image::setDescription)
-          .map(DcTerm.spatial, Image::setSpatial)
-          .map(DcTerm.format, Image::setFormat)
-          .map(DcTerm.creator, Image::setCreator)
-          .map(DcTerm.contributor, Image::setContributor)
-          .map(DcTerm.publisher, Image::setPublisher)
-          .map(DcTerm.audience, Image::setAudience)
-          .map(DcTerm.rightsHolder, Image::setRightsHolder)
-          .map(DwcTerm.datasetID, Image::setDatasetId)
-          .map(
-              "http://www.w3.org/2003/01/geo/wgs84_pos#longitude",
-              ImageInterpreter::parseAndSetLongitude)
-          .map(
-              "http://www.w3.org/2003/01/geo/wgs84_pos#latitude",
-              ImageInterpreter::parseAndSetLatitude)
-          .postMap(ImageInterpreter::parseAndSetLatLng)
-          .skipIf(ImageInterpreter::checkLinks);
+  private final Function<Supplier<Image>, TargetHandler<Image>> HANDLER =
+      mft ->
+          ExtensionInterpretation.extension(Extension.IMAGE)
+              .to(mft)
+              .mapOne(DcTerm.identifier, ImageInterpreter::parseAndSetIdentifier)
+              .map(DcTerm.references, ImageInterpreter::parseAndSetReferences)
+              .mapOne(DcTerm.created, this::parseAndSetCreated)
+              .map(DcTerm.license, ImageInterpreter::parseAndSetLicense)
+              .map(DcTerm.title, Image::setTitle)
+              .map(DcTerm.description, Image::setDescription)
+              .map(DcTerm.spatial, Image::setSpatial)
+              .map(DcTerm.format, Image::setFormat)
+              .map(DcTerm.creator, Image::setCreator)
+              .map(DcTerm.contributor, Image::setContributor)
+              .map(DcTerm.publisher, Image::setPublisher)
+              .map(DcTerm.audience, Image::setAudience)
+              .map(DcTerm.rightsHolder, Image::setRightsHolder)
+              .map(DwcTerm.datasetID, Image::setDatasetId)
+              .map(
+                  "http://www.w3.org/2003/01/geo/wgs84_pos#longitude",
+                  ImageInterpreter::parseAndSetLongitude)
+              .map(
+                  "http://www.w3.org/2003/01/geo/wgs84_pos#latitude",
+                  ImageInterpreter::parseAndSetLatitude)
+              .postMap(ImageInterpreter::parseAndSetLatLng)
+              .skipIf(ImageInterpreter::checkLinks);
 
   private final MultiinputTemporalParser temporalParser;
   private final SerializableFunction<String, String> preprocessDateFn;
@@ -83,11 +84,11 @@ public class ImageInterpreter {
    * Interprets images of a {@link ExtendedRecord} and populates a {@link ImageRecord} with the
    * interpreted values.
    */
-  public void interpret(ExtendedRecord er, ImageRecord mr) {
+  public void interpret(ExtendedRecord er, ImageRecord mr, Supplier<Image> supplier) {
     Objects.requireNonNull(er);
     Objects.requireNonNull(mr);
 
-    Result<Image> result = handler.convert(er);
+    Result<Image> result = HANDLER.apply(supplier).convert(er);
 
     mr.setImageItems(result.getList());
     mr.getIssues().setIssueList(result.getIssuesAsList());

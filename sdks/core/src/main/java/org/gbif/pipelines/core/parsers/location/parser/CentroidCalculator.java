@@ -18,7 +18,7 @@ public class CentroidCalculator {
   public static final double MAXIMUM_DISTANCE_FROM_CENTROID_METRES = 5000;
 
   public static Optional<Double> calculateCentroidDistance(
-          LocationRecord lr, KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore) {
+      LocationRecord lr, KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore) {
     Objects.requireNonNull(lr, "LocationRecord is required");
     Objects.requireNonNull(kvStore, "GeocodeService kvStore is required");
 

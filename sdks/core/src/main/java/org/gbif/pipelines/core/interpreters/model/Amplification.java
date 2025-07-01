@@ -2,108 +2,143 @@ package org.gbif.pipelines.core.interpreters.model;
 
 public interface Amplification {
 
-    String getAmplificationDate();
-    void setAmplificationDate(String amplificationDate);
+  String getAmplificationDate();
 
-    String getAmplificationStaff();
-    void setAmplificationStaff(String amplificationStaff);
+  void setAmplificationDate(String amplificationDate);
 
-    String getAmplificationSuccess();
-    void setAmplificationSuccess(String amplificationSuccess);
+  String getAmplificationStaff();
 
-    String getAmplificationSuccessDetails();
-    void setAmplificationSuccessDetails(String amplificationSuccessDetails);
+  void setAmplificationStaff(String amplificationStaff);
 
-    String getAmplificationMethod();
-    void setAmplificationMethod(String amplificationMethod);
+  String getAmplificationSuccess();
 
-    String getPrimerSequenceForward();
-    void setPrimerSequenceForward(String primerSequenceForward);
+  void setAmplificationSuccess(String amplificationSuccess);
 
-    String getPrimerNameForward();
-    void setPrimerNameForward(String primerNameForward);
+  String getAmplificationSuccessDetails();
 
-    String getPrimerReferenceCitationForward();
-    void setPrimerReferenceCitationForward(String primerReferenceCitationForward);
+  void setAmplificationSuccessDetails(String amplificationSuccessDetails);
 
-    String getPrimerReferenceLinkForward();
-    void setPrimerReferenceLinkForward(String primerReferenceLinkForward);
+  String getAmplificationMethod();
 
-    String getPrimerSequenceReverse();
-    void setPrimerSequenceReverse(String primerSequenceReverse);
+  void setAmplificationMethod(String amplificationMethod);
 
-    String getPrimerNameReverse();
-    void setPrimerNameReverse(String primerNameReverse);
+  String getPrimerSequenceForward();
 
-    String getPrimerReferenceCitationReverse();
-    void setPrimerReferenceCitationReverse(String primerReferenceCitationReverse);
+  void setPrimerSequenceForward(String primerSequenceForward);
 
-    String getPrimerReferenceLinkReverse();
-    void setPrimerReferenceLinkReverse(String primerReferenceLinkReverse);
+  String getPrimerNameForward();
 
-    String getPurificationMethod();
-    void setPurificationMethod(String purificationMethod);
+  void setPrimerNameForward(String primerNameForward);
 
-    String getConsensusSequence();
-    void setConsensusSequence(String consensusSequence);
+  String getPrimerReferenceCitationForward();
 
-    String getConsensusSequenceLength();
-    void setConsensusSequenceLength(String consensusSequenceLength);
+  void setPrimerReferenceCitationForward(String primerReferenceCitationForward);
 
-    String getConsensusSequenceChromatogramFileUri();
-    void setConsensusSequenceChromatogramFileUri(String consensusSequenceChromatogramFileUri);
+  String getPrimerReferenceLinkForward();
 
-    String getBarcodeSequence();
-    void setBarcodeSequence(String barcodeSequence);
+  void setPrimerReferenceLinkForward(String primerReferenceLinkForward);
 
-    String getHaplotype();
-    void setHaplotype(String haplotype);
+  String getPrimerSequenceReverse();
 
-    String getMarker();
-    void setMarker(String marker);
+  void setPrimerSequenceReverse(String primerSequenceReverse);
 
-    String getMarkerSubfragment();
-    void setMarkerSubfragment(String markerSubfragment);
+  String getPrimerNameReverse();
 
-    String getGeneticAccessionNumber();
-    void setGeneticAccessionNumber(String geneticAccessionNumber);
+  void setPrimerNameReverse(String primerNameReverse);
 
-    String getBoldProcessId();
-    void setBoldProcessId(String boldProcessId);
+  String getPrimerReferenceCitationReverse();
 
-    String getGeneticAccessionUri();
-    void setGeneticAccessionUri(String geneticAccessionUri);
+  void setPrimerReferenceCitationReverse(String primerReferenceCitationReverse);
 
-    String getGcContent();
-    void setGcContent(String gcContent);
+  String getPrimerReferenceLinkReverse();
 
-    String getChimeraCheck();
-    void setChimeraCheck(String chimeraCheck);
+  void setPrimerReferenceLinkReverse(String primerReferenceLinkReverse);
 
-    String getAssembly();
-    void setAssembly(String assembly);
+  String getPurificationMethod();
 
-    String getSop();
-    void setSop(String sop);
+  void setPurificationMethod(String purificationMethod);
 
-    String getFinishingStrategy();
-    void setFinishingStrategy(String finishingStrategy);
+  String getConsensusSequence();
 
-    String getAnnotSource();
-    void setAnnotSource(String annotSource);
+  void setConsensusSequence(String consensusSequence);
 
-    String getMarkerAccordance();
-    void setMarkerAccordance(String markerAccordance);
+  String getConsensusSequenceLength();
 
-    String getSeqQualityCheck();
-    void setSeqQualityCheck(String seqQualityCheck);
+  void setConsensusSequenceLength(String consensusSequenceLength);
 
-    String getAdapters();
-    void setAdapters(String adapters);
+  String getConsensusSequenceChromatogramFileUri();
 
-    String getMid();
-    void setMid(String mid);
+  void setConsensusSequenceChromatogramFileUri(String consensusSequenceChromatogramFileUri);
 
-    BlastResult getBlastResult();
-    void setBlastResult(BlastResult blastResult);
+  String getBarcodeSequence();
+
+  void setBarcodeSequence(String barcodeSequence);
+
+  String getHaplotype();
+
+  void setHaplotype(String haplotype);
+
+  String getMarker();
+
+  void setMarker(String marker);
+
+  String getMarkerSubfragment();
+
+  void setMarkerSubfragment(String markerSubfragment);
+
+  String getGeneticAccessionNumber();
+
+  void setGeneticAccessionNumber(String geneticAccessionNumber);
+
+  String getBoldProcessId();
+
+  void setBoldProcessId(String boldProcessId);
+
+  String getGeneticAccessionUri();
+
+  void setGeneticAccessionUri(String geneticAccessionUri);
+
+  String getGcContent();
+
+  void setGcContent(String gcContent);
+
+  String getChimeraCheck();
+
+  void setChimeraCheck(String chimeraCheck);
+
+  String getAssembly();
+
+  void setAssembly(String assembly);
+
+  String getSop();
+
+  void setSop(String sop);
+
+  String getFinishingStrategy();
+
+  void setFinishingStrategy(String finishingStrategy);
+
+  String getAnnotSource();
+
+  void setAnnotSource(String annotSource);
+
+  String getMarkerAccordance();
+
+  void setMarkerAccordance(String markerAccordance);
+
+  String getSeqQualityCheck();
+
+  void setSeqQualityCheck(String seqQualityCheck);
+
+  String getAdapters();
+
+  void setAdapters(String adapters);
+
+  String getMid();
+
+  void setMid(String mid);
+
+  BlastResult getBlastResult();
+
+  void setBlastResult(BlastResult blastResult);
 }
