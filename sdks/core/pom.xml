@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.gbif.pipelines</groupId>
     <artifactId>sdks</artifactId>
-   <version>3.2.0-SNAPSHOT</version>
+    <version>3.3.0-refactor-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -13,55 +13,20 @@
   <packaging>jar</packaging>
 
   <name>Pipelines :: Sdks :: Core</name>
-  <description>Main module contains API like classes, such as data interpretations, converters, DwCA reader and etc.
+  <description>Main module contains API like classes, such as data interpretations,
+    converters, DwCA reader and etc.
   </description>
 
   <properties>
     <generated-path>${project.basedir}/src/main/java-generated/</generated-path>
     <package>org.gbif.pipelines.core.converters</package>
-
     <axws-api.version>2.3.1</axws-api.version>
   </properties>
 
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.gbif.pipelines</groupId>
-        <artifactId>maven-extension-java-code-generator</artifactId>
-        <version>${project.version}</version>
-        <executions>
-          <execution>
-            <id>extensiongeneration</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>extensiongeneration</goal>
-            </goals>
-            <configuration>
-              <pathToWrite>${generated-path}</pathToWrite>
-              <avroNamespace>${namespace}</avroNamespace>
-              <packagePath>${package}</packagePath>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <!-- Add the generated sources to the classpath for IDEs -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>add-source</goal>
-            </goals>
-            <configuration>
-              <sources>
-                <source>${generated-path}</source>
-              </sources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
+
       <!-- Clean generated path -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -95,24 +60,21 @@
       <artifactId>jaxws-api</artifactId>
       <version>${axws-api.version}</version>
     </dependency>
+
 <!--    <dependency>-->
 <!--      <groupId>org.gbif.pipelines</groupId>-->
-<!--      <artifactId>models-pojo</artifactId>-->
+<!--      <artifactId>keygen</artifactId>-->
+<!--      <exclusions>-->
+<!--        <exclusion>-->
+<!--          <groupId>org.slf4j</groupId>-->
+<!--          <artifactId>log4j-over-slf4j</artifactId>-->
+<!--        </exclusion>-->
+<!--        <exclusion>-->
+<!--          <groupId>org.apache.hadoop</groupId>-->
+<!--          <artifactId>hadoop-auth</artifactId>-->
+<!--        </exclusion>-->
+<!--      </exclusions>-->
 <!--    </dependency>-->
-    <dependency>
-      <groupId>org.gbif.pipelines</groupId>
-      <artifactId>keygen</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>log4j-over-slf4j</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-auth</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
 
     <!-- GBIF -->
     <dependency>
@@ -323,10 +285,22 @@
       <groupId>org.gbif</groupId>
       <artifactId>dwc-api</artifactId>
     </dependency>
+    <!-- Use the Avro models for testing only -->
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
-      <artifactId>models</artifactId>
+      <artifactId>models-avro</artifactId>
+      <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.gbif.pipelines</groupId>
+      <artifactId>keygen</artifactId>
+    </dependency>
+    <!--    <dependency>-->
+    <!--      <groupId>org.gbif.pipelines</groupId>-->
+    <!--      <artifactId>models-pojo</artifactId>-->
+<!--    <scope>test</scope>-->
+    <!--    </dependency>-->
+
 
   </dependencies>
 

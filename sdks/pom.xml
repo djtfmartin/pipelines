@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.gbif.pipelines</groupId>
     <artifactId>pipelines-parent</artifactId>
-    <version>3.2.0-SNAPSHOT</version>
+    <version>3.3.0-refactor-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -18,13 +18,17 @@
   </description>
 
   <modules>
-    <module>plugins</module>
-    <module>beam-common</module>
-    <module>beam-transforms</module>
+    <module>models-avro</module>
     <module>core</module>
-    <module>models</module>
-    <module>sdks-integration-tests</module>
-    <module>tools</module>
+    <module>converters-avro</module>
+    <module>plugins</module>
+<!--    <module>beam-common</module>-->
+<!--    <module>beam-transforms</module>-->
+
+
+
+<!--    <module>sdks-integration-tests</module>-->
+<!--    <module>tools</module>-->
     <module>variables</module>
   </modules>
 

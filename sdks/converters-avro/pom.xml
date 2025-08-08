@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.gbif.pipelines</groupId>
+        <artifactId>sdks</artifactId>
+        <version>3.3.0-refactor-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>converters-avro</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Pipelines :: Sdks :: Convertes :: AVRO</name>
+    <description>
+        Generated classes for generating AVRO
+    </description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <generated-path>${project.basedir}/src/main/java-generated/</generated-path>
+        <package>org.gbif.pipelines.core.converters</package>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.gbif.pipelines</groupId>
+            <artifactId>core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.gbif.pipelines</groupId>
+            <artifactId>models-avro</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.gbif.pipelines</groupId>
+                <artifactId>maven-extension-java-code-generator</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <id>extensiongeneration</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>extensiongeneration</goal>
+                        </goals>
+                        <configuration>
+                            <pathToWrite>${generated-path}</pathToWrite>
+                            <avroNamespace>${namespace}</avroNamespace>
+                            <packagePath>${package}</packagePath>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${generated-path}</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

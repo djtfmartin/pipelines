@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.gbif.pipelines</groupId>
     <artifactId>ingestion</artifactId>
-   <version>3.2.0-SNAPSHOT</version>
+   <version>3.3.0-refactor-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -44,7 +44,7 @@
     </dependency>
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
-      <artifactId>models</artifactId>
+      <artifactId>models-avro</artifactId>
     </dependency>
     <dependency>
       <groupId>org.gbif.pipelines</groupId>

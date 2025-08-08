@@ -5,14 +5,14 @@
   <parent>
     <groupId>org.gbif.pipelines</groupId>
     <artifactId>sdks</artifactId>
-    <version>3.2.0-SNAPSHOT</version>
+    <version>3.3.0-refactor-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>models</artifactId>
+  <artifactId>models-avro</artifactId>
   <packaging>jar</packaging>
 
-  <name>Pipelines :: Sdks :: Models</name>
+  <name>Pipelines :: Sdks :: Models :: AVRO</name>
   <description>Data models represented in Avro binary format, generated from Avro schemas</description>
 
   <properties>

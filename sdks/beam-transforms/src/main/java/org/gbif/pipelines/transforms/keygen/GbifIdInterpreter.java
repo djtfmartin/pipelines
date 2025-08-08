@@ -24,20 +24,6 @@ import org.gbif.pipelines.keygen.identifier.OccurrenceKeyBuilder;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class GbifIdInterpreter {
 
-  /** Copies GBIF id from ExtendedRecord id or generates/gets existing GBIF id */
-  public static BiConsumer<ExtendedRecord, IdentifierRecord> interpretGbifId(
-      HBaseLockingKey keygenService,
-      boolean isTripletValid,
-      boolean isOccurrenceIdValid,
-      boolean useExtendedRecordId,
-      boolean generateIdIfAbsent,
-      BiConsumer<ExtendedRecord, IdentifierRecord> gbifIdFn) {
-    gbifIdFn = gbifIdFn == null ? interpretCopyGbifId() : gbifIdFn;
-    return useExtendedRecordId
-        ? gbifIdFn
-        : interpretGbifId(keygenService, isTripletValid, isOccurrenceIdValid, generateIdIfAbsent);
-  }
-
   /** Generates or gets existing GBIF id */
   public static BiConsumer<ExtendedRecord, IdentifierRecord> interpretGbifId(
       HBaseLockingKey keygenService,
@@ -78,34 +64,6 @@ public class GbifIdInterpreter {
         ir.addIssue(GBIF_ID_ABSENT);
       } else {
         ir.addIssue(GBIF_ID_INVALID);
-      }
-    };
-  }
-
-  /** Generates or gets existing GBIF id */
-  public static Consumer<IdentifierRecord> interpretAbsentGbifId(
-      HBaseLockingKey keygenService, boolean isTripletValid, boolean isOccurrenceIdValid) {
-    return ir -> {
-      SimpleOccurrenceRecord occRecords = SimpleOccurrenceRecord.create();
-
-      // Adds occurrenceId
-      if (isOccurrenceIdValid && !Strings.isNullOrEmpty(ir.getUniqueKey())) {
-        occRecords.setOccurrenceId(ir.getUniqueKey());
-      }
-
-      // Adds triplet, if isTripletValid and isOccurrenceIdValid is false, or occurrenceId is null
-      if (isTripletValid && !Strings.isNullOrEmpty(ir.getAssociatedKey())) {
-        occRecords.setTriplet(ir.getAssociatedKey());
-      }
-
-      Optional<Long> gbifId =
-          Keygen.getKey(keygenService, isTripletValid, isOccurrenceIdValid, true, occRecords);
-
-      if (gbifId.isPresent() && !Keygen.getErrorKey().equals(gbifId.get())) {
-        ir.setInternalId(gbifId.get().toString());
-        ir.getIssues().setIssueList(Collections.emptyList());
-      } else {
-        ir.getIssues().setIssueList(Collections.singletonList(GBIF_ID_INVALID));
       }
     };
   }
