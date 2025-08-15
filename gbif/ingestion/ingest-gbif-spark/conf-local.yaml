@@ -2,19 +2,20 @@
 #input: "/Users/tim/dev/data/svampeatlas.verbatim.avro"
 #input: "../pontaurus.verbatim.avro"
 #input: "../fmnh-lc.verbatim.avro"
-input: "../bell.verbatim.avro"
+input: "../pipelines/gbif/ingestion/ingest-gbif-spark/berry.verbatim.avro"
+#/Users/djtfmartin/dev/pipelines/gbif/ingestion/ingest-gbif-spark
 #input: "../berry.verbatim.avro"
 
 #input: "/Users/tsj442/dev/data/inaturalist.verbatim.avro"
 
 # The target directory file (may use hdfs://... if the environment supports it)
-output: "/tmp/interpreted"
+output: "/Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/interpreted-out"
 
 # The Spark Connect URL which may be omitted for use with spark-submit
 sparkRemote: "sc://localhost"
 
 # The location of the Jar file, required when using Spark Connect
-jarPath: "./gbif/ingestion/ingest-gbif-spark/target/ingest-gbif-spark-3.2.0-SNAPSHOT-3.5.6.jar"
+jarPath: "/Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/target/ingest-gbif-spark-3.2.7-SNAPSHOT-3.5.6.jar"
 
 # The Vocabulary server from which to pull full vocabularies on executor startup
 vocabularyApiUrl: "https://api.gbif.org/v1/"
@@ -27,3 +28,7 @@ speciesMatchParallelism: 12
 
 # Geocode lookup
 geocodeAPI: "https://api.gbif.org/v1/"
+
+checklistKeys:
+  - d7dddbf4-2cf0-4f39-9b2a-bb099caae36c
+  - 7ddf754f-d193-4cc9-b351-99906754a03b

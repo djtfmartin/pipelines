@@ -13,7 +13,9 @@
  */
 package org.gbif.pipelines.interpretation.spark;
 
+import static org.gbif.pipelines.interpretation.spark.HdfsView.transformToHdfsView;
 import static org.gbif.pipelines.interpretation.spark.LocationInterpretation.locationTransform;
+import static org.gbif.pipelines.interpretation.spark.TaxonomyInterpretation.taxonomyTransform;
 import static org.gbif.pipelines.interpretation.spark.TemporalInterpretation.temporalTransform;
 
 import java.io.IOException;
@@ -25,13 +27,25 @@ import org.gbif.pipelines.io.avro.*;
 
 public class Interpretation implements Serializable {
   public static void main(String[] args) throws IOException {
+
+    if (args.length < 1) {
+      System.err.println("Usage: java -jar ingest-gbif-spark-<version>.jar <config.yaml>");
+      System.exit(1);
+    }
+
     Config config = Config.fromFirstArg(args);
 
     SparkSession.Builder sb = SparkSession.builder();
 
-    if (config.getSparkRemote() != null) sb.remote(config.getSparkRemote());
+    if (config.getSparkRemote() != null) {
+      sb.remote(config.getSparkRemote());
+    }
+
     SparkSession spark = sb.getOrCreate();
-    if (config.getJarPath() != null) spark.addArtifact(config.getJarPath());
+
+    if (config.getJarPath() != null) {
+      spark.addArtifact(config.getJarPath());
+    }
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =
@@ -41,13 +55,18 @@ public class Interpretation implements Serializable {
     Dataset<BasicRecord> basic = basicTransform(config, records);
     Dataset<LocationRecord> location = locationTransform(config, spark, records);
     Dataset<TemporalRecord> temporal = temporalTransform(records);
+    Dataset<MultiTaxonRecord> taxonomy = taxonomyTransform(config, spark, records);
 
     // Write the intermediate output (useful for debugging)
-    basic.write().mode("overwrite").parquet(config.getOutput() + "/basic");
-    location.write().mode("overwrite").parquet(config.getOutput() + "/location");
-    temporal.write().mode("overwrite").parquet(config.getOutput() + "/temporal");
+    basic.write().mode("overwrite").parquet(config.getOutput() + "/parquet/basic");
+    location.write().mode("overwrite").parquet(config.getOutput() + "/parquet/location");
+    temporal.write().mode("overwrite").parquet(config.getOutput() + "/parquet/temporal");
+    taxonomy.write().mode("overwrite").parquet(config.getOutput() + "/parquet/taxonomy");
 
-    // TODO: read and join all the intermediate outputs to the HDFS and JSON views
+    DataFrameWriter<OccurrenceHdfsRecord> writer =
+        transformToHdfsView(basic, location, taxonomy, temporal).write().mode("overwrite");
+    writer.parquet(config.getOutput() + "/parquet/hdfsview");
+
     spark.close();
   }
 

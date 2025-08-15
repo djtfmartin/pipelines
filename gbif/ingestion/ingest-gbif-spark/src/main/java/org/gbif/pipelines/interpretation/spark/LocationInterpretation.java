@@ -41,8 +41,9 @@ public class LocationInterpretation {
   /** Transforms the source records into the location records using the geocode service. */
   public static Dataset<LocationRecord> locationTransform(
       Config config, SparkSession spark, Dataset<ExtendedRecord> source) {
+
     LocationTransform locationTransform =
-        LocationTransform.builder().geocodeApiUrl(config.getSpeciesMatchAPI()).build();
+        LocationTransform.builder().geocodeApiUrl(config.getGeocodeAPI()).build();
 
     // extract the location
     Dataset<RecordWithLocation> recordWithLocation =
