@@ -7,7 +7,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.geocode.GeocodeRequest;
-import org.gbif.pipelines.core.interpreters.model.LocationRecord;
+import org.gbif.pipelines.model.LocationRecord;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

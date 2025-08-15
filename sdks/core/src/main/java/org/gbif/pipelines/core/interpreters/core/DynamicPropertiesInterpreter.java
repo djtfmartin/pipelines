@@ -5,14 +5,14 @@ import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.BasicRecord;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.VocabularyConcept;
-import org.gbif.pipelines.core.interpreters.model.VocabularyTag;
 import org.gbif.pipelines.core.parsers.vertnet.LifeStageParser;
 import org.gbif.pipelines.core.parsers.vertnet.SexParser;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
 import org.gbif.pipelines.core.utils.VocabularyConceptFactory;
+import org.gbif.pipelines.model.BasicRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
+import org.gbif.pipelines.model.VocabularyConcept;
+import org.gbif.pipelines.model.VocabularyTag;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DynamicPropertiesInterpreter {

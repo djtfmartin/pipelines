@@ -12,7 +12,7 @@ import org.gbif.api.util.validators.identifierschemes.OrcidValidator;
 import org.gbif.api.util.validators.identifierschemes.OtherValidator;
 import org.gbif.api.util.validators.identifierschemes.WikidataValidator;
 import org.gbif.api.vocabulary.AgentIdentifierType;
-import org.gbif.pipelines.core.interpreters.model.AgentIdentifier;
+import org.gbif.pipelines.model.AgentIdentifier;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class AgentIdentifierParser {

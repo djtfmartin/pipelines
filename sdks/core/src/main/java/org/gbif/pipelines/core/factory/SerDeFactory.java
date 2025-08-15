@@ -10,10 +10,10 @@ import com.fasterxml.jackson.dataformat.avro.AvroModule;
 import java.util.List;
 import lombok.experimental.UtilityClass;
 import org.apache.avro.specific.SpecificData;
-import org.gbif.pipelines.core.interpreters.json.Coordinates;
-import org.gbif.pipelines.core.interpreters.json.GbifClassification;
-import org.gbif.pipelines.core.interpreters.json.OccurrenceJsonRecord;
-import org.gbif.pipelines.core.interpreters.json.VerbatimRecord;
+import org.gbif.pipelines.json.Coordinates;
+import org.gbif.pipelines.json.GbifClassification;
+import org.gbif.pipelines.json.OccurrenceJsonRecord;
+import org.gbif.pipelines.json.VerbatimRecord;
 
 @UtilityClass
 public class SerDeFactory {

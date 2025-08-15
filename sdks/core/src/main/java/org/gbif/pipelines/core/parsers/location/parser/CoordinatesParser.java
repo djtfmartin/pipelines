@@ -9,8 +9,8 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.kvs.geocode.GeocodeRequest;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.parsers.common.ParsedField;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 /** Parser for the Dwc Terms related to the coordinates. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

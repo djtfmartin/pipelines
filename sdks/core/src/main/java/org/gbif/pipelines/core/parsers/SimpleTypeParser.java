@@ -7,7 +7,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.common.parsers.NumberParser;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 /** Utility class that parses basic data types. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

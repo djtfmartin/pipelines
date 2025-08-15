@@ -12,7 +12,7 @@ import org.gbif.dwc.record.Record;
 import org.gbif.dwc.record.StarRecord;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 /** Converters from *.class to {@link ExtendedRecord} */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

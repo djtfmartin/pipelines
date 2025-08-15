@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 /**
  * In case of sampling event occurrence records stored in extensions, this converter extracts

@@ -16,13 +16,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.gbif.common.parsers.date.DateComponentOrdering;
 import org.gbif.dwc.terms.DcTerm;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.functions.SerializableFunction;
- import org.gbif.pipelines.io.avro.ExtendedRecord;
- import org.gbif.pipelines.io.avro.TemporalRecord;
+import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.gbif.pipelines.io.avro.TemporalRecord;
+import org.gbif.pipelines.model.EventDate;
 import org.junit.Test;
 
 public class TemporalInterpreterTest {
@@ -38,7 +40,15 @@ public class TemporalInterpreterTest {
     TemporalRecord tr = TemporalRecord.newBuilder().setId("1").build();
 
     TemporalInterpreter interpreter = TemporalInterpreter.builder().create();
-    interpreter.interpretTemporal(er, tr);
+    interpreter.interpretTemporal(
+        er,
+        tr,
+        new Supplier<EventDate>() {
+          @Override
+          public EventDate get() {
+            return null;
+          }
+        });
 
     assertEquals("1879", tr.getEventDate().getInterval());
     assertEquals("1879-01-01T00:00:00.000", tr.getEventDate().getGte());

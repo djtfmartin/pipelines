@@ -8,10 +8,10 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.api.model.Constants;
-import org.gbif.pipelines.core.interpreters.model.Diagnostics;
-import org.gbif.pipelines.core.interpreters.model.RankedName;
-import org.gbif.pipelines.core.interpreters.model.RankedNameWithAuthorship;
-import org.gbif.pipelines.core.interpreters.model.TaxonRecord;
+import org.gbif.pipelines.model.Diagnostics;
+import org.gbif.pipelines.model.RankedName;
+import org.gbif.pipelines.model.RankedNameWithAuthorship;
+import org.gbif.pipelines.model.TaxonRecord;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 /** Adapts a {@link NameUsageMatchResponse} into a {@link TaxonRecord} */

@@ -30,11 +30,11 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.GbifTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.pipelines.core.interpreters.Interpretation;
-import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.SimpleTypeParser;
 import org.gbif.pipelines.core.parsers.VocabularyParser;
 import org.gbif.pipelines.core.parsers.identifier.AgentIdentifierParser;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
+import org.gbif.pipelines.model.*;
 
 /** Interpreting function that receives a Record instance and applies an interpretation to it. */
 @Slf4j

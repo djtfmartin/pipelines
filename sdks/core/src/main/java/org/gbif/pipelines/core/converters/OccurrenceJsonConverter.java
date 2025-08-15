@@ -19,11 +19,11 @@ import org.gbif.api.model.Constants;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
 import org.gbif.pipelines.core.interpreters.core.TaxonomyInterpreter;
-import org.gbif.pipelines.core.interpreters.json.Classification;
-import org.gbif.pipelines.core.interpreters.json.GeologicalRange;
-import org.gbif.pipelines.core.interpreters.json.OccurrenceJsonRecord;
-import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.utils.SortUtils;
+import org.gbif.pipelines.json.Classification;
+import org.gbif.pipelines.json.GeologicalRange;
+import org.gbif.pipelines.json.OccurrenceJsonRecord;
+import org.gbif.pipelines.model.*;
 
 @Slf4j
 @Builder
@@ -179,11 +179,11 @@ public class OccurrenceJsonConverter {
         .ifPresent(builder::setOtherCatalogNumbersJoined);
 
     // Geological context
-    org.gbif.pipelines.core.interpreters.model.GeologicalContext gx = basic.getGeologicalContext();
+    org.gbif.pipelines.model.GeologicalContext gx = basic.getGeologicalContext();
     if (gx != null) {
 
-      org.gbif.pipelines.core.interpreters.json.GeologicalContext.Builder gcb =
-          org.gbif.pipelines.core.interpreters.json.GeologicalContext.newBuilder()
+      org.gbif.pipelines.json.GeologicalContext.Builder gcb =
+          org.gbif.pipelines.json.GeologicalContext.newBuilder()
               .setLowestBiostratigraphicZone(gx.getLowestBiostratigraphicZone())
               .setHighestBiostratigraphicZone(gx.getHighestBiostratigraphicZone())
               .setGroup(gx.getGroup())

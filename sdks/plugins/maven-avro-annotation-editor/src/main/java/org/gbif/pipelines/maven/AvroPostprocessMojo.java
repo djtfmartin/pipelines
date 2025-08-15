@@ -170,12 +170,43 @@ public class AvroPostprocessMojo extends AbstractMojo {
     int interIdx = idxs.get(1);
     int ovrdIdx = idxs.get(2);
     int idIdx = idxs.get(3);
+
+    // public class ExtendedRecord extends
     if (interIdx != -1 && ovrdIdx != -1 && idIdx != -1) {
-      String replace =
-          INTER_BASE + ", " + defaultPackage + ".Issues, " + defaultPackage + ".Record {";
-      replace = lines.get(interIdx).replace(INTER, replace);
+
+      String classDeclarationLine = lines.get(interIdx);
+      String className = getClassName(classDeclarationLine);
+
+      String packageName = lines.get(5);
+
+      String replace = null;
+
+      if (!packageName.contains(".json")) {
+        replace =
+            INTER_BASE
+                + ", "
+                + defaultPackage
+                + ".Issues, "
+                + defaultPackage
+                + ".Record, \n\t\t\torg.gbif.pipelines.model."
+                + className
+                + " {";
+      } else {
+        replace =
+            INTER_BASE + ", " + defaultPackage + ".Issues, " + defaultPackage + ".Record" + " {";
+      }
+      replace = classDeclarationLine.replace(INTER, replace);
       lines.set(interIdx, replace);
     }
+  }
+
+  public String getClassName(String classDeclarationLine) {
+    java.util.regex.Matcher matcher =
+        java.util.regex.Pattern.compile("\\bclass\\s+(\\w+)").matcher(classDeclarationLine);
+    if (matcher.find()) {
+      return matcher.group(1);
+    }
+    return null;
   }
 
   /**
@@ -189,8 +220,24 @@ public class AvroPostprocessMojo extends AbstractMojo {
     int ovrdIdx = idxs.get(2);
     int idIdx = idxs.get(3);
     if (interIdx != -1 && ovrdIdx == -1 && idIdx != -1) {
-      String replace = INTER_BASE + ", " + defaultPackage + ".Record {";
-      replace = lines.get(interIdx).replace(INTER, replace);
+      String classDeclarationLine = lines.get(interIdx);
+      String className = getClassName(classDeclarationLine);
+      String packageName = lines.get(5);
+
+      String replace = null;
+
+      if (!packageName.contains(".json")) {
+        replace =
+            INTER_BASE
+                + ", "
+                + defaultPackage
+                + ".Record, \n\t\t\torg.gbif.pipelines.model."
+                + className
+                + " {";
+      } else {
+        replace = INTER_BASE + ", " + defaultPackage + ".Record" + " {";
+      }
+      replace = classDeclarationLine.replace(INTER, replace);
       lines.set(interIdx, replace);
     }
   }

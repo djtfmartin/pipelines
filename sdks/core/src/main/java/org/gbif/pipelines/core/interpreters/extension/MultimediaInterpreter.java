@@ -32,9 +32,9 @@ import org.gbif.pipelines.core.functions.SerializableFunction;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.Result;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.Multimedia;
-import org.gbif.pipelines.core.interpreters.model.MultimediaRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
+import org.gbif.pipelines.model.Multimedia;
+import org.gbif.pipelines.model.MultimediaRecord;
 
 /**
  * Interpreter for the multimedia extension, Interprets form {@link ExtendedRecord} to {@link

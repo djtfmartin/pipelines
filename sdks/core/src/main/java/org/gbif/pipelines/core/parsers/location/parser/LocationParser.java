@@ -17,9 +17,9 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.geocode.GeocodeRequest;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.parsers.VocabularyParser;
 import org.gbif.pipelines.core.parsers.common.ParsedField;
+import org.gbif.pipelines.model.ExtendedRecord;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 
 /**

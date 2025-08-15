@@ -9,12 +9,12 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
-import org.gbif.pipelines.core.interpreters.json.*;
-import org.gbif.pipelines.core.interpreters.json.Parent;
-import org.gbif.pipelines.core.interpreters.model.*;
-import org.gbif.pipelines.core.interpreters.model.GrscicollRecord;
-import org.gbif.pipelines.core.interpreters.model.MeasurementOrFactRecord;
 import org.gbif.pipelines.core.utils.HashConverter;
+import org.gbif.pipelines.json.*;
+import org.gbif.pipelines.json.Parent;
+import org.gbif.pipelines.model.*;
+import org.gbif.pipelines.model.GrscicollRecord;
+import org.gbif.pipelines.model.MeasurementOrFactRecord;
 
 @Slf4j
 @Builder
@@ -168,7 +168,7 @@ public class ParentJsonConverter {
           .setEventHierarchyLevels(eventIDs.size());
 
       if (builder.build().getSurveyID() == null) {
-        List<org.gbif.pipelines.core.interpreters.model.Parent> surveys =
+        List<org.gbif.pipelines.model.Parent> surveys =
             eventCore.getParentsLineage().stream()
                 .filter(
                     e ->
@@ -263,10 +263,8 @@ public class ParentJsonConverter {
   private List<String> getParentsLineageEventTypes() {
     List<String> eventTypes =
         eventCore.getParentsLineage().stream()
-            .sorted(
-                Comparator.comparingInt(org.gbif.pipelines.core.interpreters.model.Parent::getOrder)
-                    .reversed())
-            .map(org.gbif.pipelines.core.interpreters.model.Parent::getEventType)
+            .sorted(Comparator.comparingInt(org.gbif.pipelines.model.Parent::getOrder).reversed())
+            .map(org.gbif.pipelines.model.Parent::getEventType)
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
@@ -283,10 +281,8 @@ public class ParentJsonConverter {
 
     List<String> eventIDs =
         eventCore.getParentsLineage().stream()
-            .sorted(
-                Comparator.comparingInt(org.gbif.pipelines.core.interpreters.model.Parent::getOrder)
-                    .reversed())
-            .map(org.gbif.pipelines.core.interpreters.model.Parent::getId)
+            .sorted(Comparator.comparingInt(org.gbif.pipelines.model.Parent::getOrder).reversed())
+            .map(org.gbif.pipelines.model.Parent::getId)
             .collect(Collectors.toList());
     eventIDs.add(eventCore.getId());
     return eventIDs;
@@ -358,8 +354,7 @@ public class ParentJsonConverter {
     }
   }
 
-  protected static List<Parent> convertParents(
-      List<org.gbif.pipelines.core.interpreters.model.Parent> parents) {
+  protected static List<Parent> convertParents(List<org.gbif.pipelines.model.Parent> parents) {
     if (parents == null) {
       return Collections.emptyList();
     }

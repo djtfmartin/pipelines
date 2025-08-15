@@ -22,10 +22,10 @@ import org.gbif.common.parsers.date.TemporalRangeParser;
 import org.gbif.dwc.terms.DcTerm;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.functions.SerializableFunction;
-import org.gbif.pipelines.core.interpreters.model.EventDate;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.TemporalRecord;
 import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
+import org.gbif.pipelines.model.EventDate;
+import org.gbif.pipelines.model.ExtendedRecord;
+import org.gbif.pipelines.model.TemporalRecord;
 
 /** Interprets date representations into Dates and EventDate (ranges) to support API v1 */
 @Slf4j

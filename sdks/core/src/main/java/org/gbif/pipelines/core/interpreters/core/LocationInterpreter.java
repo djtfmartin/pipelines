@@ -31,13 +31,13 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.GbifTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.geocode.GeocodeRequest;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.GadmFeatures;
-import org.gbif.pipelines.core.interpreters.model.LocationRecord;
-import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
 import org.gbif.pipelines.core.parsers.SimpleTypeParser;
 import org.gbif.pipelines.core.parsers.common.ParsedField;
 import org.gbif.pipelines.core.parsers.location.parser.*;
+import org.gbif.pipelines.model.ExtendedRecord;
+import org.gbif.pipelines.model.GadmFeatures;
+import org.gbif.pipelines.model.LocationRecord;
+import org.gbif.pipelines.model.MetadataRecord;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 

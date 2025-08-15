@@ -12,7 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.NameUsageMatchRequest;
-import org.gbif.pipelines.core.interpreters.model.*;
+import org.gbif.pipelines.model.*;
+import org.gbif.pipelines.model.RankedName;
+import org.gbif.pipelines.model.RankedNameWithAuthorship;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 /**

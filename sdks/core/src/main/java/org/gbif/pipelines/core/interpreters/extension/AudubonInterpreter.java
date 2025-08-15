@@ -27,9 +27,9 @@ import org.gbif.pipelines.core.functions.SerializableFunction;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.Result;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;
-import org.gbif.pipelines.core.interpreters.model.Audubon;
-import org.gbif.pipelines.core.interpreters.model.AudubonRecord;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.model.Audubon;
+import org.gbif.pipelines.model.AudubonRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 /**
  * Interpreter for the Audubon extension, Interprets form {@link ExtendedRecord} to {@link

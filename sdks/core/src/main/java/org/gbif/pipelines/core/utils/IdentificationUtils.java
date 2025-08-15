@@ -21,7 +21,7 @@ import org.gbif.common.parsers.date.DateParsers;
 import org.gbif.common.parsers.date.TemporalParser;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 /** Utility class to help with the extraction of the identification fields. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

@@ -2,7 +2,6 @@ package org.gbif.pipelines.core.converters;
 
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import org.gbif.pipelines.core.interpreters.model.*;
 
 @Slf4j
 @Builder

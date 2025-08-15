@@ -15,9 +15,9 @@ import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
 import org.gbif.pipelines.core.utils.VocabularyConceptFactory;
+import org.gbif.pipelines.model.*;
 import org.gbif.vocabulary.lookup.LookupConcept;
 import org.jetbrains.annotations.Nullable;
 

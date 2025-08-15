@@ -8,7 +8,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.dwc.terms.Term;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 // import org.gbif.pipelines.io.avro.ExtendedRecord;
 // import org.gbif.pipelines.io.avro.Issues;

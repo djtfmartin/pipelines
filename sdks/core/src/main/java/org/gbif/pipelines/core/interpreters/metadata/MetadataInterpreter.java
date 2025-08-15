@@ -18,12 +18,12 @@ import org.gbif.api.util.comparators.EndpointPriorityComparator;
 import org.gbif.api.vocabulary.License;
 import org.gbif.api.vocabulary.TagName;
 import org.gbif.common.parsers.LicenseParser;
-import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.core.ws.metadata.response.Dataset;
 import org.gbif.pipelines.core.ws.metadata.response.Installation;
 import org.gbif.pipelines.core.ws.metadata.response.Network;
 import org.gbif.pipelines.core.ws.metadata.response.Organization;
+import org.gbif.pipelines.model.MetadataRecord;
 
 /** Interprets GBIF metadata by datasetId */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -32,8 +32,7 @@ public class MetadataInterpreter {
   /** Gets information from GBIF API by datasetId */
   public static BiConsumer<String, MetadataRecord> interpret(
       MetadataServiceClient client,
-      TriFunction<String, String, String, org.gbif.pipelines.core.interpreters.model.MachineTag>
-          createMachineTagFn) {
+      TriFunction<String, String, String, org.gbif.pipelines.model.MachineTag> createMachineTagFn) {
     return (datasetId, mdr) -> {
 
       // Set required metadata properties
@@ -146,8 +145,7 @@ public class MetadataInterpreter {
   private static void copyMachineTags(
       List<MachineTag> machineTags,
       MetadataRecord mdr,
-      TriFunction<String, String, String, org.gbif.pipelines.core.interpreters.model.MachineTag>
-          createMachineTagFn) {
+      TriFunction<String, String, String, org.gbif.pipelines.model.MachineTag> createMachineTagFn) {
     if (Objects.nonNull(machineTags) && !machineTags.isEmpty()) {
       mdr.setMachineTags(
           machineTags.stream()

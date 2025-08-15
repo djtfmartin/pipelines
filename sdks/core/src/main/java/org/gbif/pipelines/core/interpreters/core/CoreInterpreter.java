@@ -23,8 +23,8 @@ import org.gbif.common.parsers.NumberParser;
 import org.gbif.common.parsers.UrlParser;
 import org.gbif.dwc.terms.DcTerm;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
+import org.gbif.pipelines.model.*;
 
 /** Interpreting function that receives a Record instance and applies an interpretation to */
 @Slf4j

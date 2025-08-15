@@ -11,10 +11,10 @@ import lombok.NoArgsConstructor;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.Result;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;
-import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.ws.blast.BlastServiceClient;
 import org.gbif.pipelines.core.ws.blast.request.Sequence;
 import org.gbif.pipelines.core.ws.blast.response.Blast;
+import org.gbif.pipelines.model.*;
 
 /**
  * Interpreter for the Amplification extension, Interprets form {@link ExtendedRecord} to {@link

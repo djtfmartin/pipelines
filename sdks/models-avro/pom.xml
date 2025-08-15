@@ -80,29 +80,29 @@
             <configuration>
               <stringType>String</stringType>
               <enableDecimalLogicalType>true</enableDecimalLogicalType>
-              <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
+              <sourceDirectory>${project.basedir}/src/main/avro/core</sourceDirectory>
               <outputDirectory>${avro-generated-path}</outputDirectory>
               <testSourceDirectory>../demo/src/main/java/test/avro/</testSourceDirectory>
               <testOutputDirectory>../demo/src/main/java/test/java-generated/</testOutputDirectory>
               <imports>
                 <import>${project.basedir}/src/main/avro/issue-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/experimental/dataset-annotation-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/json/common-json-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/json/derived-metadata-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/json/event-json-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/json/occurrence-json-record.avsc</import>
+<!--                <import>${project.basedir}/src/main/avro/experimental/dataset-annotation-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/json/common-json-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/json/derived-metadata-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/json/event-json-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/json/occurrence-json-record.avsc</import>-->
                 <import>${project.basedir}/src/main/avro/core/common-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/core/temporal-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/core/taxon-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/json/temporal-inherited-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/json/location-inherited-record.avsc</import>
-                <import>${project.basedir}/src/main/avro/json/event-inherited-record.avsc</import>
+<!--                <import>${project.basedir}/src/main/avro/core/temporal-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/core/taxon-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/json/temporal-inherited-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/json/location-inherited-record.avsc</import>-->
+<!--                <import>${project.basedir}/src/main/avro/json/event-inherited-record.avsc</import>-->
               </imports>
             </configuration>
           </execution>
         </executions>
       </plugin>
-      <!-- Change generated avros, add GBIF features -->
+      <!-- Change generated avro classes, add GBIF features -->
       <plugin>
         <groupId>org.gbif.pipelines</groupId>
         <artifactId>maven-avro-annotation-editor</artifactId>
@@ -177,6 +177,12 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-core</artifactId>
+    </dependency>
+
+    <!-- required for the interfaces -->
+    <dependency>
+      <groupId>org.gbif.pipelines</groupId>
+      <artifactId>models</artifactId>
     </dependency>
   </dependencies>
 

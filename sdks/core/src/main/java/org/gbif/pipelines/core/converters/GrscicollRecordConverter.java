@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.gbif.pipelines.core.interpreters.model.Match;
+import org.gbif.pipelines.model.Match;
 import org.gbif.rest.client.grscicoll.GrscicollLookupResponse;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

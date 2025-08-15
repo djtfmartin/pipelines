@@ -302,6 +302,11 @@
       <!-- This project -->
       <dependency>
         <groupId>org.gbif.pipelines</groupId>
+        <artifactId>models</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.gbif.pipelines</groupId>
         <artifactId>models-avro</artifactId>
         <version>${project.version}</version>
       </dependency>

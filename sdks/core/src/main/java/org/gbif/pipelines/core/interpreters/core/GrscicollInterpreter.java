@@ -17,10 +17,10 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.grscicoll.GrscicollLookupRequest;
 import org.gbif.pipelines.core.converters.GrscicollRecordConverter;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.GrscicollRecord;
-import org.gbif.pipelines.core.interpreters.model.MetadataRecord;
 import org.gbif.pipelines.core.parsers.VocabularyParser;
+import org.gbif.pipelines.model.ExtendedRecord;
+import org.gbif.pipelines.model.GrscicollRecord;
+import org.gbif.pipelines.model.MetadataRecord;
 import org.gbif.rest.client.grscicoll.GrscicollLookupResponse;
 import org.gbif.rest.client.grscicoll.GrscicollLookupResponse.Status;
 
@@ -31,7 +31,7 @@ public class GrscicollInterpreter {
   public static BiConsumer<ExtendedRecord, GrscicollRecord> grscicollInterpreter(
       KeyValueStore<GrscicollLookupRequest, GrscicollLookupResponse> kvStore,
       MetadataRecord mdr,
-      Supplier<org.gbif.pipelines.core.interpreters.model.Match> matchSupplier) {
+      Supplier<org.gbif.pipelines.model.Match> matchSupplier) {
     return (er, gr) -> {
       if (kvStore == null || mdr == null) {
         return;

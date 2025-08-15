@@ -10,10 +10,10 @@ import java.util.Map;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
 import org.gbif.pipelines.core.parsers.vertnet.DynamicProperty;
 import org.gbif.pipelines.core.parsers.vertnet.LengthParser;
 import org.gbif.pipelines.core.parsers.vertnet.MassParser;
+import org.gbif.pipelines.model.ExtendedRecord;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MeasurementOrFactConverter {

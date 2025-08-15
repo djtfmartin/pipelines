@@ -8,8 +8,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.gbif.pipelines.core.interpreters.model.VocabularyConcept;
-import org.gbif.pipelines.core.interpreters.model.VocabularyTag;
+import org.gbif.pipelines.model.VocabularyConcept;
+import org.gbif.pipelines.model.VocabularyTag;
 import org.gbif.vocabulary.lookup.LookupConcept;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

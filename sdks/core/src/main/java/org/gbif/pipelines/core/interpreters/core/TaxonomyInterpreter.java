@@ -18,12 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.NameUsageMatchRequest;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.RankedName;
-import org.gbif.pipelines.core.interpreters.model.RankedNameWithAuthorship;
-import org.gbif.pipelines.core.interpreters.model.TaxonRecord;
 import org.gbif.pipelines.core.parsers.taxonomy.TaxonRecordConverter;
 import org.gbif.pipelines.core.utils.IdentificationUtils;
+import org.gbif.pipelines.model.ExtendedRecord;
+import org.gbif.pipelines.model.RankedName;
+import org.gbif.pipelines.model.RankedNameWithAuthorship;
+import org.gbif.pipelines.model.TaxonRecord;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 /**

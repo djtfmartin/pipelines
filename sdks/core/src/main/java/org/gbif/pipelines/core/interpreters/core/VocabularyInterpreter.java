@@ -11,9 +11,10 @@ import lombok.NoArgsConstructor;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
-import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.vocabulary.VocabularyService;
 import org.gbif.pipelines.core.utils.VocabularyConceptFactory;
+import org.gbif.pipelines.model.*;
+import org.gbif.pipelines.model.VocabularyConcept;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class VocabularyInterpreter {
@@ -116,7 +117,7 @@ public class VocabularyInterpreter {
             .ifPresent(br::setSex);
   }
 
-  private static Optional<VocabularyConcept> interpretVocabulary(
+  private static Optional<? extends VocabularyConcept> interpretVocabulary(
       ExtendedRecord er,
       Term term,
       VocabularyService vocabularyService,
@@ -126,7 +127,7 @@ public class VocabularyInterpreter {
         term, er.extractNullAwareValue(term), vocabularyService, null, supplier, supplierTag);
   }
 
-  static Optional<VocabularyConcept> interpretVocabulary(
+  static Optional<? extends VocabularyConcept> interpretVocabulary(
       Term term,
       String value,
       VocabularyService vocabularyService,
@@ -135,7 +136,7 @@ public class VocabularyInterpreter {
     return interpretVocabulary(term, value, vocabularyService, null, supplier, supplierTag);
   }
 
-  private static Optional<VocabularyConcept> interpretVocabulary(
+  private static Optional<? extends VocabularyConcept> interpretVocabulary(
       ExtendedRecord er,
       Term term,
       VocabularyService vocabularyService,
@@ -146,7 +147,7 @@ public class VocabularyInterpreter {
         term, er.extractNullAwareValue(term), vocabularyService, issueFn, supplier, supplierTag);
   }
 
-  static Optional<VocabularyConcept> interpretVocabulary(
+  static Optional<? extends VocabularyConcept> interpretVocabulary(
       Term term,
       String value,
       VocabularyService vocabularyService,
@@ -159,7 +160,7 @@ public class VocabularyInterpreter {
     }
 
     if (value != null) {
-      Optional<VocabularyConcept> result =
+      Optional<? extends VocabularyConcept> result =
           vocabularyService
               .get(term)
               .flatMap(lookup -> Optional.of(value).flatMap(lookup::lookup))

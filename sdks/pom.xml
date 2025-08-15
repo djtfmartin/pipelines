@@ -18,6 +18,7 @@
   </description>
 
   <modules>
+    <module>models</module>
     <module>models-avro</module>
     <module>core</module>
     <module>converters-avro</module>

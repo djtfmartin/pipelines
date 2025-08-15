@@ -28,9 +28,10 @@ import org.gbif.pipelines.core.functions.SerializableFunction;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.Result;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;
-import org.gbif.pipelines.core.interpreters.model.*;
 import org.gbif.pipelines.core.parsers.common.ParsedField;
 import org.gbif.pipelines.core.parsers.location.parser.CoordinateParseUtils;
+import org.gbif.pipelines.json.*;
+import org.gbif.pipelines.model.*;
 
 /**
  * Interpreter for the Image extension, Interprets form {@link ExtendedRecord} to {@link

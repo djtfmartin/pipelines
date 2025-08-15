@@ -13,9 +13,9 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.Result;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation.TargetHandler;
-import org.gbif.pipelines.core.interpreters.model.ExtendedRecord;
-import org.gbif.pipelines.core.interpreters.model.MeasurementOrFact;
-import org.gbif.pipelines.core.interpreters.model.MeasurementOrFactRecord;
+import org.gbif.pipelines.model.ExtendedRecord;
+import org.gbif.pipelines.model.MeasurementOrFact;
+import org.gbif.pipelines.model.MeasurementOrFactRecord;
 
 /**
  * Interpreter for the MeasurementsOrFacts extension, Interprets form {@link ExtendedRecord} to

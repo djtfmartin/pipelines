@@ -8,7 +8,7 @@ import org.gbif.api.util.DnaUtils;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.dwc.terms.GbifDnaTerm;
 import org.gbif.pipelines.core.interpreters.ExtensionInterpretation;
-import org.gbif.pipelines.core.interpreters.model.*;
+import org.gbif.pipelines.model.*;
 
 @Builder(buildMethodName = "create")
 @Slf4j

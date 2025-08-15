@@ -12,10 +12,10 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import org.gbif.api.vocabulary.MediaType;
-import org.gbif.pipelines.core.interpreters.model.AudubonRecord;
-import org.gbif.pipelines.core.interpreters.model.ImageRecord;
-import org.gbif.pipelines.core.interpreters.model.Multimedia;
-import org.gbif.pipelines.core.interpreters.model.MultimediaRecord;
+import org.gbif.pipelines.model.AudubonRecord;
+import org.gbif.pipelines.model.ImageRecord;
+import org.gbif.pipelines.model.Multimedia;
+import org.gbif.pipelines.model.MultimediaRecord;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MultimediaConverter {

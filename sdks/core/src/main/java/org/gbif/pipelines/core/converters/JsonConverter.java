@@ -23,22 +23,22 @@ import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.common.parsers.date.TemporalAccessorUtils;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.nameparser.api.Rank;
-import org.gbif.pipelines.core.interpreters.json.*;
-import org.gbif.pipelines.core.interpreters.json.AgentIdentifier;
-import org.gbif.pipelines.core.interpreters.json.Coordinates;
-import org.gbif.pipelines.core.interpreters.json.EventDate;
-import org.gbif.pipelines.core.interpreters.json.GadmFeatures;
-import org.gbif.pipelines.core.interpreters.json.GbifClassification;
-import org.gbif.pipelines.core.interpreters.json.RankedName;
-import org.gbif.pipelines.core.interpreters.json.RankedNameWithAuthorship;
-import org.gbif.pipelines.core.interpreters.json.VerbatimRecord;
-import org.gbif.pipelines.core.interpreters.json.VocabularyConcept;
-import org.gbif.pipelines.core.interpreters.json.VocabularyConceptList;
-import org.gbif.pipelines.core.interpreters.model.*;
-import org.gbif.pipelines.core.interpreters.model.Multimedia;
 import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
 import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.pipelines.core.utils.TemporalConverter;
+import org.gbif.pipelines.json.*;
+import org.gbif.pipelines.json.AgentIdentifier;
+import org.gbif.pipelines.json.Coordinates;
+import org.gbif.pipelines.json.EventDate;
+import org.gbif.pipelines.json.GadmFeatures;
+import org.gbif.pipelines.json.GbifClassification;
+import org.gbif.pipelines.json.RankedName;
+import org.gbif.pipelines.json.RankedNameWithAuthorship;
+import org.gbif.pipelines.json.VerbatimRecord;
+import org.gbif.pipelines.json.VocabularyConcept;
+import org.gbif.pipelines.json.VocabularyConceptList;
+import org.gbif.pipelines.model.*;
+import org.gbif.pipelines.model.Multimedia;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class JsonConverter {
@@ -170,14 +170,14 @@ public class JsonConverter {
   }
 
   public static List<AgentIdentifier> convertAgentList(
-      List<org.gbif.pipelines.core.interpreters.model.AgentIdentifier> list) {
+      List<org.gbif.pipelines.model.AgentIdentifier> list) {
     return list.stream()
         .map(x -> AgentIdentifier.newBuilder().setType(x.getType()).setValue(x.getValue()).build())
         .collect(Collectors.toList());
   }
 
   public static Optional<VocabularyConcept> convertVocabularyConcept(
-      org.gbif.pipelines.core.interpreters.model.VocabularyConcept concepts) {
+      org.gbif.pipelines.model.VocabularyConcept concepts) {
     if (concepts == null) {
       return Optional.empty();
     }
@@ -189,14 +189,14 @@ public class JsonConverter {
   }
 
   public static Optional<VocabularyConceptList> convertVocabularyConceptList(
-      List<org.gbif.pipelines.core.interpreters.model.VocabularyConcept> concepts) {
+      List<org.gbif.pipelines.model.VocabularyConcept> concepts) {
     if (concepts == null || concepts.isEmpty()) {
       return Optional.empty();
     }
 
     List<String> allConcepts =
         concepts.stream()
-            .map(org.gbif.pipelines.core.interpreters.model.VocabularyConcept::getConcept)
+            .map(org.gbif.pipelines.model.VocabularyConcept::getConcept)
             .collect(Collectors.toList());
 
     List<String> allParents =
@@ -238,12 +238,12 @@ public class JsonConverter {
         .collect(Collectors.toList());
   }
 
-  public static List<org.gbif.pipelines.core.interpreters.json.Multimedia> convertMultimediaList(
+  public static List<org.gbif.pipelines.json.Multimedia> convertMultimediaList(
       MultimediaRecord multimediaRecord) {
     return multimediaRecord.getMultimediaItems().stream()
         .map(
             m ->
-                org.gbif.pipelines.core.interpreters.json.Multimedia.newBuilder()
+                org.gbif.pipelines.json.Multimedia.newBuilder()
                     .setType(m.getType())
                     .setFormat(m.getFormat())
                     .setIdentifier(m.getIdentifier())
@@ -263,8 +263,7 @@ public class JsonConverter {
         .collect(Collectors.toList());
   }
 
-  public static Optional<EventDate> convertEventDate(
-      org.gbif.pipelines.core.interpreters.model.EventDate eventDate) {
+  public static Optional<EventDate> convertEventDate(org.gbif.pipelines.model.EventDate eventDate) {
     return Optional.ofNullable(eventDate)
         .map(ed -> EventDate.newBuilder().setGte(ed.getGte()).setLte(ed.getLte()).build());
   }
@@ -301,8 +300,7 @@ public class JsonConverter {
   }
 
   /** All GADM GIDs as an array, for searching at multiple levels. */
-  public static Optional<GadmFeatures> convertGadm(
-      org.gbif.pipelines.core.interpreters.model.GadmFeatures gadm) {
+  public static Optional<GadmFeatures> convertGadm(org.gbif.pipelines.model.GadmFeatures gadm) {
 
     if (gadm == null) {
       return Optional.empty();
@@ -331,7 +329,7 @@ public class JsonConverter {
   }
 
   public static Optional<RankedName> convertRankedName(
-      org.gbif.pipelines.core.interpreters.model.RankedName rankedName) {
+      org.gbif.pipelines.model.RankedName rankedName) {
     return Optional.ofNullable(rankedName)
         .map(
             rn ->
@@ -343,15 +341,14 @@ public class JsonConverter {
   }
 
   public static Optional<Usage> convertToAcceptedUsage(
-      org.gbif.pipelines.core.interpreters.model.TaxonRecord taxonRecord) {
+      org.gbif.pipelines.model.TaxonRecord taxonRecord) {
     Optional<Usage> usage = buildUsage(taxonRecord, true);
     usage.ifPresent(
         u -> u.setGenericName(convertGenericNameFromClassification(taxonRecord).orElse(null)));
     return usage;
   }
 
-  public static Optional<Usage> convertToUsage(
-      org.gbif.pipelines.core.interpreters.model.TaxonRecord taxonRecord) {
+  public static Optional<Usage> convertToUsage(org.gbif.pipelines.model.TaxonRecord taxonRecord) {
     Optional<Usage> usage = buildUsage(taxonRecord, false);
     //    usage.ifPresent(
     //        u -> u.setGenericName(convertGenericNameFromParsedName(taxonRecord).orElse(null)));
@@ -359,7 +356,7 @@ public class JsonConverter {
   }
 
   private static Optional<Usage> buildUsage(
-      org.gbif.pipelines.core.interpreters.model.TaxonRecord taxonRecord, boolean accepted) {
+      org.gbif.pipelines.model.TaxonRecord taxonRecord, boolean accepted) {
     if (taxonRecord == null) {
       return Optional.empty();
     }
@@ -384,7 +381,7 @@ public class JsonConverter {
   }
 
   public static Optional<RankedNameWithAuthorship> convertRankedName(
-      org.gbif.pipelines.core.interpreters.model.RankedNameWithAuthorship rankedName) {
+      org.gbif.pipelines.model.RankedNameWithAuthorship rankedName) {
     return Optional.ofNullable(rankedName)
         .map(
             rn ->
@@ -397,7 +394,7 @@ public class JsonConverter {
   }
 
   public static List<RankedName> convertRankedNames(
-      List<org.gbif.pipelines.core.interpreters.model.RankedName> rankedNames) {
+      List<org.gbif.pipelines.model.RankedName> rankedNames) {
     return rankedNames.stream()
         .map(JsonConverter::convertRankedName)
         .filter(Optional::isPresent)
@@ -407,7 +404,7 @@ public class JsonConverter {
 
   //
   //  public static Optional<ParsedName> convertParsedName(
-  //      org.gbif.pipelines.core.interpreters.model.ParsedName parsedName) {
+  //      org.gbif.pipelines.model.ParsedName parsedName) {
   //
   //    if (parsedName == null) {
   //      return Optional.empty();
@@ -443,7 +440,7 @@ public class JsonConverter {
   //  }
   //
   //  public static Optional<Authorship> convertAuthorship(
-  //      org.gbif.pipelines.core.interpreters.model.Authorship authorship) {
+  //      org.gbif.pipelines.model.Authorship authorship) {
   //    return Optional.ofNullable(authorship)
   //        .map(
   //            a ->
@@ -456,7 +453,7 @@ public class JsonConverter {
   //  }
   //
   //  public static Optional<Diagnostic> convertDiagnostic(
-  //      org.gbif.pipelines.core.interpreters.model.Diagnostic diagnostic) {
+  //      org.gbif.pipelines.model.Diagnostic diagnostic) {
   //    if (diagnostic == null) {
   //      return Optional.empty();
   //    }
@@ -492,7 +489,7 @@ public class JsonConverter {
     // only set generic name for genus or more specific
     if (Objects.nonNull(taxonRecord.getClassification())) {
       try {
-        Optional<org.gbif.pipelines.core.interpreters.model.RankedName> genus =
+        Optional<org.gbif.pipelines.model.RankedName> genus =
             taxonRecord.getClassification().stream()
                 .filter(rn -> Rank.GENUS.name().equalsIgnoreCase(rn.getRank()))
                 .findFirst();
@@ -515,13 +512,13 @@ public class JsonConverter {
   }
 
   private static LinkedHashMap<String, String> convertToMap(
-      List<org.gbif.pipelines.core.interpreters.model.RankedName> names,
-      Function<org.gbif.pipelines.core.interpreters.model.RankedName, String> valueExtractor) {
+      List<org.gbif.pipelines.model.RankedName> names,
+      Function<org.gbif.pipelines.model.RankedName, String> valueExtractor) {
 
     LinkedHashMap<String, String> map = new LinkedHashMap<String, String>();
     Set<String> ranks = new LinkedHashSet<>();
     int depth = 0;
-    for (org.gbif.pipelines.core.interpreters.model.RankedName rankedName : names) {
+    for (org.gbif.pipelines.model.RankedName rankedName : names) {
       String rankToUse = rankedName.getRank();
       if (ranks.contains(rankedName.getRank())) {
         rankToUse = rankedName.getRank() + "_" + depth;
@@ -540,12 +537,10 @@ public class JsonConverter {
         Classification.newBuilder()
             .setClassification(
                 convertToMap(
-                    taxon.getClassification(),
-                    org.gbif.pipelines.core.interpreters.model.RankedName::getName))
+                    taxon.getClassification(), org.gbif.pipelines.model.RankedName::getName))
             .setClassificationKeys(
                 convertToMap(
-                    taxon.getClassification(),
-                    org.gbif.pipelines.core.interpreters.model.RankedName::getKey))
+                    taxon.getClassification(), org.gbif.pipelines.model.RankedName::getKey))
             .setTaxonKeys(JsonConverter.convertTaxonKey(taxon))
             .setIucnRedListCategoryCode(taxon.getIucnRedListCategoryCode())
             .setUsage(JsonConverter.convertToUsage(taxon).orElse(null))
@@ -621,7 +616,7 @@ public class JsonConverter {
     //
     //    // Classification
     //    if (taxon.getClassification() != null) {
-    //      for (org.gbif.pipelines.core.interpreters.model.RankedName rankedName :
+    //      for (org.gbif.pipelines.model.RankedName rankedName :
     // taxon.getClassification()) {
     //        String rank = rankedName.getRank();
     //        switch (rank) {
@@ -698,7 +693,7 @@ public class JsonConverter {
             .filter(
                 rankedName ->
                     !Objects.equals(taxonRecord.getUsage().getRank(), rankedName.getRank()))
-            .map(org.gbif.pipelines.core.interpreters.model.RankedName::getKey)
+            .map(org.gbif.pipelines.model.RankedName::getKey)
             .collect(Collectors.joining("_"));
 
     return Optional.of("_" + pathJoiner);
@@ -734,7 +729,7 @@ public class JsonConverter {
 
     String pathJoiner =
         taxonRecord.getClassification().stream()
-            .map(org.gbif.pipelines.core.interpreters.model.RankedName::getRank)
+            .map(org.gbif.pipelines.model.RankedName::getRank)
             .collect(Collectors.joining("_"));
 
     return Optional.of("_" + pathJoiner);
@@ -748,7 +743,7 @@ public class JsonConverter {
     Set<String> taxonKey = new LinkedHashSet<>();
 
     taxonRecord.getClassification().stream()
-        .map(org.gbif.pipelines.core.interpreters.model.RankedName::getKey)
+        .map(org.gbif.pipelines.model.RankedName::getKey)
         .forEach(taxonKey::add);
 
     Optional.ofNullable(taxonRecord.getUsage()).ifPresent(s -> taxonKey.add(s.getKey()));
