@@ -58,14 +58,16 @@ public class Interpretation implements Serializable {
     Dataset<MultiTaxonRecord> taxonomy = taxonomyTransform(config, spark, records);
 
     // Write the intermediate output (useful for debugging)
-    basic.write().mode("overwrite").parquet(config.getOutput() + "/parquet/basic");
-    location.write().mode("overwrite").parquet(config.getOutput() + "/parquet/location");
-    temporal.write().mode("overwrite").parquet(config.getOutput() + "/parquet/temporal");
-    taxonomy.write().mode("overwrite").parquet(config.getOutput() + "/parquet/taxonomy");
+    basic.write().mode("overwrite").parquet(config.getOutput() + "/basic");
+    location.write().mode("overwrite").parquet(config.getOutput() + "/location");
+    temporal.write().mode("overwrite").parquet(config.getOutput() + "/temporal");
+    taxonomy.write().mode("overwrite").parquet(config.getOutput() + "/taxonomy");
 
-    DataFrameWriter<OccurrenceHdfsRecord> writer =
-        transformToHdfsView(basic, location, taxonomy, temporal).write().mode("overwrite");
-    writer.parquet(config.getOutput() + "/parquet/hdfsview");
+    Dataset<OccurrenceHdfsRecord> hdfsView =
+        transformToHdfsView(basic, location, taxonomy, temporal);
+
+    DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
+    writer.parquet(config.getOutput() + "/hdfsview");
 
     spark.close();
   }

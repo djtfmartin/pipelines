@@ -1,8 +1,5 @@
 package org.gbif.pipelines.interpretation.spark;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -35,43 +32,27 @@ public class HdfsView implements java.io.Serializable {
                 temporalRecordDataset,
                 joined2.col("_1._1.id").equalTo(temporalRecordDataset.col("id")));
 
-    Dataset<FlatJoinedRecord> flattened =
-        finalJoined.map(
-            (MapFunction<
-                    Tuple2<
-                        Tuple2<Tuple2<BasicRecord, LocationRecord>, MultiTaxonRecord>,
-                        TemporalRecord>,
-                    FlatJoinedRecord>)
-                row -> {
-                  BasicRecord basic = row._1()._1()._1();
-                  LocationRecord location = row._1()._1()._2();
-                  MultiTaxonRecord multi = row._1()._2();
-                  TemporalRecord temporal = row._2();
+    return finalJoined.map(
+        (MapFunction<
+                Tuple2<
+                    Tuple2<Tuple2<BasicRecord, LocationRecord>, MultiTaxonRecord>, TemporalRecord>,
+                OccurrenceHdfsRecord>)
+            row -> {
+              BasicRecord basic = row._1()._1()._1();
+              LocationRecord location = row._1()._1()._2();
+              MultiTaxonRecord multi = row._1()._2();
+              TemporalRecord temporal = row._2();
 
-                  return new FlatJoinedRecord(basic, location, multi, temporal);
-                },
-            Encoders.bean(FlatJoinedRecord.class));
+              OccurrenceHdfsRecordConverter c =
+                  OccurrenceHdfsRecordConverter.builder()
+                      .basicRecord(basic)
+                      .locationRecord(location)
+                      .temporalRecord(temporal)
+                      .multiTaxonRecord(multi)
+                      .build();
 
-    return flattened.map(
-        (MapFunction<FlatJoinedRecord, OccurrenceHdfsRecord>)
-            flatJoinedRecord ->
-                OccurrenceHdfsRecordConverter.builder()
-                    .basicRecord(flatJoinedRecord.getBasic())
-                    .locationRecord(flatJoinedRecord.getLocation())
-                    .temporalRecord(flatJoinedRecord.getTemporal())
-                    .multiTaxonRecord(flatJoinedRecord.getMultiTaxon())
-                    .build()
-                    .convert(),
+              return c.convert();
+            },
         Encoders.bean(OccurrenceHdfsRecord.class));
-  }
-
-  @Getter
-  @AllArgsConstructor
-  @NoArgsConstructor
-  public static class FlatJoinedRecord implements java.io.Serializable {
-    private BasicRecord basic;
-    private LocationRecord location;
-    private MultiTaxonRecord multiTaxon;
-    private TemporalRecord temporal;
   }
 }
