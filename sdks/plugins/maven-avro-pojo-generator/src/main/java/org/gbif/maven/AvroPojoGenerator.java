@@ -136,6 +136,8 @@ public class AvroPojoGenerator extends AbstractMojo {
       if ("class".equals(name) || "v_class".equals(name) || "v_class".equals(name))
         name = name + "$";
       if (type.equals("IssueRecord")) body.append("    @lombok.Builder.Default\n");
+      if (type.equals("org.gbif.pipelines.io.avro.IssueRecord"))
+        body.append("    @lombok.Builder.Default\n");
       if (type.startsWith("List")) body.append("    @lombok.Builder.Default\n");
       if (type.startsWith("Map")) body.append("    @lombok.Builder.Default\n");
 
@@ -144,6 +146,8 @@ public class AvroPojoGenerator extends AbstractMojo {
       if (type.startsWith("List")) body.append("= new ArrayList<>()");
       if (type.startsWith("Map")) body.append("= new HashMap<>()");
       if (type.equals("IssueRecord")) body.append("= IssueRecord.newBuilder().build()");
+      if (type.equals("org.gbif.pipelines.io.avro.IssueRecord"))
+        body.append("= org.gbif.pipelines.io.avro.IssueRecord.newBuilder().build()");
 
       body.append(";\n");
     }

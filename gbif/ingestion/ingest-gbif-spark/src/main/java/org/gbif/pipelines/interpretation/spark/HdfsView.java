@@ -11,6 +11,7 @@ import scala.Tuple2;
 public class HdfsView implements java.io.Serializable {
 
   public static Dataset<OccurrenceHdfsRecord> transformToHdfsView(
+      MetadataRecord metadataRecord,
       Dataset<BasicRecord> basicRecordDataset,
       Dataset<LocationRecord> locationRecordDataset,
       Dataset<MultiTaxonRecord> multiTaxonRecordDataset,
@@ -60,6 +61,7 @@ public class HdfsView implements java.io.Serializable {
 
               OccurrenceHdfsRecordConverter c =
                   OccurrenceHdfsRecordConverter.builder()
+                      .metadataRecord(metadataRecord)
                       .basicRecord(basic)
                       .locationRecord(location)
                       .temporalRecord(temporal)

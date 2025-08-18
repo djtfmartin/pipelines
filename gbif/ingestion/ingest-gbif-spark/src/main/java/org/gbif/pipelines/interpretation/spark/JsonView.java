@@ -12,6 +12,7 @@ import scala.Tuple2;
 public class JsonView {
 
   public static Dataset<OccurrenceJsonRecord> transformToJsonView(
+      MetadataRecord metadataRecord,
       Dataset<BasicRecord> basicRecordDataset,
       Dataset<LocationRecord> locationRecordDataset,
       Dataset<MultiTaxonRecord> multiTaxonRecordDataset,
@@ -61,6 +62,7 @@ public class JsonView {
 
               OccurrenceJsonConverter c =
                   OccurrenceJsonConverter.builder()
+                      .metadata(metadataRecord)
                       .basic(basic)
                       .location(location)
                       .temporal(temporal)

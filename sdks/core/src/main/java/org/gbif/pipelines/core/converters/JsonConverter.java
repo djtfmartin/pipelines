@@ -223,6 +223,7 @@ public class JsonConverter {
       List<Issues> records, Consumer<List<String>> issueFn, Consumer<List<String>> notIssueFn) {
     Set<String> issues =
         records.stream()
+            .filter(Objects::nonNull)
             .flatMap(x -> x.getIssues().getIssueList().stream())
             .collect(Collectors.toSet());
     issueFn.accept(new ArrayList<>(issues));

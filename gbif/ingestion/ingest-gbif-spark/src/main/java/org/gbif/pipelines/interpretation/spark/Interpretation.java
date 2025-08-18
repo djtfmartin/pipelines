@@ -82,14 +82,14 @@ public class Interpretation implements Serializable {
         spark.read().format("avro").load(config.getInput()).as(Encoders.bean(ExtendedRecord.class));
 
     MetadataService metadataService = createMetadataService(config.getMetadataAPI());
-    MetadataRecord metadataRecord = getMetadataRecord(metadataService, datasetID);
+    MetadataRecord metadata = getMetadataRecord(metadataService, datasetID);
 
     // Run the interpretations
     Dataset<BasicRecord> basic = basicTransform(config, records);
     Dataset<LocationRecord> location = locationTransform(config, spark, records);
     Dataset<TemporalRecord> temporal = temporalTransform(records);
     Dataset<MultiTaxonRecord> taxonomy = taxonomyTransform(config, spark, records);
-    Dataset<GrscicollRecord> grscicoll = grscicollTransform(config, spark, records, metadataRecord);
+    Dataset<GrscicollRecord> grscicoll = grscicollTransform(config, spark, records, metadata);
 
     //    Dataset<VerbatimRecord> verbatim = verbatimTransform(records);
     //    Dataset<AudubonRecord> audubon = audubonTransform(config, spark, records);
@@ -110,14 +110,14 @@ public class Interpretation implements Serializable {
 
     // hdfs
     Dataset<OccurrenceHdfsRecord> hdfsView =
-        transformToHdfsView(basic, location, taxonomy, temporal, grscicoll);
+        transformToHdfsView(metadata, basic, location, taxonomy, temporal, grscicoll);
 
     DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
     writer.parquet(config.getOutput() + "/hdfsview");
 
     // json  - for elastic indexing
     Dataset<OccurrenceJsonRecord> jsonView =
-        transformToJsonView(basic, location, taxonomy, temporal, grscicoll);
+        transformToJsonView(metadata, basic, location, taxonomy, temporal, grscicoll);
 
     DataFrameWriter<OccurrenceJsonRecord> jsonWriter = jsonView.write().mode("overwrite");
     jsonWriter.parquet(config.getOutput() + "/json");
