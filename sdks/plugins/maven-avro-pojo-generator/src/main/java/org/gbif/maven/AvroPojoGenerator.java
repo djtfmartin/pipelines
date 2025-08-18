@@ -111,6 +111,7 @@ public class AvroPojoGenerator extends AbstractMojo {
 
     imports.addAll(
         List.of(
+            "java.io.Serializable",
             "lombok.Data",
             "lombok.Builder",
             "lombok.Getter",
@@ -136,8 +137,12 @@ public class AvroPojoGenerator extends AbstractMojo {
         name = name + "$";
       if (type.equals("IssueRecord")) body.append("    @lombok.Builder.Default\n");
       if (type.startsWith("List")) body.append("    @lombok.Builder.Default\n");
+      if (type.startsWith("Map")) body.append("    @lombok.Builder.Default\n");
+
       body.append("    private ").append(type).append(" ").append(name);
+
       if (type.startsWith("List")) body.append("= new ArrayList<>()");
+      if (type.startsWith("Map")) body.append("= new HashMap<>()");
       if (type.equals("IssueRecord")) body.append("= IssueRecord.newBuilder().build()");
 
       body.append(";\n");
@@ -146,6 +151,7 @@ public class AvroPojoGenerator extends AbstractMojo {
     if (body.toString().contains("List<")) imports.add("java.util.List");
     if (body.toString().contains("List<")) imports.add("java.util.ArrayList");
     if (body.toString().contains("Map<")) imports.add("java.util.Map");
+    if (body.toString().contains("Map<")) imports.add("java.util.HashMap");
     if (body.toString().contains("Set<")) imports.add("java.util.Set");
 
     imports.add("org.gbif.pipelines.io.avro.Record");
@@ -180,6 +186,7 @@ public class AvroPojoGenerator extends AbstractMojo {
     if (body.toString().contains("String id;")) interfaces.add("Record");
     if (body.toString().contains("IssueRecord issues")) interfaces.add("Issues");
     if (body.toString().contains("Long created;")) interfaces.add("Created");
+    interfaces.add("Serializable");
 
     if (!interfaces.isEmpty()) {
       sb.append(" implements ");

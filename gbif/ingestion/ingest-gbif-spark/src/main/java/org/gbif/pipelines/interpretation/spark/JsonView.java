@@ -3,14 +3,15 @@ package org.gbif.pipelines.interpretation.spark;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
-import org.gbif.pipelines.core.converters.OccurrenceHdfsRecordConverter;
+import org.gbif.pipelines.core.converters.OccurrenceJsonConverter;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
+import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import scala.Tuple2;
 
-public class HdfsView implements java.io.Serializable {
+public class JsonView {
 
-  public static Dataset<OccurrenceHdfsRecord> transformToHdfsView(
+  public static Dataset<OccurrenceJsonRecord> transformToJsonView(
       Dataset<BasicRecord> basicRecordDataset,
       Dataset<LocationRecord> locationRecordDataset,
       Dataset<MultiTaxonRecord> multiTaxonRecordDataset,
@@ -50,7 +51,7 @@ public class HdfsView implements java.io.Serializable {
                         Tuple2<Tuple2<BasicRecord, LocationRecord>, MultiTaxonRecord>,
                         TemporalRecord>,
                     GrscicollRecord>,
-                OccurrenceHdfsRecord>)
+                OccurrenceJsonRecord>)
             row -> {
               BasicRecord basic = row._1()._1()._1()._1();
               LocationRecord location = row._1()._1()._1()._2();
@@ -58,16 +59,17 @@ public class HdfsView implements java.io.Serializable {
               TemporalRecord temporal = row._1()._2();
               GrscicollRecord grscicollRecord = row._2();
 
-              OccurrenceHdfsRecordConverter c =
-                  OccurrenceHdfsRecordConverter.builder()
-                      .basicRecord(basic)
-                      .locationRecord(location)
-                      .temporalRecord(temporal)
-                      .multiTaxonRecord(multi)
-                      .grscicollRecord(grscicollRecord)
+              OccurrenceJsonConverter c =
+                  OccurrenceJsonConverter.builder()
+                      .basic(basic)
+                      .location(location)
+                      .temporal(temporal)
+                      .multiTaxon(multi)
+                      .grscicoll(grscicollRecord)
                       .build();
+
               return c.convert();
             },
-        Encoders.bean(OccurrenceHdfsRecord.class));
+        Encoders.bean(OccurrenceJsonRecord.class));
   }
 }

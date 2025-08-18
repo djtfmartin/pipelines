@@ -12,7 +12,7 @@ input: "../pipelines/gbif/ingestion/ingest-gbif-spark/berry.verbatim.avro"
 output: "/Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/interpreted-out"
 
 # The Spark Connect URL which may be omitted for use with spark-submit
-sparkRemote: "sc://localhost"
+#sparkRemote: "sc://localhost"
 
 # The location of the Jar file, required when using Spark Connect
 jarPath: "/Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/target/ingest-gbif-spark-3.2.7-SNAPSHOT-3.5.6.jar"

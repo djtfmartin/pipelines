@@ -31,6 +31,7 @@ import org.gbif.rest.client.geocode.GeocodeResponse;
 @Slf4j
 @Builder
 public class LocationTransform implements Serializable {
+
   private String geocodeApiUrl;
 
   public Optional<LocationRecord> convert(ExtendedRecord source, MetadataRecord mdr) {

@@ -32,6 +32,10 @@ public class Config implements Serializable {
   @JsonProperty private Integer speciesMatchParallelism = 10;
   @JsonProperty private String geocodeAPI = "https://api.gbif.org/v1/";
   @JsonProperty private Integer geocodeParallelism = 10;
+  @JsonProperty private String grscicollAPI = "https://api.gbif.org/v1/";
+  @JsonProperty private Integer grscicollParallelism = 10;
+  @JsonProperty private String metadataAPI = "https://api.gbif.org/v1/";
+
   @JsonProperty private List<String> checklistKeys;
 
   static Config fromFirstArg(String[] args) throws IOException {

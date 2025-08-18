@@ -86,15 +86,17 @@ public class LocationInterpretation {
                   Optional<LocationRecord> converted =
                       locationTransform.convert(
                           er, MetadataRecord.newBuilder().build()); // TODO MetadataRecord
-                  if (converted.isPresent())
+
+                  if (converted.isPresent()) {
                     return KeyedLocationRecord.builder()
                         .key(location.hash())
                         .locationRecord(converted.get())
                         .build();
-                  else
+                  } else {
                     return KeyedLocationRecord.builder()
                         .key(location.hash())
                         .build(); // TODO: null handling?
+                  }
                 },
             Encoders.bean(KeyedLocationRecord.class));
     keyedLocation.createOrReplaceTempView("key_location");
@@ -287,98 +289,64 @@ public class LocationInterpretation {
 
     public Map<String, String> toCoreTermsMap() {
       Map<String, String> coreTerms = new HashMap<>();
-
-      if (getHigherGeographyID() != null)
-        coreTerms.put(DwcTerm.higherGeographyID.qualifiedName(), getHigherGeographyID());
-      if (getHigherGeography() != null)
-        coreTerms.put(DwcTerm.higherGeography.qualifiedName(), getHigherGeography());
-      if (getContinent() != null) coreTerms.put(DwcTerm.continent.qualifiedName(), getContinent());
-      if (getWaterBody() != null) coreTerms.put(DwcTerm.waterBody.qualifiedName(), getWaterBody());
-      if (getIslandGroup() != null)
-        coreTerms.put(DwcTerm.islandGroup.qualifiedName(), getIslandGroup());
-      if (getIsland() != null) coreTerms.put(DwcTerm.island.qualifiedName(), getIsland());
-      if (getCountry() != null) coreTerms.put(DwcTerm.country.qualifiedName(), getCountry());
-      if (getCountryCode() != null)
-        coreTerms.put(DwcTerm.countryCode.qualifiedName(), getCountryCode());
-      if (getStateProvince() != null)
-        coreTerms.put(DwcTerm.stateProvince.qualifiedName(), getStateProvince());
-      if (getCounty() != null) coreTerms.put(DwcTerm.county.qualifiedName(), getCounty());
-      if (getMunicipality() != null)
-        coreTerms.put(DwcTerm.municipality.qualifiedName(), getMunicipality());
-      if (getLocality() != null) coreTerms.put(DwcTerm.locality.qualifiedName(), getLocality());
-      if (getVerbatimLocality() != null)
-        coreTerms.put(DwcTerm.verbatimLocality.qualifiedName(), getVerbatimLocality());
-      if (getMinimumElevationInMeters() != null)
-        coreTerms.put(
-            DwcTerm.minimumElevationInMeters.qualifiedName(), getMinimumElevationInMeters());
-      if (getMaximumElevationInMeters() != null)
-        coreTerms.put(
-            DwcTerm.maximumElevationInMeters.qualifiedName(), getMaximumElevationInMeters());
-      if (getVerbatimElevation() != null)
-        coreTerms.put(DwcTerm.verbatimElevation.qualifiedName(), getVerbatimElevation());
-      if (getVerticalDatum() != null)
-        coreTerms.put(DwcTerm.verticalDatum.qualifiedName(), getVerticalDatum());
-      if (getMinimumDepthInMeters() != null)
-        coreTerms.put(DwcTerm.minimumDepthInMeters.qualifiedName(), getMinimumDepthInMeters());
-      if (getMaximumDepthInMeters() != null)
-        coreTerms.put(DwcTerm.maximumDepthInMeters.qualifiedName(), getMaximumDepthInMeters());
-      if (getVerbatimDepth() != null)
-        coreTerms.put(DwcTerm.verbatimDepth.qualifiedName(), getVerbatimDepth());
-      if (getMinimumDistanceAboveSurfaceInMeters() != null)
-        coreTerms.put(
-            DwcTerm.minimumDistanceAboveSurfaceInMeters.qualifiedName(),
-            getMinimumDistanceAboveSurfaceInMeters());
-      if (getMaximumDistanceAboveSurfaceInMeters() != null)
-        coreTerms.put(
-            DwcTerm.maximumDistanceAboveSurfaceInMeters.qualifiedName(),
-            getMaximumDistanceAboveSurfaceInMeters());
-      if (getLocationAccordingTo() != null)
-        coreTerms.put(DwcTerm.locationAccordingTo.qualifiedName(), getLocationAccordingTo());
-      if (getLocationRemarks() != null)
-        coreTerms.put(DwcTerm.locationRemarks.qualifiedName(), getLocationRemarks());
-      if (getDecimalLatitude() != null)
-        coreTerms.put(DwcTerm.decimalLatitude.qualifiedName(), getDecimalLatitude());
-      if (getDecimalLongitude() != null)
-        coreTerms.put(DwcTerm.decimalLongitude.qualifiedName(), getDecimalLongitude());
-      if (getGeodeticDatum() != null)
-        coreTerms.put(DwcTerm.geodeticDatum.qualifiedName(), getGeodeticDatum());
-      if (getCoordinateUncertaintyInMeters() != null)
-        coreTerms.put(
-            DwcTerm.coordinateUncertaintyInMeters.qualifiedName(),
-            getCoordinateUncertaintyInMeters());
-      if (getCoordinatePrecision() != null)
-        coreTerms.put(DwcTerm.coordinatePrecision.qualifiedName(), getCoordinatePrecision());
-      if (getPointRadiusSpatialFit() != null)
-        coreTerms.put(DwcTerm.pointRadiusSpatialFit.qualifiedName(), getPointRadiusSpatialFit());
-      if (getVerbatimCoordinates() != null)
-        coreTerms.put(DwcTerm.verbatimCoordinates.qualifiedName(), getVerbatimCoordinates());
-      if (getVerbatimLatitude() != null)
-        coreTerms.put(DwcTerm.verbatimLatitude.qualifiedName(), getVerbatimLatitude());
-      if (getVerbatimLongitude() != null)
-        coreTerms.put(DwcTerm.verbatimLongitude.qualifiedName(), getVerbatimLongitude());
-      if (getVerbatimCoordinateSystem() != null)
-        coreTerms.put(
-            DwcTerm.verbatimCoordinateSystem.qualifiedName(), getVerbatimCoordinateSystem());
-      if (getVerbatimSRS() != null)
-        coreTerms.put(DwcTerm.verbatimSRS.qualifiedName(), getVerbatimSRS());
-      if (getFootprintWKT() != null)
-        coreTerms.put(DwcTerm.footprintWKT.qualifiedName(), getFootprintWKT());
-      if (getFootprintSRS() != null)
-        coreTerms.put(DwcTerm.footprintSRS.qualifiedName(), getFootprintSRS());
-      if (getFootprintSpatialFit() != null)
-        coreTerms.put(DwcTerm.footprintSpatialFit.qualifiedName(), getFootprintSpatialFit());
-      if (getGeoreferencedBy() != null)
-        coreTerms.put(DwcTerm.georeferencedBy.qualifiedName(), getGeoreferencedBy());
-      if (getGeoreferencedDate() != null)
-        coreTerms.put(DwcTerm.georeferencedDate.qualifiedName(), getGeoreferencedDate());
-      if (getGeoreferenceProtocol() != null)
-        coreTerms.put(DwcTerm.georeferenceProtocol.qualifiedName(), getGeoreferenceProtocol());
-      if (getGeoreferenceSources() != null)
-        coreTerms.put(DwcTerm.georeferenceSources.qualifiedName(), getGeoreferenceSources());
-      if (getGeoreferenceRemarks() != null)
-        coreTerms.put(DwcTerm.georeferenceRemarks.qualifiedName(), getGeoreferenceRemarks());
+      putIfNotNull(coreTerms, DwcTerm.higherGeographyID, getHigherGeographyID());
+      putIfNotNull(coreTerms, DwcTerm.higherGeography, getHigherGeography());
+      putIfNotNull(coreTerms, DwcTerm.continent, getContinent());
+      putIfNotNull(coreTerms, DwcTerm.waterBody, getWaterBody());
+      putIfNotNull(coreTerms, DwcTerm.islandGroup, getIslandGroup());
+      putIfNotNull(coreTerms, DwcTerm.island, getIsland());
+      putIfNotNull(coreTerms, DwcTerm.country, getCountry());
+      putIfNotNull(coreTerms, DwcTerm.countryCode, getCountryCode());
+      putIfNotNull(coreTerms, DwcTerm.stateProvince, getStateProvince());
+      putIfNotNull(coreTerms, DwcTerm.county, getCounty());
+      putIfNotNull(coreTerms, DwcTerm.municipality, getMunicipality());
+      putIfNotNull(coreTerms, DwcTerm.locality, getLocality());
+      putIfNotNull(coreTerms, DwcTerm.verbatimLocality, getVerbatimLocality());
+      putIfNotNull(coreTerms, DwcTerm.minimumElevationInMeters, getMinimumElevationInMeters());
+      putIfNotNull(coreTerms, DwcTerm.maximumElevationInMeters, getMaximumElevationInMeters());
+      putIfNotNull(coreTerms, DwcTerm.verbatimElevation, getVerbatimElevation());
+      putIfNotNull(coreTerms, DwcTerm.verticalDatum, getVerticalDatum());
+      putIfNotNull(coreTerms, DwcTerm.minimumDepthInMeters, getMinimumDepthInMeters());
+      putIfNotNull(coreTerms, DwcTerm.maximumDepthInMeters, getMaximumDepthInMeters());
+      putIfNotNull(coreTerms, DwcTerm.verbatimDepth, getVerbatimDepth());
+      putIfNotNull(
+          coreTerms,
+          DwcTerm.minimumDistanceAboveSurfaceInMeters,
+          getMinimumDistanceAboveSurfaceInMeters());
+      putIfNotNull(
+          coreTerms,
+          DwcTerm.maximumDistanceAboveSurfaceInMeters,
+          getMaximumDistanceAboveSurfaceInMeters());
+      putIfNotNull(coreTerms, DwcTerm.locationAccordingTo, getLocationAccordingTo());
+      putIfNotNull(coreTerms, DwcTerm.locationRemarks, getLocationRemarks());
+      putIfNotNull(coreTerms, DwcTerm.decimalLatitude, getDecimalLatitude());
+      putIfNotNull(coreTerms, DwcTerm.decimalLongitude, getDecimalLongitude());
+      putIfNotNull(coreTerms, DwcTerm.geodeticDatum, getGeodeticDatum());
+      putIfNotNull(
+          coreTerms, DwcTerm.coordinateUncertaintyInMeters, getCoordinateUncertaintyInMeters());
+      putIfNotNull(coreTerms, DwcTerm.coordinatePrecision, getCoordinatePrecision());
+      putIfNotNull(coreTerms, DwcTerm.pointRadiusSpatialFit, getPointRadiusSpatialFit());
+      putIfNotNull(coreTerms, DwcTerm.verbatimCoordinates, getVerbatimCoordinates());
+      putIfNotNull(coreTerms, DwcTerm.verbatimLatitude, getVerbatimLatitude());
+      putIfNotNull(coreTerms, DwcTerm.verbatimLongitude, getVerbatimLongitude());
+      putIfNotNull(coreTerms, DwcTerm.verbatimCoordinateSystem, getVerbatimCoordinateSystem());
+      putIfNotNull(coreTerms, DwcTerm.verbatimSRS, getVerbatimSRS());
+      putIfNotNull(coreTerms, DwcTerm.footprintWKT, getFootprintWKT());
+      putIfNotNull(coreTerms, DwcTerm.footprintSRS, getFootprintSRS());
+      putIfNotNull(coreTerms, DwcTerm.footprintSpatialFit, getFootprintSpatialFit());
+      putIfNotNull(coreTerms, DwcTerm.georeferencedBy, getGeoreferencedBy());
+      putIfNotNull(coreTerms, DwcTerm.georeferencedDate, getGeoreferencedDate());
+      putIfNotNull(coreTerms, DwcTerm.georeferenceProtocol, getGeoreferenceProtocol());
+      putIfNotNull(coreTerms, DwcTerm.georeferenceSources, getGeoreferenceSources());
+      putIfNotNull(coreTerms, DwcTerm.georeferenceRemarks, getGeoreferenceRemarks());
 
       return coreTerms;
+    }
+
+    private void putIfNotNull(Map<String, String> map, DwcTerm term, String value) {
+      if (value != null) {
+        map.put(term.qualifiedName(), value);
+      }
     }
   }
 }
