@@ -31,6 +31,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.dwc.terms.DwcTerm;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.transform.LocationTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.LocationRecord;
@@ -40,10 +41,10 @@ public class LocationInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
   public static Dataset<LocationRecord> locationTransform(
-      Config config, SparkSession spark, Dataset<ExtendedRecord> source) {
+          PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source) {
 
     LocationTransform locationTransform =
-        LocationTransform.builder().geocodeApiUrl(config.getGeocodeAPI()).build();
+        LocationTransform.builder().geocodeApiUrl(config.getGeocode().getApi().getWsUrl()).build();
 
     // extract the location
     Dataset<RecordWithLocation> recordWithLocation =
@@ -66,7 +67,7 @@ public class LocationInterpretation {
     Dataset<Location> distinctLocations =
         spark
             .sql("SELECT DISTINCT location.* FROM record_with_location")
-            .repartition(config.getGeocodeParallelism())
+            .repartition(config.getGeocode().getParallelism())
             .as(Encoders.bean(Location.class));
 
     // lookup the distinct locations, and create a dictionary of the results
@@ -105,9 +106,9 @@ public class LocationInterpretation {
     Dataset<RecordWithLocationRecord> expanded =
         spark
             .sql(
-                "SELECT id, coreId, parentId, locationRecord "
-                    + "FROM record_with_location r "
-                    + "  LEFT JOIN key_location l ON r.locationHash = l.key")
+                "SELECT id, coreId, parentId, locationRecord"
+                    + " FROM record_with_location r "
+                    + " LEFT JOIN key_location l ON r.locationHash = l.key")
             .as(Encoders.bean(RecordWithLocationRecord.class));
 
     return expanded.map(

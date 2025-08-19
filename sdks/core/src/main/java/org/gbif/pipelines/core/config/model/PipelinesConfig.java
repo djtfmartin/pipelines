@@ -16,6 +16,12 @@ public class PipelinesConfig implements Serializable {
 
   private static final long serialVersionUID = 8102560635064341713L;
 
+  /** The directory where the input files are located */
+  private String inputPath;
+
+  /** The directory where the output files are written to */
+  private String outputPath;
+
   private String zkConnectionString;
 
   private WsConfig gbifApi;
@@ -42,7 +48,9 @@ public class PipelinesConfig implements Serializable {
 
   private LockConfig hdfsLock;
 
-  private VocabularyConfig vocabularyConfig;
+  @Deprecated private VocabularyConfig vocabularyConfig;
+
+  private WsConfig vocabularyService;
 
   private ClusteringRelationshipConfig clusteringRelationshipConfig;
 

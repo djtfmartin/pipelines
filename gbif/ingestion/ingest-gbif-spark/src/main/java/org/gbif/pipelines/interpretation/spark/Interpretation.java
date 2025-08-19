@@ -35,7 +35,13 @@ import org.apache.spark.sql.*;
 import org.gbif.api.model.registry.Endpoint;
 import org.gbif.api.vocabulary.License;
 import org.gbif.common.parsers.LicenseParser;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.factory.ConfigFactory;
+import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
+import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.ws.metadata.MetadataService;
+import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
+import org.gbif.pipelines.core.ws.metadata.MetadataServiceFactory;
 import org.gbif.pipelines.core.ws.metadata.response.Installation;
 import org.gbif.pipelines.core.ws.metadata.response.Network;
 import org.gbif.pipelines.core.ws.metadata.response.Organization;
@@ -48,6 +54,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
 public class Interpretation implements Serializable {
+
   public static void main(String[] args) throws IOException {
 
     if (args.length < 2) {
@@ -56,8 +63,15 @@ public class Interpretation implements Serializable {
       System.exit(1);
     }
 
-    Config config = Config.fromFirstArg(args);
-    String datasetID = args[1];
+    HdfsConfigs hdfsConfigs = HdfsConfigs.create(null, null);
+    PipelinesConfig config =
+              ConfigFactory.getInstance(hdfsConfigs, args[0], PipelinesConfig.class)
+                      .get();
+
+      String datasetID = args[1];
+      String attempt = args[2];
+      String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
+      String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
     //    SparkSession.Builder sb = SparkSession.builder();
 
@@ -79,10 +93,14 @@ public class Interpretation implements Serializable {
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =
-        spark.read().format("avro").load(config.getInput()).as(Encoders.bean(ExtendedRecord.class));
+        spark.read().format("avro")
+                .load(inputPath).as(Encoders.bean(ExtendedRecord.class));
 
-    MetadataService metadataService = createMetadataService(config.getMetadataAPI());
-    MetadataRecord metadata = getMetadataRecord(metadataService, datasetID);
+    // load the metadata from the registry and ES content indexes
+    MetadataServiceClient metadataServiceClient = MetadataServiceClient.create(config.getGbifApi(), config.getContent());
+    MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(datasetID).build();
+    MetadataInterpreter.interpret(metadataServiceClient).accept(datasetID, metadata);
+
 
     // Run the interpretations
     Dataset<BasicRecord> basic = basicTransform(config, records);
@@ -90,6 +108,8 @@ public class Interpretation implements Serializable {
     Dataset<TemporalRecord> temporal = temporalTransform(records);
     Dataset<MultiTaxonRecord> taxonomy = taxonomyTransform(config, spark, records);
     Dataset<GrscicollRecord> grscicoll = grscicollTransform(config, spark, records, metadata);
+//    Dataset<IdentifierRecord> identifiers = identifierTransform(records, datasetID);
+    Dataset<IdentifierRecord> identifiers = null;
 
     //    Dataset<VerbatimRecord> verbatim = verbatimTransform(records);
     //    Dataset<AudubonRecord> audubon = audubonTransform(config, spark, records);
@@ -102,88 +122,29 @@ public class Interpretation implements Serializable {
     // import org.gbif.pipelines.transforms.specific.GbifIdTransform;
 
     // Write the intermediate output (useful for debugging)
-    basic.write().mode("overwrite").parquet(config.getOutput() + "/basic");
-    location.write().mode("overwrite").parquet(config.getOutput() + "/location");
-    temporal.write().mode("overwrite").parquet(config.getOutput() + "/temporal");
-    taxonomy.write().mode("overwrite").parquet(config.getOutput() + "/taxonomy");
-    grscicoll.write().mode("overwrite").parquet(config.getOutput() + "/grscicoll");
+    basic.write().mode("overwrite").parquet(outputPath+ "/basic");
+    location.write().mode("overwrite").parquet(outputPath+ "/location");
+    temporal.write().mode("overwrite").parquet(outputPath+ "/temporal");
+    taxonomy.write().mode("overwrite").parquet(outputPath+ "/taxonomy");
+    grscicoll.write().mode("overwrite").parquet(outputPath + "/grscicoll");
 
     // hdfs
     Dataset<OccurrenceHdfsRecord> hdfsView =
-        transformToHdfsView(metadata, basic, location, taxonomy, temporal, grscicoll);
+        transformToHdfsView(
+            records, metadata, identifiers, basic, location, taxonomy, temporal, grscicoll);
 
     DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
-    writer.parquet(config.getOutput() + "/hdfsview");
+    writer.parquet(outputPath + "/hdfsview");
 
     // json  - for elastic indexing
     Dataset<OccurrenceJsonRecord> jsonView =
-        transformToJsonView(metadata, basic, location, taxonomy, temporal, grscicoll);
+        transformToJsonView(
+            records, metadata, identifiers, basic, location, taxonomy, temporal, grscicoll);
 
     DataFrameWriter<OccurrenceJsonRecord> jsonWriter = jsonView.write().mode("overwrite");
-    jsonWriter.parquet(config.getOutput() + "/json");
+    jsonWriter.parquet(outputPath + "/json");
 
     spark.close();
-  }
-
-  private static MetadataRecord getMetadataRecord(MetadataService client, String datasetKey)
-      throws IOException {
-    Response<org.gbif.pipelines.core.ws.metadata.response.Dataset> resp =
-        client.getDataset(datasetKey).execute();
-
-    if (!resp.isSuccessful() || resp.body() == null) {
-      throw new IOException("Failed to fetch metadata for dataset: " + datasetKey);
-    }
-    org.gbif.pipelines.core.ws.metadata.response.Dataset dataset = resp.body();
-
-    MetadataRecord mdr = new MetadataRecord();
-
-    // https://github.com/gbif/pipelines/issues/401
-    License license = getLicense(dataset.getLicense());
-    if (license == null || license == License.UNSPECIFIED || license == License.UNSUPPORTED) {
-      throw new IllegalArgumentException("Dataset licence can't be UNSPECIFIED or UNSUPPORTED!");
-    } else {
-      mdr.setLicense(license.name());
-    }
-
-    mdr.setDatasetTitle(dataset.getTitle());
-    mdr.setInstallationKey(dataset.getInstallationKey());
-    mdr.setPublishingOrganizationKey(dataset.getPublishingOrganizationKey());
-
-    List<Endpoint> endpoints = prioritySortEndpoints(dataset.getEndpoints());
-    if (!endpoints.isEmpty()) {
-      mdr.setProtocol(endpoints.get(0).getType().name());
-    }
-
-    List<Network> networkList = client.getNetworks(datasetKey).execute().body();
-    if (networkList != null && !networkList.isEmpty()) {
-      mdr.setNetworkKeys(
-          networkList.stream()
-              .map(Network::getKey)
-              .filter(Objects::nonNull)
-              .collect(Collectors.toList()));
-    }
-
-    Organization organization =
-        client.getOrganization(dataset.getPublishingOrganizationKey()).execute().body();
-    mdr.setEndorsingNodeKey(organization.getEndorsingNodeKey());
-    mdr.setPublisherTitle(organization.getTitle());
-    mdr.setDatasetPublishingCountry(organization.getCountry());
-
-    getLastCrawledDate(dataset.getMachineTags()).ifPresent(d -> mdr.setLastCrawled(d.getTime()));
-
-    if (Objects.nonNull(dataset.getProject())) {
-      mdr.setProjectId(dataset.getProject().getIdentifier());
-      if (Objects.nonNull(dataset.getProject().getProgramme())) {
-        mdr.setProgrammeAcronym(dataset.getProject().getProgramme().getAcronym());
-      }
-    }
-
-    Installation installation =
-        client.getInstallation(dataset.getInstallationKey()).execute().body();
-    mdr.setHostingOrganizationKey(installation.getOrganizationKey());
-
-    copyMachineTags(dataset.getMachineTags(), mdr);
-    return mdr;
   }
 
   /** Returns ENUM instead of url string */
@@ -205,37 +166,20 @@ public class Interpretation implements Serializable {
   }
 
   private static Dataset<BasicRecord> basicTransform(
-      Config config, Dataset<ExtendedRecord> source) {
+      PipelinesConfig config, Dataset<ExtendedRecord> source) {
     return source.map(
         (MapFunction<ExtendedRecord, BasicRecord>)
             er ->
                 BasicTransform.builder()
                     .useDynamicPropertiesInterpretation(true)
-                    .vocabularyApiUrl(config.getVocabularyApiUrl())
+                    .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
                     .build()
                     .convert(er)
                     .get(),
         Encoders.bean(BasicRecord.class));
   }
 
-  public static MetadataService createMetadataService(String apiUrl) {
-
-    // create client
-    OkHttpClient client =
-        new OkHttpClient.Builder()
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .build();
-
-    // create service
-    Retrofit retrofit =
-        new Retrofit.Builder()
-            .client(client)
-            .baseUrl(apiUrl)
-            .addConverterFactory(JacksonConverterFactory.create())
-            .validateEagerly(true)
-            .build();
-
-    return retrofit.create(MetadataService.class);
+  public static MetadataServiceClient createMetadataService(PipelinesConfig config) {
+      return MetadataServiceClient.create(config.getGbifApi(), config.getContent());
   }
 }

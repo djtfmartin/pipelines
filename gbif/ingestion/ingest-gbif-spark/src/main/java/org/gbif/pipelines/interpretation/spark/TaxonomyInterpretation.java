@@ -33,6 +33,7 @@ import org.apache.spark.sql.SparkSession;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.GbifTerm;
 import org.gbif.dwc.terms.Term;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.transform.MultiTaxonomyTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MultiTaxonRecord;
@@ -41,12 +42,12 @@ public class TaxonomyInterpretation {
 
   /** Interprets the temporal information contained in the extended records. */
   public static Dataset<MultiTaxonRecord> taxonomyTransform(
-      Config config, SparkSession spark, Dataset<ExtendedRecord> source) {
+          PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source) {
 
     MultiTaxonomyTransform multiTaxonomyTransform =
         MultiTaxonomyTransform.builder()
-            .nameUsageMatchApiUrl(config.getSpeciesMatchAPI())
-            .checklistKeys(config.getChecklistKeys())
+            .nameUsageMatchApiUrl(config.getNameUsageMatchingService().getWs().getApi().getWsUrl())
+            .checklistKeys(config.getNameUsageMatchingService().getChecklistKeys())
             .build();
 
     // extract the taxonomy from the extended records
@@ -70,7 +71,7 @@ public class TaxonomyInterpretation {
     Dataset<TaxonomyInterpretation.Taxonomy> distinctClassifications =
         spark
             .sql("SELECT DISTINCT taxonomy.* FROM record_with_taxonomy")
-            .repartition(config.getGeocodeParallelism())
+            .repartition(config.getNameUsageMatchingService().getParallelism())
             .as(Encoders.bean(TaxonomyInterpretation.Taxonomy.class));
 
     // lookup the distinct locations, and create a dictionary of the results

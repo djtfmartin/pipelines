@@ -18,6 +18,7 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.GbifTerm;
 import org.gbif.dwc.terms.Term;
 import org.gbif.kvs.grscicoll.GrscicollLookupRequest;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.transform.GrscicollTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MetadataRecord;
@@ -27,10 +28,10 @@ public class GrscicollInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
   public static Dataset<GrscicollRecord> grscicollTransform(
-      Config config, SparkSession spark, Dataset<ExtendedRecord> source, MetadataRecord mdr) {
+          PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source, MetadataRecord mdr) {
 
     GrscicollTransform transform =
-        GrscicollTransform.builder().gbifApiUrl(config.getGrscicollAPI()).build();
+        GrscicollTransform.builder().gbifApiUrl(config.getGrscicollLookup().getApi().getWsUrl()).build();
 
     // extract the location
     Dataset<RecordWithGrscicollLookup> recordWithLookup =
@@ -53,7 +54,7 @@ public class GrscicollInterpretation {
     Dataset<GrscicollLookupRequest> distinctLookups =
         spark
             .sql("SELECT DISTINCT grscicollLookupRequest.* FROM record_with_grscicollLookup")
-            .repartition(config.getGrscicollParallelism())
+            .repartition(config.getGrscicollLookup().getParallelism())
             .as(Encoders.bean(GrscicollLookupRequest.class));
 
     // look up in kv store

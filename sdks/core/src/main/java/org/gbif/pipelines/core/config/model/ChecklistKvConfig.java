@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class ChecklistKvConfig implements Serializable {
   List<String> checklistKeys;
   KvConfig ws;
+  Integer parallelism = 10;
 }
