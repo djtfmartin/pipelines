@@ -1,7 +1,8 @@
-inputPath: /Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/test-data/
+inputPath: /Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/test-data
+outputPath: /Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/interpreted-out
 zkConnectionString:
 gbifApi:
-  wsUrl: https://api.gbif-dev.org/v1/
+  wsUrl: https://api.gbif.org/v1/
 nameUsageMatchingService:
   checklistKeys:
     - d7dddbf4-2cf0-4f39-9b2a-bb099caae36c
@@ -12,13 +13,13 @@ nameUsageMatchingService:
     zkConnectionString:
     tableName: dev_name_usage_kv
     api:
-      wsUrl: https://api.gbif-dev.org/
+      wsUrl: https://api.gbif.org/
     hbaseZnode: /znode-93f9cdb5-d146-46da-9f80-e8546468b0fe/hbase
 grscicollLookup:
   numOfKeyBuckets: 5
   tableName: dev_grscicoll_lookup_kv
   api:
-    wsUrl: https://api.gbif-dev.org/v1/
+    wsUrl: https://api.gbif.org/v1/
   zkConnectionString:
   hbaseZnode: /znode-93f9cdb5-d146-46da-9f80-e8546468b0fe/hbase
 geocode:
@@ -26,7 +27,7 @@ geocode:
   tableName: dev_geocode_kv
   wsCacheSizeMb: 128
   api:
-    wsUrl: https://api.gbif-dev.org/v1/
+    wsUrl: https://api.gbif.org/v1/
   zkConnectionString:
   hbaseZnode:
 imageCachePath:

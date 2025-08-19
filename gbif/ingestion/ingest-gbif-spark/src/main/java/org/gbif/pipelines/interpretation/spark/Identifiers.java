@@ -1,20 +1,28 @@
 package org.gbif.pipelines.interpretation.spark;
 
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.KeyDeserializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
+import org.gbif.dwc.terms.Term;
+import org.gbif.dwc.terms.TermFactory;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.factory.ConfigFactory;
-import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.IdentifierRecord;
 
-import java.io.Serializable;
+import java.io.*;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Identifiers implements Serializable {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         if (args.length < 3) {
             System.err.println(
@@ -22,10 +30,7 @@ public class Identifiers implements Serializable {
             System.exit(1);
         }
 
-        HdfsConfigs hdfsConfigs = HdfsConfigs.create(null, null);
-        PipelinesConfig config =
-                ConfigFactory.getInstance(hdfsConfigs, args[0], PipelinesConfig.class)
-                        .get();
+        PipelinesConfig config = loadConfig(args[0]);
 
         String datasetID = args[1];
         String attempt = args[2];
@@ -60,5 +65,29 @@ public class Identifiers implements Serializable {
                                 .setInternalId(er.getId()) //FIXME
                                 .build(),
                 Encoders.bean(IdentifierRecord.class));
+    }
+
+    public static PipelinesConfig loadConfig(String configPath) throws IOException {
+        try (BufferedReader br = new BufferedReader(new FileReader(new File(configPath), UTF_8))) {
+            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            mapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
+
+            SimpleModule keyTermDeserializer = new SimpleModule();
+            keyTermDeserializer.addKeyDeserializer(
+                    Term.class,
+                    new KeyDeserializer() {
+                        @Override
+                        public Term deserializeKey(String value, DeserializationContext dc) {
+                            return TermFactory.instance().findTerm(value);
+                        }
+                    });
+            mapper.registerModule(keyTermDeserializer);
+
+            mapper.findAndRegisterModules();
+            return mapper.readValue(br, PipelinesConfig.class);
+        } catch (IOException e) {
+            System.err.println("Error reading config file: " + e.getMessage());
+            throw new RuntimeException("Failed to load configuration", e);
+        }
     }
 }
