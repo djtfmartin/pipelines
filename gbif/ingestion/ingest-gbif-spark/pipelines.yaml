@@ -6,30 +6,24 @@ gbifApi:
 nameUsageMatchingService:
   checklistKeys:
     - d7dddbf4-2cf0-4f39-9b2a-bb099caae36c
-    - 2d59e5db-57ad-41ff-97d6-11f5fb264527
-    - 7ddf754f-d193-4cc9-b351-99906754a03b
   ws:
     numOfKeyBuckets: 5
-    zkConnectionString:
     tableName: dev_name_usage_kv
     api:
-      wsUrl: https://api.gbif.org/
-    hbaseZnode: /znode-93f9cdb5-d146-46da-9f80-e8546468b0fe/hbase
+      wsUrl: https://api.gbif-test.org/
+vocabularyService:
+  wsUrl: https://api.gbif.org/v1/
 grscicollLookup:
   numOfKeyBuckets: 5
   tableName: dev_grscicoll_lookup_kv
   api:
-    wsUrl: https://api.gbif.org/v1/
-  zkConnectionString:
-  hbaseZnode: /znode-93f9cdb5-d146-46da-9f80-e8546468b0fe/hbase
+    wsUrl: https://api.gbif-test.org/v1/
 geocode:
   numOfKeyBuckets: 5
   tableName: dev_geocode_kv
   wsCacheSizeMb: 128
   api:
-    wsUrl: https://api.gbif.org/v1/
-  zkConnectionString:
-  hbaseZnode:
+    wsUrl: https://api.gbif-test.org/v1/
 imageCachePath:
 content:
   esHosts:

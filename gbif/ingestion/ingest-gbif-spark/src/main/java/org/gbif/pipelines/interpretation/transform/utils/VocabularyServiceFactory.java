@@ -26,6 +26,7 @@ public class VocabularyServiceFactory {
   private static VocabularyService vocabularyService;
 
   public static VocabularyService getInstance(String url) {
+    assert url != null : "Vocabulary service URL can't be null";
     if (vocabularyService == null) {
       synchronized (LOCK) {
         if (vocabularyService == null) {

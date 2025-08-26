@@ -13,7 +13,6 @@
  */
 package org.gbif.pipelines.interpretation.spark;
 
-import static org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter.*;
 import static org.gbif.pipelines.interpretation.spark.GrscicollInterpretation.grscicollTransform;
 import static org.gbif.pipelines.interpretation.spark.HdfsView.transformToHdfsView;
 import static org.gbif.pipelines.interpretation.spark.JsonView.transformToJsonView;
@@ -23,36 +22,20 @@ import static org.gbif.pipelines.interpretation.spark.TemporalInterpretation.tem
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URI;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import okhttp3.OkHttpClient;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
-import org.gbif.api.model.registry.Endpoint;
-import org.gbif.api.vocabulary.License;
-import org.gbif.common.parsers.LicenseParser;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.factory.ConfigFactory;
 import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
-import org.gbif.pipelines.core.ws.metadata.MetadataService;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
-import org.gbif.pipelines.core.ws.metadata.MetadataServiceFactory;
-import org.gbif.pipelines.core.ws.metadata.response.Installation;
-import org.gbif.pipelines.core.ws.metadata.response.Network;
-import org.gbif.pipelines.core.ws.metadata.response.Organization;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
+@Slf4j
 public class Interpretation implements Serializable {
 
   public static void main(String[] args) throws IOException {
@@ -92,24 +75,35 @@ public class Interpretation implements Serializable {
     //    }
 
     // Read the verbatim input
+    log.info("Loading extended");
     Dataset<ExtendedRecord> records =
         spark.read().format("avro")
                 .load(inputPath).as(Encoders.bean(ExtendedRecord.class));
 
+      log.info("Loading identifiers");
+      Dataset<IdentifierRecord> identifiers =
+              spark.read().parquet(outputPath + "/identifiers").as(Encoders.bean(IdentifierRecord.class));
+
+
     // load the metadata from the registry and ES content indexes
+      log.info("Loading metadata");
     MetadataServiceClient metadataServiceClient = MetadataServiceClient.create(config.getGbifApi(), config.getContent());
     MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(datasetID).build();
     MetadataInterpreter.interpret(metadataServiceClient).accept(datasetID, metadata);
 
 
+
     // Run the interpretations
+    log.info("Interpreting basic");
     Dataset<BasicRecord> basic = basicTransform(config, records);
+    log.info("Interpreting location");
     Dataset<LocationRecord> location = locationTransform(config, spark, records);
+    log.info("Interpreting temporal");
     Dataset<TemporalRecord> temporal = temporalTransform(records);
+    log.info("Interpreting taxonomy");
     Dataset<MultiTaxonRecord> taxonomy = taxonomyTransform(config, spark, records);
+    log.info("Interpreting grscicoll");
     Dataset<GrscicollRecord> grscicoll = grscicollTransform(config, spark, records, metadata);
-//    Dataset<IdentifierRecord> identifiers = identifierTransform(records, datasetID);
-    Dataset<IdentifierRecord> identifiers = null;
 
     //    Dataset<VerbatimRecord> verbatim = verbatimTransform(records);
     //    Dataset<AudubonRecord> audubon = audubonTransform(config, spark, records);
@@ -136,33 +130,17 @@ public class Interpretation implements Serializable {
     DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
     writer.parquet(outputPath + "/hdfsview");
 
-    // json  - for elastic indexing
+//    // json  - for elastic indexing
     Dataset<OccurrenceJsonRecord> jsonView =
         transformToJsonView(
             records, metadata, identifiers, basic, location, taxonomy, temporal, grscicoll);
 
     DataFrameWriter<OccurrenceJsonRecord> jsonWriter = jsonView.write().mode("overwrite");
     jsonWriter.parquet(outputPath + "/json");
-
+//
+    log.info("Interpretation finished");
     spark.close();
-  }
-
-  /** Returns ENUM instead of url string */
-  private static License getLicense(String url) {
-    URI uri =
-        Optional.ofNullable(url)
-            .map(
-                x -> {
-                  try {
-                    return URI.create(x);
-                  } catch (IllegalArgumentException ex) {
-                    return null;
-                  }
-                })
-            .orElse(null);
-    License license = LicenseParser.getInstance().parseUriThenTitle(uri, null);
-    // UNSPECIFIED must be mapped to null
-    return License.UNSPECIFIED == license ? null : license;
+    System.exit(0);
   }
 
   private static Dataset<BasicRecord> basicTransform(
@@ -177,9 +155,5 @@ public class Interpretation implements Serializable {
                     .convert(er)
                     .get(),
         Encoders.bean(BasicRecord.class));
-  }
-
-  public static MetadataServiceClient createMetadataService(PipelinesConfig config) {
-      return MetadataServiceClient.create(config.getGbifApi(), config.getContent());
   }
 }

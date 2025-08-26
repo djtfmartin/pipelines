@@ -65,6 +65,7 @@ public class TaxonomyInterpreter {
       }
 
       ModelUtils.checkNullOrEmpty(er);
+      log.debug("TaxonomyInterpreter: {} ", er.getId());
       NameUsageMatchRequest nameUsageMatchRequest = createNameUsageMatchRequest(er, checklistKey);
       createTaxonRecord(nameUsageMatchRequest, kvStore, tr);
       tr.setId(er.getId());

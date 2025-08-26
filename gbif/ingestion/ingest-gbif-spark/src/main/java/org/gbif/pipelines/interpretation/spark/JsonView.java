@@ -106,6 +106,8 @@ public class JsonView {
                       .temporal(temporal)
                       .multiTaxon(multi)
                       .grscicoll(grscicollRecord)
+                      .clustering(ClusteringRecord.newBuilder().setId(extended.getId()).build()) // placeholder
+                      .multimedia(MultimediaRecord.newBuilder().setId(extended.getId()).build()) // placeholder
                       .identifier(identifierRecord)
                       .build();
 

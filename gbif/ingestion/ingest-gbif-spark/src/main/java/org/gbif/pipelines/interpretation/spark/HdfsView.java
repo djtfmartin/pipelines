@@ -1,5 +1,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -8,6 +9,7 @@ import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import scala.Tuple2;
 
+@Slf4j
 public class HdfsView implements java.io.Serializable {
 
   public static Dataset<OccurrenceHdfsRecord> transformToHdfsView(
@@ -61,6 +63,7 @@ public class HdfsView implements java.io.Serializable {
               TemporalRecord temporal = row._1()._2();
               GrscicollRecord grscicollRecord = row._2();
 
+              log.debug("Converting id={}", basic.getId());
               OccurrenceHdfsRecordConverter c =
                   OccurrenceHdfsRecordConverter.builder()
                       .metadataRecord(metadataRecord)

@@ -1,0 +1,27 @@
+<configuration>
+    <!-- Console appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{0} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger at WARN (default for everything) -->
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+    <!-- Spark internals -->
+    <logger name="org.apache.spark" level="WARN" />
+
+    <!-- Hadoop libraries -->
+    <logger name="org.apache.hadoop" level="WARN" />
+
+    <!-- Jetty (Spark UI / web server) -->
+    <logger name="org.eclipse.jetty" level="WARN" />
+
+    <!-- Your application logs (adjust package to yours) -->
+    <logger name="org.gbif.pipelines" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+</configuration>
