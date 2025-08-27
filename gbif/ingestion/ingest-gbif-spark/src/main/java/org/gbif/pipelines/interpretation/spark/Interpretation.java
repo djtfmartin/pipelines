@@ -32,8 +32,8 @@ import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
+import scala.Tuple2;
 
 @Slf4j
 public class Interpretation implements Serializable {
@@ -48,13 +48,12 @@ public class Interpretation implements Serializable {
 
     HdfsConfigs hdfsConfigs = HdfsConfigs.create(null, null);
     PipelinesConfig config =
-              ConfigFactory.getInstance(hdfsConfigs, args[0], PipelinesConfig.class)
-                      .get();
+        ConfigFactory.getInstance(hdfsConfigs, args[0], PipelinesConfig.class).get();
 
-      String datasetID = args[1];
-      String attempt = args[2];
-      String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
-      String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
+    String datasetID = args[1];
+    String attempt = args[2];
+    String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
+    String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
     //    SparkSession.Builder sb = SparkSession.builder();
 
@@ -76,84 +75,94 @@ public class Interpretation implements Serializable {
 
     // Read the verbatim input
     log.info("Loading extended");
-    Dataset<ExtendedRecord> records =
-        spark.read().format("avro")
-                .load(inputPath).as(Encoders.bean(ExtendedRecord.class));
+    Dataset<OccurrenceRecord> records =
+        spark
+            .read()
+            .format("avro")
+            .load(inputPath)
+            .as(Encoders.bean(ExtendedRecord.class))
+            .map(
+                (MapFunction<ExtendedRecord, OccurrenceRecord>)
+                    extendedRecord -> OccurrenceRecord.builder().verbatim(extendedRecord).build(),
+                Encoders.bean(OccurrenceRecord.class));
 
-      log.info("Loading identifiers");
-      Dataset<IdentifierRecord> identifiers =
-              spark.read().parquet(outputPath + "/identifiers").as(Encoders.bean(IdentifierRecord.class));
+    log.info("Loading identifiers");
+    Dataset<IdentifierRecord> identifiers =
+        spark.read().parquet(outputPath + "/identifiers").as(Encoders.bean(IdentifierRecord.class));
 
+    records = joinIdentifiers(records, identifiers);
 
     // load the metadata from the registry and ES content indexes
-      log.info("Loading metadata");
-    MetadataServiceClient metadataServiceClient = MetadataServiceClient.create(config.getGbifApi(), config.getContent());
+    log.info("Loading metadata");
+
+    MetadataServiceClient metadataServiceClient =
+        MetadataServiceClient.create(config.getGbifApi(), config.getContent());
     MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(datasetID).build();
     MetadataInterpreter.interpret(metadataServiceClient).accept(datasetID, metadata);
 
-
-
     // Run the interpretations
     log.info("Interpreting basic");
-    Dataset<BasicRecord> basic = basicTransform(config, records);
+    records = basicTransform(config, records);
     log.info("Interpreting location");
-    Dataset<LocationRecord> location = locationTransform(config, spark, records);
+    records = locationTransform(config, spark, records);
     log.info("Interpreting temporal");
-    Dataset<TemporalRecord> temporal = temporalTransform(records);
+    records = temporalTransform(records);
     log.info("Interpreting taxonomy");
-    Dataset<MultiTaxonRecord> taxonomy = taxonomyTransform(config, spark, records);
+    records = taxonomyTransform(config, spark, records);
     log.info("Interpreting grscicoll");
-    Dataset<GrscicollRecord> grscicoll = grscicollTransform(config, spark, records, metadata);
+    records = grscicollTransform(config, spark, records, metadata);
 
-    //    Dataset<VerbatimRecord> verbatim = verbatimTransform(records);
-    //    Dataset<AudubonRecord> audubon = audubonTransform(config, spark, records);
-    //    Dataset<ImageRecord> image = imageTransform(config, spark, records);
-    //    Dataset<DnaDerivedDataRecord> image = dnaDerivedDataTransform(config, spark, records);
-    //    Dataset<MultimediaRecord> image = multimediaTransform(config, spark, records);
+    //    //    Dataset<VerbatimRecord> verbatim = verbatimTransform(records);
+    //    //    Dataset<AudubonRecord> audubon = audubonTransform(config, spark, records);
+    //    //    Dataset<ImageRecord> image = imageTransform(config, spark, records);
+    //    //    Dataset<DnaDerivedDataRecord> image = dnaDerivedDataTransform(config, spark,
+    // records);
+    //    //    Dataset<MultimediaRecord> image = multimediaTransform(config, spark, records);
+    //
 
-    // import org.gbif.pipelines.transforms.specific.ClusteringTransform;
-    // import org.gbif.pipelines.transforms.specific.GbifIdAbsentTransform;
-    // import org.gbif.pipelines.transforms.specific.GbifIdTransform;
-
-    // Write the intermediate output (useful for debugging)
-    basic.write().mode("overwrite").parquet(outputPath+ "/basic");
-    location.write().mode("overwrite").parquet(outputPath+ "/location");
-    temporal.write().mode("overwrite").parquet(outputPath+ "/temporal");
-    taxonomy.write().mode("overwrite").parquet(outputPath+ "/taxonomy");
-    grscicoll.write().mode("overwrite").parquet(outputPath + "/grscicoll");
-
-    // hdfs
-    Dataset<OccurrenceHdfsRecord> hdfsView =
-        transformToHdfsView(
-            records, metadata, identifiers, basic, location, taxonomy, temporal, grscicoll);
-
+    //  hdfs
+    Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(records, metadata);
     DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
     writer.parquet(outputPath + "/hdfsview");
 
-//    // json  - for elastic indexing
-    Dataset<OccurrenceJsonRecord> jsonView =
-        transformToJsonView(
-            records, metadata, identifiers, basic, location, taxonomy, temporal, grscicoll);
-
+    // json
+    Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(records, metadata);
     DataFrameWriter<OccurrenceJsonRecord> jsonWriter = jsonView.write().mode("overwrite");
     jsonWriter.parquet(outputPath + "/json");
-//
+
     log.info("Interpretation finished");
     spark.close();
     System.exit(0);
   }
 
-  private static Dataset<BasicRecord> basicTransform(
-      PipelinesConfig config, Dataset<ExtendedRecord> source) {
+  private static Dataset<OccurrenceRecord> joinIdentifiers(
+      Dataset<OccurrenceRecord> records, Dataset<IdentifierRecord> identifiers) {
+    return records
+        .joinWith(identifiers, records.col("verbatim.id").equalTo(identifiers.col("id")))
+        .map(
+            (MapFunction<Tuple2<OccurrenceRecord, IdentifierRecord>, OccurrenceRecord>)
+                row -> {
+                  OccurrenceRecord r = row._1;
+                  r.setIdentifier(row._2);
+                  return r;
+                },
+            Encoders.bean(OccurrenceRecord.class));
+  }
+
+  private static Dataset<OccurrenceRecord> basicTransform(
+      PipelinesConfig config, Dataset<OccurrenceRecord> source) {
     return source.map(
-        (MapFunction<ExtendedRecord, BasicRecord>)
-            er ->
-                BasicTransform.builder()
-                    .useDynamicPropertiesInterpretation(true)
-                    .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
-                    .build()
-                    .convert(er)
-                    .get(),
-        Encoders.bean(BasicRecord.class));
+        (MapFunction<OccurrenceRecord, OccurrenceRecord>)
+            er -> {
+              er.setBasic(
+                  BasicTransform.builder()
+                      .useDynamicPropertiesInterpretation(true)
+                      .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
+                      .build()
+                      .convert(er.getVerbatim())
+                      .get());
+              return er;
+            },
+        Encoders.bean(OccurrenceRecord.class));
   }
 }

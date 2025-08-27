@@ -41,8 +41,8 @@ import org.gbif.pipelines.io.avro.MultiTaxonRecord;
 public class TaxonomyInterpretation {
 
   /** Interprets the temporal information contained in the extended records. */
-  public static Dataset<MultiTaxonRecord> taxonomyTransform(
-          PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source) {
+  public static Dataset<OccurrenceRecord> taxonomyTransform(
+      PipelinesConfig config, SparkSession spark, Dataset<OccurrenceRecord> source) {
 
     MultiTaxonomyTransform multiTaxonomyTransform =
         MultiTaxonomyTransform.builder()
@@ -53,14 +53,15 @@ public class TaxonomyInterpretation {
     // extract the taxonomy from the extended records
     Dataset<RecordWithTaxonomy> recordWithTaxonomy =
         source.map(
-            (MapFunction<ExtendedRecord, RecordWithTaxonomy>)
+            (MapFunction<OccurrenceRecord, RecordWithTaxonomy>)
                 er -> {
-                  Taxonomy taxonomy = Taxonomy.buildFrom(er);
+                  Taxonomy taxonomy = Taxonomy.buildFrom(er.getVerbatim());
                   return RecordWithTaxonomy.builder()
-                      .id(er.getId())
-                      .coreId(er.getCoreId())
-                      .parentId(extractValue(er, parentEventID))
-                      .taxonomyHash(taxonomy.hash())
+                      .id(er.getVerbatim().getId())
+                      .coreId(er.getVerbatim().getCoreId())
+                      .parentId(extractValue(er.getVerbatim(), parentEventID))
+                      .hash(taxonomy.hash())
+                      .occurrenceRecord(er)
                       .taxonomy(taxonomy)
                       .build();
                 },
@@ -107,14 +108,15 @@ public class TaxonomyInterpretation {
     Dataset<RecordWithMultiTaxonRecord> expanded =
         spark
             .sql(
-                "SELECT id, coreId, parentId, multiTaxonRecord "
-                    + "FROM record_with_taxonomy r "
-                    + "  LEFT JOIN key_taxonomy l ON r.taxonomyHash = l.key")
+                "SELECT r.id, r.coreId, r.parentId, r.occurrenceRecord, l.multiTaxonRecord"
+                    + " FROM record_with_taxonomy r "
+                    + " LEFT JOIN key_taxonomy l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithMultiTaxonRecord.class));
 
     return expanded.map(
-        (MapFunction<RecordWithMultiTaxonRecord, MultiTaxonRecord>)
+        (MapFunction<RecordWithMultiTaxonRecord, OccurrenceRecord>)
             r -> {
+              OccurrenceRecord or = r.getOccurrenceRecord();
               MultiTaxonRecord multiTaxonRecord =
                   r.getMultiTaxonRecord() == null
                       ? MultiTaxonRecord.newBuilder().build()
@@ -123,9 +125,10 @@ public class TaxonomyInterpretation {
               multiTaxonRecord.setId(r.getId());
               multiTaxonRecord.setCoreId(r.getCoreId());
               multiTaxonRecord.setParentId(r.getParentId());
-              return multiTaxonRecord;
+              or.setMultiTaxon(multiTaxonRecord);
+              return or;
             },
-        Encoders.bean(MultiTaxonRecord.class));
+        Encoders.bean(OccurrenceRecord.class));
   }
 
   @Data
@@ -136,7 +139,8 @@ public class TaxonomyInterpretation {
     private String id;
     private String coreId;
     private String parentId;
-    private String taxonomyHash;
+    private String hash;
+    private OccurrenceRecord occurrenceRecord;
     private Taxonomy taxonomy;
   }
 
@@ -157,6 +161,7 @@ public class TaxonomyInterpretation {
     private String id;
     private String coreId;
     private String parentId;
+    private OccurrenceRecord occurrenceRecord;
     private MultiTaxonRecord multiTaxonRecord;
   }
 

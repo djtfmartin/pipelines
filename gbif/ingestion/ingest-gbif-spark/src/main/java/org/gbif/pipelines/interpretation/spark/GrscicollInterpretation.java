@@ -27,24 +27,30 @@ import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 public class GrscicollInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
-  public static Dataset<GrscicollRecord> grscicollTransform(
-          PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source, MetadataRecord mdr) {
+  public static Dataset<OccurrenceRecord> grscicollTransform(
+      PipelinesConfig config,
+      SparkSession spark,
+      Dataset<OccurrenceRecord> source,
+      MetadataRecord mdr) {
 
     GrscicollTransform transform =
-        GrscicollTransform.builder().gbifApiUrl(config.getGrscicollLookup().getApi().getWsUrl()).build();
+        GrscicollTransform.builder()
+            .gbifApiUrl(config.getGrscicollLookup().getApi().getWsUrl())
+            .build();
 
     // extract the location
     Dataset<RecordWithGrscicollLookup> recordWithLookup =
         source.map(
-            (MapFunction<ExtendedRecord, RecordWithGrscicollLookup>)
+            (MapFunction<OccurrenceRecord, RecordWithGrscicollLookup>)
                 er -> {
-                  GrscicollLookupRequest lookup = buildFrom(er, mdr);
+                  GrscicollLookupRequest lookup = buildFrom(er.getVerbatim(), mdr);
                   return RecordWithGrscicollLookup.builder()
-                      .id(er.getId())
-                      .coreId(er.getCoreId())
-                      .parentId(extractValue(er, parentEventID))
+                      .id(er.getVerbatim().getId())
+                      .coreId(er.getVerbatim().getCoreId())
+                      .parentId(extractValue(er.getVerbatim(), parentEventID))
                       .hash(hash(lookup))
                       .grscicollLookupRequest(lookup)
+                      .occurrenceRecord(er)
                       .build();
                 },
             Encoders.bean(RecordWithGrscicollLookup.class));
@@ -93,13 +99,13 @@ public class GrscicollInterpretation {
     Dataset<RecordWithGrscicollRecord> expanded =
         spark
             .sql(
-                "SELECT id, coreId, parentId, grscicollRecord"
+                "SELECT r.id, r.coreId, r.parentId, r.occurrenceRecord, l.grscicollRecord"
                     + " FROM record_with_grscicollLookup r "
                     + " LEFT JOIN key_grscicollrecord l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithGrscicollRecord.class));
 
     return expanded.map(
-        (MapFunction<RecordWithGrscicollRecord, GrscicollRecord>)
+        (MapFunction<RecordWithGrscicollRecord, OccurrenceRecord>)
             r -> {
               GrscicollRecord grscicollRecord =
                   r.getGrscicollRecord() == null
@@ -112,9 +118,12 @@ public class GrscicollInterpretation {
                 grscicollRecord.setIssues(
                     org.gbif.pipelines.io.avro.IssueRecord.newBuilder().build());
               }
-              return grscicollRecord;
+
+              OccurrenceRecord or = r.getOccurrenceRecord();
+              or.setGrscicoll(grscicollRecord);
+              return or;
             },
-        Encoders.bean(GrscicollRecord.class));
+        Encoders.bean(OccurrenceRecord.class));
   }
 
   public static String hash(GrscicollLookupRequest request) {
@@ -168,6 +177,7 @@ public class GrscicollInterpretation {
     private String coreId;
     private String parentId;
     private String hash;
+    private OccurrenceRecord occurrenceRecord;
     private GrscicollLookupRequest grscicollLookupRequest;
   }
 
@@ -179,6 +189,7 @@ public class GrscicollInterpretation {
     private String id;
     private String coreId;
     private String parentId;
+    private OccurrenceRecord occurrenceRecord;
     private GrscicollRecord grscicollRecord;
   }
 

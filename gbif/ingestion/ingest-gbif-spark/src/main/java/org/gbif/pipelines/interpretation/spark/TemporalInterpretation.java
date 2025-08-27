@@ -17,20 +17,21 @@ import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.gbif.pipelines.interpretation.transform.TemporalTransform;
-import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.TemporalRecord;
 
 public class TemporalInterpretation {
 
   /** Interprets the temporal information contained in the extended records. */
-  public static Dataset<TemporalRecord> temporalTransform(Dataset<ExtendedRecord> source) {
+  public static Dataset<OccurrenceRecord> temporalTransform(Dataset<OccurrenceRecord> source) {
 
     TemporalTransform temporalTransform =
         TemporalTransform.builder().build(); // TODO: add orderings from dataset tags
 
     return source.map(
-        (MapFunction<ExtendedRecord, TemporalRecord>)
-            er -> temporalTransform.convert(er).orElse(null),
-        Encoders.bean(TemporalRecord.class));
+        (MapFunction<OccurrenceRecord, OccurrenceRecord>)
+            or -> {
+              or.setTemporal(temporalTransform.convert(or.getVerbatim()).orElse(null));
+              return or;
+            },
+        Encoders.bean(OccurrenceRecord.class));
   }
 }

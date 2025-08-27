@@ -40,8 +40,8 @@ import org.gbif.pipelines.io.avro.MetadataRecord;
 public class LocationInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
-  public static Dataset<LocationRecord> locationTransform(
-          PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source) {
+  public static Dataset<OccurrenceRecord> locationTransform(
+      PipelinesConfig config, SparkSession spark, Dataset<OccurrenceRecord> source) {
 
     LocationTransform locationTransform =
         LocationTransform.builder().geocodeApiUrl(config.getGeocode().getApi().getWsUrl()).build();
@@ -49,14 +49,15 @@ public class LocationInterpretation {
     // extract the location
     Dataset<RecordWithLocation> recordWithLocation =
         source.map(
-            (MapFunction<ExtendedRecord, RecordWithLocation>)
-                er -> {
-                  Location location = Location.buildFrom(er);
+            (MapFunction<OccurrenceRecord, RecordWithLocation>)
+                or -> {
+                  Location location = Location.buildFrom(or.getVerbatim());
                   return RecordWithLocation.builder()
-                      .id(er.getId())
-                      .coreId(er.getCoreId())
-                      .parentId(extractValue(er, parentEventID))
-                      .locationHash(location.hash())
+                      .id(or.getVerbatim().getId())
+                      .coreId(or.getVerbatim().getCoreId())
+                      .parentId(extractValue(or.getVerbatim(), parentEventID))
+                      .hash(location.hash())
+                      .occurrenceRecord(or)
                       .location(location)
                       .build();
                 },
@@ -103,17 +104,18 @@ public class LocationInterpretation {
     keyedLocation.createOrReplaceTempView("key_location");
 
     // join the dictionary back to the source records
-    Dataset<RecordWithLocationRecord> expanded =
+    Dataset<RecordWithRecords> expanded =
         spark
             .sql(
-                "SELECT id, coreId, parentId, locationRecord"
+                "SELECT r.id, r.coreId, r.parentId, r.occurrenceRecord, l.locationRecord"
                     + " FROM record_with_location r "
-                    + " LEFT JOIN key_location l ON r.locationHash = l.key")
-            .as(Encoders.bean(RecordWithLocationRecord.class));
+                    + " LEFT JOIN key_location l ON r.hash = l.key")
+            .as(Encoders.bean(RecordWithRecords.class));
 
     return expanded.map(
-        (MapFunction<RecordWithLocationRecord, LocationRecord>)
+        (MapFunction<RecordWithRecords, OccurrenceRecord>)
             r -> {
+              OccurrenceRecord or = r.getOccurrenceRecord();
               LocationRecord locationRecord =
                   r.getLocationRecord() == null
                       ? LocationRecord.newBuilder().build()
@@ -122,9 +124,10 @@ public class LocationInterpretation {
               locationRecord.setId(r.getId());
               locationRecord.setCoreId(r.getCoreId());
               locationRecord.setParentId(r.getParentId());
-              return locationRecord;
+              or.setLocation(locationRecord);
+              return or;
             },
-        Encoders.bean(LocationRecord.class));
+        Encoders.bean(OccurrenceRecord.class));
   }
 
   @Data
@@ -135,7 +138,8 @@ public class LocationInterpretation {
     private String id;
     private String coreId;
     private String parentId;
-    private String locationHash;
+    private String hash;
+    private OccurrenceRecord occurrenceRecord;
     private Location location;
   }
 
@@ -152,10 +156,11 @@ public class LocationInterpretation {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class RecordWithLocationRecord {
+  public static class RecordWithRecords {
     private String id;
     private String coreId;
     private String parentId;
+    private OccurrenceRecord occurrenceRecord;
     private LocationRecord locationRecord;
   }
 
