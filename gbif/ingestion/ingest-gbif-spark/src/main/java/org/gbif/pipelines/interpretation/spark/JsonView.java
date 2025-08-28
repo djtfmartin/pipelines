@@ -1,5 +1,8 @@
 package org.gbif.pipelines.interpretation.spark;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -7,7 +10,9 @@ import org.gbif.pipelines.core.converters.OccurrenceJsonConverter;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 
-public class JsonView {
+@Slf4j
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class JsonView {
 
   public static Dataset<OccurrenceJsonRecord> transformToJsonView(
       Dataset<OccurrenceRecord> records, MetadataRecord metadataRecord) {

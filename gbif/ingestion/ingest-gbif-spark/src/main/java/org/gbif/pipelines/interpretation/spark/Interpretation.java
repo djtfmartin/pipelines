@@ -38,7 +38,7 @@ import scala.Tuple2;
 @Slf4j
 public class Interpretation implements Serializable {
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) {
 
     if (args.length < 2) {
       System.err.println(
