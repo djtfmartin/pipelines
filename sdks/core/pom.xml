@@ -229,10 +229,22 @@
     <dependency>
       <groupId>org.gbif.occurrence</groupId>
       <artifactId>occurrence-hdfs-table</artifactId>
+        <exclusions>
+            <exclusion>
+                <groupId>org.gbif</groupId>
+                <artifactId>gbif-api</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.occurrence</groupId>
       <artifactId>occurrence-common</artifactId>
+        <exclusions>
+            <exclusion>
+                <groupId>org.gbif</groupId>
+                <artifactId>gbif-api</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
 
     <!-- Common -->

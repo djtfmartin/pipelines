@@ -1,27 +1,22 @@
 package org.gbif.pipelines.interpretation.spark;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.KeyDeserializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.*;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
-import org.gbif.dwc.terms.Term;
-import org.gbif.dwc.terms.TermFactory;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.interpretation.transform.GbifIdTransform;
+import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.IdentifierRecord;
+import org.gbif.pipelines.keygen.HBaseLockingKey;
 
 public class Identifiers implements Serializable {
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) {
 
     if (args.length < 3) {
       System.err.println(
@@ -46,47 +41,24 @@ public class Identifiers implements Serializable {
     Dataset<ExtendedRecord> records =
         spark.read().format("avro").load(inputPath).as(Encoders.bean(ExtendedRecord.class));
 
+    //    org.apache.zookeeper.KeeperException ke = null;
+
     // run the identifier transform
-    Dataset<IdentifierRecord> identifiers = identifierTransform(records);
+    Dataset<IdentifierRecord> identifiers = identifierTransform(config, datasetID, records);
 
     // Write the identifiers to parquet
     identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
   }
 
-  private static Dataset<IdentifierRecord> identifierTransform(Dataset<ExtendedRecord> records) {
+  private static Dataset<IdentifierRecord> identifierTransform(
+      PipelinesConfig config, String datasetId, Dataset<ExtendedRecord> records) {
 
-    // dummy implementation of identifier transform
+    HBaseLockingKey keyService = KeygenServiceFactory.create(config, datasetId);
+
+    GbifIdTransform transform = GbifIdTransform.builder().keygenService(keyService).build();
+
     return records.map(
-        (MapFunction<ExtendedRecord, IdentifierRecord>)
-            er ->
-                IdentifierRecord.newBuilder()
-                    .setId(er.getId())
-                    .setInternalId(er.getId()) // FIXME
-                    .build(),
+        (MapFunction<ExtendedRecord, IdentifierRecord>) er -> transform.convert(er).get(),
         Encoders.bean(IdentifierRecord.class));
-  }
-
-  public static PipelinesConfig loadConfig(String configPath) throws IOException {
-    try (BufferedReader br = new BufferedReader(new FileReader(new File(configPath), UTF_8))) {
-      ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-      mapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
-
-      SimpleModule keyTermDeserializer = new SimpleModule();
-      keyTermDeserializer.addKeyDeserializer(
-          Term.class,
-          new KeyDeserializer() {
-            @Override
-            public Term deserializeKey(String value, DeserializationContext dc) {
-              return TermFactory.instance().findTerm(value);
-            }
-          });
-      mapper.registerModule(keyTermDeserializer);
-
-      mapper.findAndRegisterModules();
-      return mapper.readValue(br, PipelinesConfig.class);
-    } catch (IOException e) {
-      System.err.println("Error reading config file: " + e.getMessage());
-      throw new RuntimeException("Failed to load configuration", e);
-    }
   }
 }

@@ -38,7 +38,7 @@ import org.gbif.pipelines.io.avro.TemporalRecord;
 @Slf4j
 public class TemporalTransform implements Serializable {
 
-  private TemporalInterpreter temporalInterpreter;
+  private final TemporalInterpreter temporalInterpreter;
 
   @Builder
   private TemporalTransform(

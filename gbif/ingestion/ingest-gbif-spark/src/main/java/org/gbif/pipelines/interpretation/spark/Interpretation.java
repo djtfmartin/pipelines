@@ -13,6 +13,7 @@
  */
 package org.gbif.pipelines.interpretation.spark;
 
+import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.spark.GrscicollInterpretation.grscicollTransform;
 import static org.gbif.pipelines.interpretation.spark.HdfsView.transformToHdfsView;
 import static org.gbif.pipelines.interpretation.spark.JsonView.transformToJsonView;
@@ -20,15 +21,12 @@ import static org.gbif.pipelines.interpretation.spark.LocationInterpretation.loc
 import static org.gbif.pipelines.interpretation.spark.TaxonomyInterpretation.taxonomyTransform;
 import static org.gbif.pipelines.interpretation.spark.TemporalInterpretation.temporalTransform;
 
-import java.io.IOException;
 import java.io.Serializable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.factory.ConfigFactory;
 import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
-import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
@@ -46,9 +44,7 @@ public class Interpretation implements Serializable {
       System.exit(1);
     }
 
-    HdfsConfigs hdfsConfigs = HdfsConfigs.create(null, null);
-    PipelinesConfig config =
-        ConfigFactory.getInstance(hdfsConfigs, args[0], PipelinesConfig.class).get();
+    PipelinesConfig config = loadConfig(args[0]);
 
     String datasetID = args[1];
     String attempt = args[2];

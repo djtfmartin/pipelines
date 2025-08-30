@@ -1,7 +1,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import java.io.Serializable;
-
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
