@@ -66,7 +66,7 @@ public class Identifiers implements Serializable {
         }
     }).build();
 
-    return records.map(
+    return records.repartition(config.getKeygen().getParallelism()).map(
         (MapFunction<ExtendedRecord, IdentifierRecord>) er -> transform.convert(er).get(),
         Encoders.bean(IdentifierRecord.class));
   }
