@@ -1,9 +1,11 @@
 package org.gbif.pipelines.interpretation.transform;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import lombok.Builder;
+import org.gbif.pipelines.core.functions.SerializableSupplier;
 import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.specific.GbifIdInterpreter;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
@@ -11,7 +13,7 @@ import org.gbif.pipelines.io.avro.IdentifierRecord;
 import org.gbif.pipelines.keygen.HBaseLockingKey;
 
 @Builder
-public class GbifIdTransform {
+public class GbifIdTransform implements Serializable {
 
   private final String absentName;
   private final boolean isTripletValid;
@@ -19,7 +21,9 @@ public class GbifIdTransform {
   private final boolean useExtendedRecordId;
   private final boolean generateIdIfAbsent;
   private final BiConsumer<ExtendedRecord, IdentifierRecord> gbifIdFn;
-  private final HBaseLockingKey keygenService;
+  private final SerializableSupplier<HBaseLockingKey> keygenServiceSupplier;
+
+  private HBaseLockingKey keygenService;
 
   public Optional<IdentifierRecord> convert(ExtendedRecord source) {
 
@@ -29,6 +33,11 @@ public class GbifIdTransform {
             .setId(source.getId())
             .setFirstLoaded(Instant.now().toEpochMilli())
             .build();
+
+      if (keygenService == null && keygenServiceSupplier != null) {
+          keygenService = keygenServiceSupplier.get();
+      }
+
 
     return Interpretation.from(source)
         .to(ir)
