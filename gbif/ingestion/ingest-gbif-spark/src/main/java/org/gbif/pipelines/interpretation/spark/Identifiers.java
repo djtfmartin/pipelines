@@ -28,7 +28,7 @@ public class Identifiers implements Serializable {
 
     String datasetID = args[1];
     String attempt = args[2];
-    String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
+    String inputPath = "file://" + config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
     SparkSession spark =
@@ -41,7 +41,7 @@ public class Identifiers implements Serializable {
     Dataset<ExtendedRecord> records =
         spark.read().format("avro").load(inputPath).as(Encoders.bean(ExtendedRecord.class));
 
-    //    org.apache.zookeeper.KeeperException ke = null;
+    //        org.apache.zookeeper.KeeperException ke = null;
 
     // run the identifier transform
     Dataset<IdentifierRecord> identifiers = identifierTransform(config, datasetID, records);

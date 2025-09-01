@@ -38,6 +38,7 @@
       <plugin>
         <groupId>org.gbif.pipelines</groupId>
         <artifactId>maven-avro-pojo-generator</artifactId>
+        <version>${project.version}</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>

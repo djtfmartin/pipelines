@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import org.gbif.dwc.terms.Term;
@@ -19,7 +18,7 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 public class ConfigUtil {
 
   public static PipelinesConfig loadConfig(String configPath) {
-    try (BufferedReader br = new BufferedReader(new FileReader(new File(configPath), UTF_8))) {
+    try (BufferedReader br = new BufferedReader(new FileReader(configPath, UTF_8))) {
       ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
       mapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
 

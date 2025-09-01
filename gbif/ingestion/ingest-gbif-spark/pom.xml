@@ -2,12 +2,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>org.gbif.pipelines</groupId>
-    <artifactId>ingestion</artifactId>
-    <version>3.2.7-SNAPSHOT</version>
-    <relativePath>../pom.xml</relativePath>
-  </parent>
+<!--  <parent>-->
+<!--    <groupId>org.gbif.pipelines</groupId>-->
+<!--    <artifactId>pipelines-parent</artifactId>-->
+<!--    <version>3.2.7-SNAPSHOT</version>-->
+<!--    <relativePath>../../../pom.xml</relativePath>-->
+<!--  </parent>-->
+
+  <groupId>org.gbif.pipelines</groupId>
+  <version>3.2.7-SNAPSHOT</version>
 
   <artifactId>ingest-gbif-spark</artifactId>
   <packaging>jar</packaging>
@@ -35,26 +38,67 @@
     <java.version>17</java.version>
   </properties>
 
+    <repositories>
+        <repository>
+            <id>gbif-all</id>
+            <url>https://repository.gbif.org/content/groups/gbif/</url>
+        </repository>
+        <repository>
+            <id>gbif-thirdparty</id>
+            <url>https://repository.gbif.org/content/repositories/thirdparty/</url>
+        </repository>
+        <repository>
+            <id>cloudera-repos</id>
+            <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+
   <dependencies>
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>models-pojo</artifactId>
+      <version>3.2.7-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>core</artifactId>
+      <version>3.2.7-SNAPSHOT</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.gbif.pipelines</groupId>
+          <artifactId>models</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>keygen</artifactId>
+      <version>3.2.7-SNAPSHOT</version>
+      <exclusions>
+          <exclusion>
+              <groupId>org.apache.hbase</groupId>
+              <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+              <groupId>org.apache.hadoop</groupId>
+              <artifactId>*</artifactId>
+          </exclusion>
+      </exclusions>
   </dependency>
-
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-client</artifactId>
+      <version>2.6.3-hadoop3</version>
+    </dependency>
     <!-- TODO: All should probably not specify versions -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>${lombok.version}</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -75,6 +119,17 @@
       <groupId>org.gbif</groupId>
       <artifactId>dwc-api</artifactId>
       <version>${dwc-api.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-annotations</artifactId>
+        </exclusion>
+      </exclusions>
+
     </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
@@ -84,6 +139,7 @@
     <dependency>
       <groupId>org.gbif.kvs</groupId>
       <artifactId>kvs-gbif</artifactId>
+        <version>3.0</version>
       <exclusions>
         <!-- TODO: Review this - was just a guess! -->
         <exclusion>
@@ -98,38 +154,12 @@
           <groupId>org.apache.hbase</groupId>
           <artifactId>*</artifactId>
         </exclusion>
+      <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>*</artifactId>
+      </exclusion>
       </exclusions>
     </dependency>
-      <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-common</artifactId>
-          <scope>provided</scope>
-          <exclusions>
-              <exclusion>
-                  <groupId>org.apache.curator</groupId>
-                  <artifactId>curator-client</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>com.google.protobuf</groupId>
-                  <artifactId>protobuf-java</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
-      <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-hdfs</artifactId>
-          <scope>provided</scope>
-          <exclusions>
-              <exclusion>
-                  <groupId>org.apache.curator</groupId>
-                  <artifactId>curator-client</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>com.google.protobuf</groupId>
-                  <artifactId>protobuf-java</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
@@ -149,6 +179,16 @@
       <groupId>org.gbif</groupId>
       <artifactId>gbif-api</artifactId>
       <version>${gbif-api.version}</version>
+        <exclusions>
+            <exclusion>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
@@ -166,67 +206,144 @@
       <artifactId>jackson-dataformat-yaml</artifactId>
       <version>${jackson.version}</version>
     </dependency>
+      <dependency>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+          <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-annotations</artifactId>
+          <version>${jackson.version}</version>
+      </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson.version}</version>
     </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-referencing</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-metadata</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-opengis</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-main</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-api</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-transform</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-geometry</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-epsg-hsql</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-epsg-extension</artifactId>
-      <version>${geotools.version}</version>
-    </dependency>
+      <dependency>
+          <groupId>com.fasterxml.jackson.datatype</groupId>
+          <artifactId>jackson-datatype-jsr310</artifactId>
+          <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+          <groupId>com.fasterxml.jackson.module</groupId>
+          <artifactId>jackson-module-scala_2.12</artifactId>
+          <version>${jackson.version}</version>
+      </dependency>
+
+      <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-common</artifactId>
+          <version>3.3.6</version>
+          <scope>provided</scope>
+          <exclusions>
+              <exclusion>
+                  <groupId>org.apache.curator</groupId>
+                  <artifactId>curator-client</artifactId>
+              </exclusion>
+              <exclusion>
+                  <groupId>com.google.protobuf</groupId>
+                  <artifactId>protobuf-java</artifactId>
+              </exclusion>
+          </exclusions>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-hdfs</artifactId>
+          <version>3.3.6</version>
+          <scope>provided</scope>
+          <exclusions>
+              <exclusion>
+                  <groupId>org.apache.curator</groupId>
+                  <artifactId>curator-client</artifactId>
+              </exclusion>
+              <exclusion>
+                  <groupId>com.google.protobuf</groupId>
+                  <artifactId>protobuf-java</artifactId>
+              </exclusion>
+          </exclusions>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-mapreduce-client-core</artifactId>
+          <version>3.3.6</version>
+          <scope>provided</scope>
+      </dependency>
+
+<!--    &lt;!&ndash; GEOTOOLS &ndash;&gt; -->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-referencing</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-metadata</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-opengis</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-main</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-api</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-transform</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-geometry</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-epsg-hsql</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.geotools</groupId>-->
+<!--      <artifactId>gt-epsg-extension</artifactId>-->
+<!--      <version>${geotools.version}</version>-->
+<!--    </dependency>-->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+      <exclusions>
+            <exclusion>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client-api</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client-runtime</artifactId>
+            </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql-api_${scala.binary.version}</artifactId>
       <version>${spark.version}</version>
       <scope>provided</scope>
+        <exclusions>
+            <exclusion>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j2-impl</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
@@ -239,40 +356,6 @@
           <artifactId>spark-sql_2.12</artifactId>
           <version>${spark.version}</version>
       </dependency>
-
-      <dependency>
-          <groupId>org.apache.zookeeper</groupId>
-          <artifactId>zookeeper</artifactId>
-          <exclusions>
-              <exclusion>
-                  <groupId>ch.qos.logback</groupId>
-                  <artifactId>logback-core</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>ch.qos.logback</groupId>
-                  <artifactId>logback-classic</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
-
-      <!-- Curator Framework used for Zookeeper Locks -->
-      <dependency>
-          <groupId>org.apache.curator</groupId>
-          <artifactId>curator-framework</artifactId>
-          <exclusions>
-              <exclusion>
-                  <groupId>org.apache.zookeeper</groupId>
-                  <artifactId>zookeeper</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
-
-<!--    <dependency>-->
-<!--      <groupId>org.apache.spark</groupId>-->
-<!--      <artifactId>spark-connect-client-jvm_${scala.binary.version}</artifactId>-->
-<!--      <version>${spark.version}</version>-->
-<!--      <scope>provided</scope>-->
-<!--    </dependency>-->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-common-utils_${scala.binary.version}</artifactId>
@@ -284,12 +367,6 @@
           <artifactId>commons-csv</artifactId>
           <version>1.10.0</version>
           <scope>compile</scope>
-      </dependency>
-      <!-- Parquet reader support -->
-      <dependency>
-          <groupId>blue.strategic.parquet</groupId>
-          <artifactId>parquet-floor</artifactId>
-          <version>1.51</version>
       </dependency>
   </dependencies>
 
