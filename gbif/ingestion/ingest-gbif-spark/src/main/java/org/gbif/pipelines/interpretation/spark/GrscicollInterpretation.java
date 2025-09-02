@@ -22,8 +22,10 @@ import org.gbif.kvs.grscicoll.GrscicollLookupRequest;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.transform.GrscicollTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.gbif.pipelines.io.avro.IssueRecord;
 import org.gbif.pipelines.io.avro.MetadataRecord;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
+import scala.Tuple2;
 
 @Slf4j
 public class GrscicollInterpretation {
@@ -53,7 +55,6 @@ public class GrscicollInterpretation {
                       .parentId(extractValue(er.getVerbatim(), parentEventID))
                       .hash(hash(lookup))
                       .grscicollLookupRequest(lookup)
-                      .occurrenceRecord(er)
                       .build();
                 },
             Encoders.bean(RecordWithGrscicollLookup.class));
@@ -62,7 +63,7 @@ public class GrscicollInterpretation {
     // get the distinct lookups
     log.info("Getting distinct Grscicoll lookups");
     Dataset<RecordWithGrscicollLookup> distinctLookups =
-            recordWithLookup
+        recordWithLookup
             .dropDuplicates("hash")
             .repartition(config.getGrscicollLookup().getParallelism());
 
@@ -101,32 +102,40 @@ public class GrscicollInterpretation {
     Dataset<RecordWithGrscicollRecord> expanded =
         spark
             .sql(
-                "SELECT r.id, r.coreId, r.parentId, r.occurrenceRecord, l.grscicollRecord"
+                "SELECT r.id, r.coreId, r.parentId, l.grscicollRecord"
                     + " FROM record_with_grscicollLookup r "
                     + " LEFT JOIN key_grscicollrecord l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithGrscicollRecord.class));
 
     log.info("Merging Grscicoll records to the occurrence records");
-    return expanded.map(
-        (MapFunction<RecordWithGrscicollRecord, OccurrenceRecord>)
-            r -> {
-              GrscicollRecord grscicollRecord =
-                  r.getGrscicollRecord() == null
-                      ? GrscicollRecord.newBuilder().build()
-                      : r.getGrscicollRecord();
+    Dataset<GrscicollRecord> grscicollRecords =
+        expanded.map(
+            (MapFunction<RecordWithGrscicollRecord, GrscicollRecord>)
+                r -> {
+                  GrscicollRecord grscicollRecord =
+                      r.getGrscicollRecord() == null
+                          ? GrscicollRecord.newBuilder().build()
+                          : r.getGrscicollRecord();
 
-              grscicollRecord.setId(r.getId());
+                  grscicollRecord.setId(r.getId());
 
-              if (grscicollRecord.getIssues() == null) {
-                grscicollRecord.setIssues(
-                    org.gbif.pipelines.io.avro.IssueRecord.newBuilder().build());
-              }
+                  if (grscicollRecord.getIssues() == null) {
+                    grscicollRecord.setIssues(IssueRecord.newBuilder().build());
+                  }
+                  return grscicollRecord;
+                },
+            Encoders.bean(GrscicollRecord.class));
 
-              OccurrenceRecord or = r.getOccurrenceRecord();
-              or.setGrscicoll(grscicollRecord);
-              return or;
-            },
-        Encoders.bean(OccurrenceRecord.class));
+    return source
+        .joinWith(grscicollRecords, source.col("basic.id").equalTo(grscicollRecords.col("id")))
+        .map(
+            (MapFunction<Tuple2<OccurrenceRecord, GrscicollRecord>, OccurrenceRecord>)
+                row -> {
+                  OccurrenceRecord r = row._1;
+                  r.setGrscicoll(row._2);
+                  return r;
+                },
+            Encoders.bean(OccurrenceRecord.class));
   }
 
   public static String hash(GrscicollLookupRequest request) {
@@ -180,7 +189,6 @@ public class GrscicollInterpretation {
     private String coreId;
     private String parentId;
     private String hash;
-    private OccurrenceRecord occurrenceRecord;
     private GrscicollLookupRequest grscicollLookupRequest;
   }
 
@@ -192,7 +200,6 @@ public class GrscicollInterpretation {
     private String id;
     private String coreId;
     private String parentId;
-    private OccurrenceRecord occurrenceRecord;
     private GrscicollRecord grscicollRecord;
   }
 

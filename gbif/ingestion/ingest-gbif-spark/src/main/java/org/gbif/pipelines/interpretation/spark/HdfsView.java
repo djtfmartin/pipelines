@@ -9,7 +9,6 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.gbif.pipelines.core.converters.OccurrenceHdfsRecordConverter;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -26,8 +25,7 @@ public final class HdfsView implements Serializable {
                     .locationRecord(record.getLocation())
                     .temporalRecord(record.getTemporal())
                     .multiTaxonRecord(record.getMultiTaxon())
-//                    .grscicollRecord(record.getGrscicoll())
-                    .grscicollRecord(GrscicollRecord.newBuilder().build())
+                    .grscicollRecord(record.getGrscicoll())
                     .identifierRecord(record.getIdentifier())
                     .build()
                     .convert(),
