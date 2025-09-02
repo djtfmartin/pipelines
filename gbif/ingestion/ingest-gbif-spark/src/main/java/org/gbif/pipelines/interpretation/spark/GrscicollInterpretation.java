@@ -78,8 +78,7 @@ public class GrscicollInterpretation {
 
                   // look them up
                   Optional<GrscicollRecord> converted =
-                      transform.convert(
-                          er, MetadataRecord.newBuilder().build()); // TODO MetadataRecord
+                      transform.convert(er, mdr);
 
                   if (converted.isPresent()) {
                     return KeyedGrscicollRecord.builder()
