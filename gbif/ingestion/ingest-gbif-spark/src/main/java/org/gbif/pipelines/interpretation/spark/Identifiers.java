@@ -23,7 +23,7 @@ import org.gbif.pipelines.keygen.HBaseLockingKey;
 public class Identifiers implements Serializable {
 
   @Parameters(separators = "=")
-  static class Args {
+  private static class Args {
 
     @Parameter(names = "--appName", description = "Application name", required = true)
     private String appName;
@@ -60,14 +60,17 @@ public class Identifiers implements Serializable {
     @Parameter(names = "--properties", description = "Path to properties file", required = true)
     private String properties;
 
-    @Parameter(names = "--master", description = "Spark master - there for local dev only", required = false)
+    @Parameter(
+        names = "--master",
+        description = "Spark master - there for local dev only",
+        required = false)
     private String master;
 
     @Parameter(
         names = {"--help", "-h"},
         help = true,
         description = "Show usage")
-    private boolean help;
+    boolean help;
   }
 
   public static void main(String[] argsv) {
@@ -81,24 +84,13 @@ public class Identifiers implements Serializable {
       return;
     }
 
-    System.out.println("numberOfShards = " + args.numberOfShards);
-    System.out.println("appName = " + args.appName);
-    System.out.println("datasetId = " + args.datasetId);
-    System.out.println("attempt = " + args.attempt);
-    System.out.println("tripletValid = " + args.tripletValid);
-    System.out.println("occurrenceIdValid = " + args.occurrenceIdValid);
-    System.out.println("coreSiteConfig = " + args.coreSiteConfig);
-    System.out.println("hdfsSiteConfig = " + args.hdfsSiteConfig);
-    System.out.println("properties = " + args.properties);
-
     PipelinesConfig config = loadConfig(args.properties);
-
     String datasetID = args.datasetId;
     int attempt = args.attempt;
     String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName("Identifiers-" + datasetID);
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
 
     if (args.master != null && !args.master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(args.master);
@@ -108,7 +100,11 @@ public class Identifiers implements Serializable {
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =
-        spark.read().format("avro").load(inputPath + "/verbatim.avro").as(Encoders.bean(ExtendedRecord.class));
+        spark
+            .read()
+            .format("avro")
+            .load(inputPath + "/verbatim.avro")
+            .as(Encoders.bean(ExtendedRecord.class));
 
     // run the identifier transform
     Dataset<IdentifierRecord> identifiers = identifierTransform(config, datasetID, records);
