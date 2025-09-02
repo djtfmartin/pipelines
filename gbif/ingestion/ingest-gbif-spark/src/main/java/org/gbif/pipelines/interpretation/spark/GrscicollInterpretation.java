@@ -65,9 +65,6 @@ public class GrscicollInterpretation {
             recordWithLookup
             .dropDuplicates("hash")
             .repartition(config.getGrscicollLookup().getParallelism());
-//            .select("grscicollLookupRequest")
-//            .repartition(config.getGrscicollLookup().getParallelism())
-//            .as(Encoders.bean(GrscicollLookupRequest.class));
 
     // look up in kv store
     log.info("Looking up Grscicoll records");
@@ -84,17 +81,15 @@ public class GrscicollInterpretation {
                           .build();
 
                   // look them up
-                  Optional<GrscicollRecord> converted =
-                      transform.convert(er, mdr);
-
+                  Optional<GrscicollRecord> converted = transform.convert(er, mdr);
                   if (converted.isPresent()) {
                     return KeyedGrscicollRecord.builder()
-                        .key(hash(request.getGrscicollLookupRequest()))
+                        .key(request.getHash())
                         .grscicollRecord(converted.get())
                         .build();
                   } else {
                     return KeyedGrscicollRecord.builder()
-                        .key(hash(request.getGrscicollLookupRequest()))
+                        .key(request.getHash())
                         .build(); // TODO: null handling?
                   }
                 },

@@ -8,6 +8,7 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.gbif.pipelines.core.converters.OccurrenceJsonConverter;
 import org.gbif.pipelines.io.avro.*;
+import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 
 @Slf4j
@@ -28,7 +29,8 @@ public final class JsonView {
                       .location(row.getLocation())
                       .temporal(row.getTemporal())
                       .multiTaxon(row.getMultiTaxon())
-                      .grscicoll(row.getGrscicoll())
+//                      .grscicoll(row.getGrscicoll())
+                      .grscicoll(GrscicollRecord.newBuilder().build())
                       .clustering(
                           ClusteringRecord.newBuilder()
                               .setId(row.getVerbatim().getId())
