@@ -61,24 +61,26 @@ public class GrscicollInterpretation {
 
     // get the distinct lookups
     log.info("Getting distinct Grscicoll lookups");
-    Dataset<GrscicollLookupRequest> distinctLookups =
-        spark
-            .sql("SELECT DISTINCT grscicollLookupRequest.* FROM record_with_grscicollLookup")
-            .repartition(config.getGrscicollLookup().getParallelism())
-            .as(Encoders.bean(GrscicollLookupRequest.class));
+    Dataset<RecordWithGrscicollLookup> distinctLookups =
+            recordWithLookup
+            .dropDuplicates("hash")
+            .repartition(config.getGrscicollLookup().getParallelism());
+//            .select("grscicollLookupRequest")
+//            .repartition(config.getGrscicollLookup().getParallelism())
+//            .as(Encoders.bean(GrscicollLookupRequest.class));
 
     // look up in kv store
     log.info("Looking up Grscicoll records");
     Dataset<KeyedGrscicollRecord> keyed =
         distinctLookups.map(
-            (MapFunction<GrscicollLookupRequest, KeyedGrscicollRecord>)
+            (MapFunction<RecordWithGrscicollLookup, KeyedGrscicollRecord>)
                 request -> {
 
                   // HACK - the function takes ExtendedRecord, but we have a Location
                   ExtendedRecord er =
                       ExtendedRecord.newBuilder()
                           .setId("UNUSED_BUT_NECESSARY")
-                          .setCoreTerms(coreTermsMap(request))
+                          .setCoreTerms(coreTermsMap(request.getGrscicollLookupRequest()))
                           .build();
 
                   // look them up
@@ -87,12 +89,12 @@ public class GrscicollInterpretation {
 
                   if (converted.isPresent()) {
                     return KeyedGrscicollRecord.builder()
-                        .key(hash(request))
+                        .key(hash(request.getGrscicollLookupRequest()))
                         .grscicollRecord(converted.get())
                         .build();
                   } else {
                     return KeyedGrscicollRecord.builder()
-                        .key(hash(request))
+                        .key(hash(request.getGrscicollLookupRequest()))
                         .build(); // TODO: null handling?
                   }
                 },
