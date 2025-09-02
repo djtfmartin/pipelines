@@ -117,6 +117,7 @@ public class Interpretation implements Serializable {
             .format("avro")
             .load(inputPath + "/verbatim.avro")
             .as(Encoders.bean(ExtendedRecord.class))
+            .repartition(10)
             .map(
                 (MapFunction<ExtendedRecord, OccurrenceRecord>)
                     extendedRecord -> OccurrenceRecord.builder().verbatim(extendedRecord).build(),
