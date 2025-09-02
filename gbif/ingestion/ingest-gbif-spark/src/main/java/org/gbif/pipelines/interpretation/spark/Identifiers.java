@@ -31,13 +31,13 @@ public class Identifiers implements Serializable {
 
     String datasetID = args[1];
     String attempt = args[2];
-    String inputPath = "file://" + config.getInputPath() + "/" + datasetID + "/" + attempt;
+    String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
     SparkSession spark =
         SparkSession.builder()
-            .appName("Run local spark")
-            .master("local[*]") // Use local mode with all cores
+            .appName("Interpretation-" + datasetID)
+//            .master("local[*]") // Use local mode with all cores
             .getOrCreate();
 
     // Read the verbatim input
@@ -48,7 +48,7 @@ public class Identifiers implements Serializable {
     Dataset<IdentifierRecord> identifiers = identifierTransform(config, datasetID, records);
 
     // Write the identifiers to parquet
-    identifiers.write().mode("overwrite").parquet("file://" + outputPath + "/identifiers");
+    identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
 
     log.info("Identifers finished");
     spark.close();
