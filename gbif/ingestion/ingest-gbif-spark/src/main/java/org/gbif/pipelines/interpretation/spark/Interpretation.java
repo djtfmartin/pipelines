@@ -62,7 +62,7 @@ public class Interpretation implements Serializable {
     SparkSession spark =
         SparkSession.builder()
             .appName("Interpretation-" + datasetID)
-//            .master("local[*]") // Use local mode with all cores
+            //            .master("local[*]") // Use local mode with all cores
             .getOrCreate();
 
     //    if (config.getJarPath() != null) {
@@ -75,7 +75,7 @@ public class Interpretation implements Serializable {
         spark
             .read()
             .format("avro")
-            .load(inputPath)
+            .load(inputPath + "/verbatim.avro")
             .as(Encoders.bean(ExtendedRecord.class))
             .map(
                 (MapFunction<ExtendedRecord, OccurrenceRecord>)

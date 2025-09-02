@@ -108,7 +108,7 @@ public class Identifiers implements Serializable {
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =
-        spark.read().format("avro").load(inputPath).as(Encoders.bean(ExtendedRecord.class));
+        spark.read().format("avro").load(inputPath + "/verbatim.avro").as(Encoders.bean(ExtendedRecord.class));
 
     // run the identifier transform
     Dataset<IdentifierRecord> identifiers = identifierTransform(config, datasetID, records);
