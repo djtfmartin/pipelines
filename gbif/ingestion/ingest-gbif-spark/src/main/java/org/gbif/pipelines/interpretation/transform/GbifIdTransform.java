@@ -34,15 +34,14 @@ public class GbifIdTransform implements Serializable {
             .setFirstLoaded(Instant.now().toEpochMilli())
             .build();
 
-      if (keygenService == null && keygenServiceSupplier != null) {
-          keygenService = keygenServiceSupplier.get();
-      }
-
+    if (keygenService == null && keygenServiceSupplier != null) {
+      keygenService = keygenServiceSupplier.get();
+    }
 
     return Interpretation.from(source)
         .to(ir)
         .when(er -> !er.getCoreTerms().isEmpty())
-        .via(GbifIdInterpreter.interpretGbifId(keygenService, false, true, false, false, null))
+        .via(GbifIdInterpreter.interpretGbifId(keygenService, false, true, false, true, null))
         .getOfNullable();
   }
 }

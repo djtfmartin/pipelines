@@ -3,7 +3,6 @@ package org.gbif.pipelines.interpretation.spark;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 
 import java.io.*;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
@@ -59,15 +58,21 @@ public class Identifiers implements Serializable {
   private static Dataset<IdentifierRecord> identifierTransform(
       final PipelinesConfig config, final String datasetId, Dataset<ExtendedRecord> records) {
 
-    GbifIdTransform transform = GbifIdTransform.builder().keygenServiceSupplier(new SerializableSupplier<HBaseLockingKey>() {
-        @Override
-        public HBaseLockingKey get() {
-            return KeygenServiceFactory.create(config, datasetId);
-        }
-    }).build();
+    GbifIdTransform transform =
+        GbifIdTransform.builder()
+            .keygenServiceSupplier(
+                new SerializableSupplier<HBaseLockingKey>() {
+                  @Override
+                  public HBaseLockingKey get() {
+                    return KeygenServiceFactory.create(config, datasetId);
+                  }
+                })
+            .build();
 
-    return records.repartition(config.getKeygen().getParallelism()).map(
-        (MapFunction<ExtendedRecord, IdentifierRecord>) er -> transform.convert(er).get(),
-        Encoders.bean(IdentifierRecord.class));
+    return records
+        .repartition(config.getKeygen().getParallelism())
+        .map(
+            (MapFunction<ExtendedRecord, IdentifierRecord>) er -> transform.convert(er).get(),
+            Encoders.bean(IdentifierRecord.class));
   }
 }

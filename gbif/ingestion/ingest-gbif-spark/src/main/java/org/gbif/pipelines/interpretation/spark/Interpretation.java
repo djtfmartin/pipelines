@@ -48,8 +48,8 @@ public class Interpretation implements Serializable {
 
     String datasetID = args[1];
     String attempt = args[2];
-    String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
-    String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
+    String inputPath = "file://" + config.getInputPath() + "/" + datasetID + "/" + attempt;
+    String outputPath = "file://" + config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
     //    SparkSession.Builder sb = SparkSession.builder();
 
