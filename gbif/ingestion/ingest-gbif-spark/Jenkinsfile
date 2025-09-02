@@ -26,7 +26,7 @@ pipeline {
     }
     stage('Build Spark Docker image') {
       steps {
-        sh 'build/ingestion-docker-build.sh ${RELEASE} ${VERSION}'
+        sh 'build/spark-docker-build.sh false 3.2.7-SNAPSHOT'
       }
     }
   }
