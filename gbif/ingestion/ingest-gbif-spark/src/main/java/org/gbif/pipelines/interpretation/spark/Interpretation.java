@@ -155,15 +155,15 @@ public class Interpretation implements Serializable {
         MultiTaxonRecord.class,
         args.debug);
 
-//    log.info("=== Step 8: Interpret GrSciColl");
-//    records = grscicollTransform(config, spark, records, metadata);
-//    writeDebug(
-//        records,
-//        outputPath,
-//        "grscicoll",
-//        OccurrenceRecord::getGrscicoll,
-//        GrscicollRecord.class,
-//        args.debug);
+    log.info("=== Step 8: Interpret GrSciColl");
+    records = grscicollTransform(config, spark, records, metadata);
+    writeDebug(
+        records,
+        outputPath,
+        "grscicoll",
+        OccurrenceRecord::getGrscicoll,
+        GrscicollRecord.class,
+        args.debug);
 
     if (args.hdfsView) {
       log.info("=== Step 9: Generate HDFS view");

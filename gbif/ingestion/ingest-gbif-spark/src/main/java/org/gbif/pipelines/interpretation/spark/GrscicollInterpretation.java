@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -24,6 +25,7 @@ import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MetadataRecord;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 
+@Slf4j
 public class GrscicollInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
@@ -38,7 +40,8 @@ public class GrscicollInterpretation {
             .gbifApiUrl(config.getGrscicollLookup().getApi().getWsUrl())
             .build();
 
-    // extract the location
+    // extract the
+    log.info("Extracting Grscicoll lookups from the source records");
     Dataset<RecordWithGrscicollLookup> recordWithLookup =
         source.map(
             (MapFunction<OccurrenceRecord, RecordWithGrscicollLookup>)
@@ -57,6 +60,7 @@ public class GrscicollInterpretation {
     recordWithLookup.createOrReplaceTempView("record_with_grscicollLookup");
 
     // get the distinct lookups
+    log.info("Getting distinct Grscicoll lookups");
     Dataset<GrscicollLookupRequest> distinctLookups =
         spark
             .sql("SELECT DISTINCT grscicollLookupRequest.* FROM record_with_grscicollLookup")
@@ -64,6 +68,7 @@ public class GrscicollInterpretation {
             .as(Encoders.bean(GrscicollLookupRequest.class));
 
     // look up in kv store
+    log.info("Looking up Grscicoll records");
     Dataset<KeyedGrscicollRecord> keyed =
         distinctLookups.map(
             (MapFunction<GrscicollLookupRequest, KeyedGrscicollRecord>)
@@ -95,6 +100,7 @@ public class GrscicollInterpretation {
     keyed.createOrReplaceTempView("key_grscicollrecord");
 
     // join the dictionary back to the source records
+    log.info("Joining back Grscicoll records to the source records");
     Dataset<RecordWithGrscicollRecord> expanded =
         spark
             .sql(
@@ -103,6 +109,7 @@ public class GrscicollInterpretation {
                     + " LEFT JOIN key_grscicollrecord l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithGrscicollRecord.class));
 
+    log.info("Merging Grscicoll records to the occurrence records");
     return expanded.map(
         (MapFunction<RecordWithGrscicollRecord, OccurrenceRecord>)
             r -> {
