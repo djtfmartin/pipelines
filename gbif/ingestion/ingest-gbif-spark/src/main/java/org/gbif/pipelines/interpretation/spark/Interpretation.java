@@ -157,11 +157,13 @@ public class Interpretation implements Serializable {
     //
 
     //  hdfs
+    log.info("Generating hdfs view");
     Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(records, metadata);
     DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
     writer.parquet(outputPath + "/hdfsview");
 
     // json
+    log.info("Generating json view");
     Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(records, metadata);
     DataFrameWriter<OccurrenceJsonRecord> jsonWriter = jsonView.write().mode("overwrite");
     jsonWriter.parquet(outputPath + "/json");

@@ -14,6 +14,14 @@ pipeline {
     snapshotDependencies()
   }
   stages {
+    stage('Setup') {
+      steps {
+        script {
+          env.VERSION = """${sh(returnStdout: true, script: './build/get-version.sh ${RELEASE}')}"""
+        }
+      }
+    }
+
     stage('Quick build') {
       tools {
         jdk 'OpenJDK17'
@@ -26,7 +34,7 @@ pipeline {
     }
     stage('Build Spark Docker image') {
       steps {
-        sh 'build/spark-docker-build.sh false 3.2.7-SNAPSHOT'
+        sh 'build/spark-docker-build.sh false ${VERSION}'
       }
     }
   }
