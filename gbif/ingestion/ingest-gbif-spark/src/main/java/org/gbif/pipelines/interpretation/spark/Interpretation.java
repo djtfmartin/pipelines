@@ -33,6 +33,7 @@ import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
+import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import scala.Tuple2;
 
@@ -65,6 +66,15 @@ public class Interpretation implements Serializable {
         description = "Spark master - there for local dev only",
         required = false)
     private String master;
+
+    @Parameter(names = "--debugOutput", description = "Debug output", required = false, arity = 1)
+    private boolean debug = false;
+
+    @Parameter(names = "--hdfsView", description = "Debug output", required = false, arity = 1)
+    private boolean hdfsView = true;
+
+    @Parameter(names = "--jsonView", description = "Debug output", required = false, arity = 1)
+    private boolean jsonView = true;
 
     @Parameter(
         names = {"--help", "-h"},
@@ -99,11 +109,13 @@ public class Interpretation implements Serializable {
 
     //    SparkSession spark = sb.getOrCreate();
 
-    SparkSession spark =
-        SparkSession.builder()
-            .appName(args.appName)
-            //            .master("local[*]") // Use local mode with all cores
-            .getOrCreate();
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+
+    if (args.master != null && !args.master.isEmpty()) {
+      sparkBuilder = sparkBuilder.master(args.master);
+    }
+
+    SparkSession spark = sparkBuilder.getOrCreate();
 
     //    if (config.getJarPath() != null) {
     //      spark.addArtifact(config.getJarPath());
@@ -140,14 +152,71 @@ public class Interpretation implements Serializable {
     // Run the interpretations
     log.info("Interpreting basic");
     records = basicTransform(config, records);
+
+    if (args.debug) {
+      log.info("Writing debug basic");
+      records
+          .map(
+              (MapFunction<OccurrenceRecord, BasicRecord>) OccurrenceRecord::getBasic,
+              Encoders.bean(BasicRecord.class))
+          .write()
+          .mode("overwrite")
+          .parquet(outputPath + "/basic");
+    }
+
     log.info("Interpreting location");
     records = locationTransform(config, spark, records);
+
+    if (args.debug) {
+      log.info("Writing debug location");
+      records
+          .map(
+              (MapFunction<OccurrenceRecord, LocationRecord>) OccurrenceRecord::getLocation,
+              Encoders.bean(LocationRecord.class))
+          .write()
+          .mode("overwrite")
+          .parquet(outputPath + "/location");
+    }
+
     log.info("Interpreting temporal");
     records = temporalTransform(records);
+    if (args.debug) {
+      log.info("Writing debug temporal");
+      records
+          .map(
+              (MapFunction<OccurrenceRecord, TemporalRecord>) OccurrenceRecord::getTemporal,
+              Encoders.bean(TemporalRecord.class))
+          .write()
+          .mode("overwrite")
+          .parquet(outputPath + "/temporal");
+    }
+
     log.info("Interpreting taxonomy");
     records = taxonomyTransform(config, spark, records);
+
+    if (args.debug) {
+      log.info("Writing debug taxonomy");
+      records
+          .map(
+              (MapFunction<OccurrenceRecord, MultiTaxonRecord>) OccurrenceRecord::getMultiTaxon,
+              Encoders.bean(MultiTaxonRecord.class))
+          .write()
+          .mode("overwrite")
+          .parquet(outputPath + "/taxonomy");
+    }
+
     log.info("Interpreting grscicoll");
     records = grscicollTransform(config, spark, records, metadata);
+    if (args.debug) {
+      log.info("Writing debug grscicoll");
+      records
+          .map(
+              (MapFunction<OccurrenceRecord, GrscicollRecord>) OccurrenceRecord::getGrscicoll,
+              Encoders.bean(GrscicollRecord.class))
+          .write()
+          .mode("overwrite")
+          .parquet(outputPath + "/grscicoll");
+    }
 
     //    //    Dataset<VerbatimRecord> verbatim = verbatimTransform(records);
     //    //    Dataset<AudubonRecord> audubon = audubonTransform(config, spark, records);
@@ -158,16 +227,20 @@ public class Interpretation implements Serializable {
     //
 
     //  hdfs
-    log.info("Generating hdfs view");
-    Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(records, metadata);
-    DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
-    writer.parquet(outputPath + "/hdfsview");
+    if (args.hdfsView) {
+      log.info("Generating hdfs view");
+      Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(records, metadata);
+      DataFrameWriter<OccurrenceHdfsRecord> writer = hdfsView.write().mode("overwrite");
+      writer.parquet(outputPath + "/hdfsview");
+    }
 
     // json
     log.info("Generating json view");
-    Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(records, metadata);
-    DataFrameWriter<OccurrenceJsonRecord> jsonWriter = jsonView.write().mode("overwrite");
-    jsonWriter.parquet(outputPath + "/json");
+    if (args.jsonView) {
+      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(records, metadata);
+      DataFrameWriter<OccurrenceJsonRecord> jsonWriter = jsonView.write().mode("overwrite");
+      jsonWriter.parquet(outputPath + "/json");
+    }
 
     log.info("Interpretation finished");
     spark.close();
