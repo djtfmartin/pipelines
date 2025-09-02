@@ -60,7 +60,7 @@ public class Identifiers implements Serializable {
     @Parameter(names = "--properties", description = "Path to properties file", required = true)
     private String properties;
 
-    @Parameter(names = "--master", description = "Spark master", required = true)
+    @Parameter(names = "--master", description = "Spark master - there for local dev only", required = false)
     private String master;
 
     @Parameter(
