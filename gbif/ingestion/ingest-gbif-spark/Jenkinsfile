@@ -1,0 +1,33 @@
+pipeline {
+  agent any
+  tools {
+    maven 'Maven 3.9.9'
+    jdk 'OpenJDK17'
+  }
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+    skipStagesAfterUnstable()
+    timestamps()
+    disableConcurrentBuilds()
+  }
+  triggers {
+    snapshotDependencies()
+  }
+  stages {
+    stage('Quick build') {
+      tools {
+        jdk 'OpenJDK17'
+      }
+      steps {
+        withMaven () {
+          sh 'mvn clean install -DskipTests'
+        }
+      }
+    }
+    stage('Build Spark Docker image') {
+      steps {
+        sh 'build/ingestion-docker-build.sh ${RELEASE} ${VERSION}'
+      }
+    }
+  }
+}
