@@ -104,6 +104,7 @@ public class Identifiers implements Serializable {
             .read()
             .format("avro")
             .load(inputPath + "/verbatim.avro")
+            .repartition(args.numberOfShards)
             .as(Encoders.bean(ExtendedRecord.class));
 
     // run the identifier transform
