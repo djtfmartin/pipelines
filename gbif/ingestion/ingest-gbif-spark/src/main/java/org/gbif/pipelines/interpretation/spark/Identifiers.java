@@ -119,7 +119,10 @@ public class Identifiers implements Serializable {
   }
 
   private static Dataset<IdentifierRecord> identifierTransform(
-      final PipelinesConfig config, final String datasetId, Dataset<ExtendedRecord> records) {
+      final PipelinesConfig config,
+      final String datasetId,
+      Dataset<ExtendedRecord> records
+  ) {
 
     GbifIdTransform transform =
         GbifIdTransform.builder()
@@ -133,7 +136,6 @@ public class Identifiers implements Serializable {
             .build();
 
     return records
-        .repartition(config.getKeygen().getParallelism())
         .map(
             (MapFunction<ExtendedRecord, IdentifierRecord>) er -> transform.convert(er).get(),
             Encoders.bean(IdentifierRecord.class));
