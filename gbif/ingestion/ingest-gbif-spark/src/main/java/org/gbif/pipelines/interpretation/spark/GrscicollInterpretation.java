@@ -1,8 +1,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
-import static org.gbif.dwc.terms.DwcTerm.parentEventID;
 import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
-import static org.gbif.pipelines.core.utils.ModelUtils.extractValue;
 
 import java.util.Map;
 import java.util.Optional;
@@ -25,16 +23,15 @@ import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.IssueRecord;
 import org.gbif.pipelines.io.avro.MetadataRecord;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
-import scala.Tuple2;
 
 @Slf4j
 public class GrscicollInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
-  public static Dataset<OccurrenceRecord> grscicollTransform(
+  public static Dataset<GrscicollRecord> grscicollTransform(
       PipelinesConfig config,
       SparkSession spark,
-      Dataset<OccurrenceRecord> source,
+      Dataset<ExtendedRecord> source,
       MetadataRecord mdr) {
 
     GrscicollTransform transform =
@@ -46,13 +43,11 @@ public class GrscicollInterpretation {
     log.info("Extracting Grscicoll lookups from the source records");
     Dataset<RecordWithGrscicollLookup> recordWithLookup =
         source.map(
-            (MapFunction<OccurrenceRecord, RecordWithGrscicollLookup>)
+            (MapFunction<ExtendedRecord, RecordWithGrscicollLookup>)
                 er -> {
-                  GrscicollLookupRequest lookup = buildFrom(er.getVerbatim(), mdr);
+                  GrscicollLookupRequest lookup = buildFrom(er, mdr);
                   return RecordWithGrscicollLookup.builder()
-                      .id(er.getVerbatim().getId())
-                      .coreId(er.getVerbatim().getCoreId())
-                      .parentId(extractValue(er.getVerbatim(), parentEventID))
+                      .id(er.getId())
                       .hash(hash(lookup))
                       .grscicollLookupRequest(lookup)
                       .build();
@@ -102,40 +97,28 @@ public class GrscicollInterpretation {
     Dataset<RecordWithGrscicollRecord> expanded =
         spark
             .sql(
-                "SELECT r.id, r.coreId, r.parentId, l.grscicollRecord"
+                "SELECT r.id, l.grscicollRecord"
                     + " FROM record_with_grscicollLookup r "
                     + " LEFT JOIN key_grscicollrecord l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithGrscicollRecord.class));
 
     log.info("Merging Grscicoll records to the occurrence records");
-    Dataset<GrscicollRecord> grscicollRecords =
-        expanded.map(
-            (MapFunction<RecordWithGrscicollRecord, GrscicollRecord>)
-                r -> {
-                  GrscicollRecord grscicollRecord =
-                      r.getGrscicollRecord() == null
-                          ? GrscicollRecord.newBuilder().build()
-                          : r.getGrscicollRecord();
+    return expanded.map(
+        (MapFunction<RecordWithGrscicollRecord, GrscicollRecord>)
+            r -> {
+              GrscicollRecord grscicollRecord =
+                  r.getGrscicollRecord() == null
+                      ? GrscicollRecord.newBuilder().build()
+                      : r.getGrscicollRecord();
 
-                  grscicollRecord.setId(r.getId());
+              grscicollRecord.setId(r.getId());
 
-                  if (grscicollRecord.getIssues() == null) {
-                    grscicollRecord.setIssues(IssueRecord.newBuilder().build());
-                  }
-                  return grscicollRecord;
-                },
-            Encoders.bean(GrscicollRecord.class));
-
-    return source
-        .joinWith(grscicollRecords, source.col("basic.id").equalTo(grscicollRecords.col("id")))
-        .map(
-            (MapFunction<Tuple2<OccurrenceRecord, GrscicollRecord>, OccurrenceRecord>)
-                row -> {
-                  OccurrenceRecord r = row._1;
-                  r.setGrscicoll(row._2);
-                  return r;
-                },
-            Encoders.bean(OccurrenceRecord.class));
+              if (grscicollRecord.getIssues() == null) {
+                grscicollRecord.setIssues(IssueRecord.newBuilder().build());
+              }
+              return grscicollRecord;
+            },
+        Encoders.bean(GrscicollRecord.class));
   }
 
   public static String hash(GrscicollLookupRequest request) {
@@ -186,8 +169,6 @@ public class GrscicollInterpretation {
   @AllArgsConstructor
   public static class RecordWithGrscicollLookup {
     private String id;
-    private String coreId;
-    private String parentId;
     private String hash;
     private GrscicollLookupRequest grscicollLookupRequest;
   }
@@ -198,8 +179,6 @@ public class GrscicollInterpretation {
   @AllArgsConstructor
   public static class RecordWithGrscicollRecord {
     private String id;
-    private String coreId;
-    private String parentId;
     private GrscicollRecord grscicollRecord;
   }
 

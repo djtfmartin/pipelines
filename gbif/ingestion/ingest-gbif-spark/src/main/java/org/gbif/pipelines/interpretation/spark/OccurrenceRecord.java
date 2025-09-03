@@ -13,6 +13,11 @@ import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 @Builder
 public class OccurrenceRecord implements java.io.Serializable {
 
+  private String id;
+  private String coreId;
+  private String parentId;
+
+  // joined records
   private MetadataRecord metadata;
   private IdentifierRecord identifier;
   private ClusteringRecord clustering;

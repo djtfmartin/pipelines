@@ -14,7 +14,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.dwc.terms.DwcTerm.*;
-import static org.gbif.pipelines.core.utils.ModelUtils.extractValue;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -41,8 +40,8 @@ import org.gbif.pipelines.io.avro.MultiTaxonRecord;
 public class TaxonomyInterpretation {
 
   /** Interprets the temporal information contained in the extended records. */
-  public static Dataset<OccurrenceRecord> taxonomyTransform(
-      PipelinesConfig config, SparkSession spark, Dataset<OccurrenceRecord> source) {
+  public static Dataset<MultiTaxonRecord> taxonomyTransform(
+      PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source) {
 
     MultiTaxonomyTransform multiTaxonomyTransform =
         MultiTaxonomyTransform.builder()
@@ -53,15 +52,12 @@ public class TaxonomyInterpretation {
     // extract the taxonomy from the extended records
     Dataset<RecordWithTaxonomy> recordWithTaxonomy =
         source.map(
-            (MapFunction<OccurrenceRecord, RecordWithTaxonomy>)
+            (MapFunction<ExtendedRecord, RecordWithTaxonomy>)
                 er -> {
-                  Taxonomy taxonomy = Taxonomy.buildFrom(er.getVerbatim());
+                  Taxonomy taxonomy = Taxonomy.buildFrom(er);
                   return RecordWithTaxonomy.builder()
-                      .id(er.getVerbatim().getId())
-                      .coreId(er.getVerbatim().getCoreId())
-                      .parentId(extractValue(er.getVerbatim(), parentEventID))
+                      .id(er.getId())
                       .hash(taxonomy.hash())
-                      .occurrenceRecord(er)
                       .taxonomy(taxonomy)
                       .build();
                 },
@@ -69,7 +65,7 @@ public class TaxonomyInterpretation {
     recordWithTaxonomy.createOrReplaceTempView("record_with_taxonomy");
 
     // distinct the locations to lookup
-    Dataset<TaxonomyInterpretation.Taxonomy> distinctClassifications =
+    Dataset<Taxonomy> distinctClassifications =
         spark
             .sql("SELECT DISTINCT taxonomy.* FROM record_with_taxonomy")
             .repartition(config.getNameUsageMatchingService().getParallelism())
@@ -108,27 +104,23 @@ public class TaxonomyInterpretation {
     Dataset<RecordWithMultiTaxonRecord> expanded =
         spark
             .sql(
-                "SELECT r.id, r.coreId, r.parentId, r.occurrenceRecord, l.multiTaxonRecord"
+                "SELECT r.id, l.multiTaxonRecord"
                     + " FROM record_with_taxonomy r "
                     + " LEFT JOIN key_taxonomy l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithMultiTaxonRecord.class));
 
     return expanded.map(
-        (MapFunction<RecordWithMultiTaxonRecord, OccurrenceRecord>)
+        (MapFunction<RecordWithMultiTaxonRecord, MultiTaxonRecord>)
             r -> {
-              OccurrenceRecord or = r.getOccurrenceRecord();
               MultiTaxonRecord multiTaxonRecord =
                   r.getMultiTaxonRecord() == null
                       ? MultiTaxonRecord.newBuilder().build()
                       : r.getMultiTaxonRecord();
 
               multiTaxonRecord.setId(r.getId());
-              multiTaxonRecord.setCoreId(r.getCoreId());
-              multiTaxonRecord.setParentId(r.getParentId());
-              or.setMultiTaxon(multiTaxonRecord);
-              return or;
+              return multiTaxonRecord;
             },
-        Encoders.bean(OccurrenceRecord.class));
+        Encoders.bean(MultiTaxonRecord.class));
   }
 
   @Data
@@ -137,10 +129,7 @@ public class TaxonomyInterpretation {
   @AllArgsConstructor
   public static class RecordWithTaxonomy {
     private String id;
-    private String coreId;
-    private String parentId;
     private String hash;
-    private OccurrenceRecord occurrenceRecord;
     private Taxonomy taxonomy;
   }
 
@@ -159,9 +148,6 @@ public class TaxonomyInterpretation {
   @AllArgsConstructor
   public static class RecordWithMultiTaxonRecord {
     private String id;
-    private String coreId;
-    private String parentId;
-    private OccurrenceRecord occurrenceRecord;
     private MultiTaxonRecord multiTaxonRecord;
   }
 

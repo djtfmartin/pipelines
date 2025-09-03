@@ -14,8 +14,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.dwc.terms.DwcTerm.GROUP_LOCATION;
-import static org.gbif.dwc.terms.DwcTerm.parentEventID;
-import static org.gbif.pipelines.core.utils.ModelUtils.extractValue;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -40,8 +38,11 @@ import org.gbif.pipelines.io.avro.MetadataRecord;
 public class LocationInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
-  public static Dataset<OccurrenceRecord> locationTransform(
-      PipelinesConfig config, SparkSession spark, Dataset<OccurrenceRecord> source) {
+  public static Dataset<LocationRecord> locationTransform(
+      PipelinesConfig config,
+      SparkSession spark,
+      Dataset<ExtendedRecord> source,
+      MetadataRecord mdr) {
 
     LocationTransform locationTransform =
         LocationTransform.builder().geocodeApiUrl(config.getGeocode().getApi().getWsUrl()).build();
@@ -49,15 +50,12 @@ public class LocationInterpretation {
     // extract the location
     Dataset<RecordWithLocation> recordWithLocation =
         source.map(
-            (MapFunction<OccurrenceRecord, RecordWithLocation>)
+            (MapFunction<ExtendedRecord, RecordWithLocation>)
                 or -> {
-                  Location location = Location.buildFrom(or.getVerbatim());
+                  Location location = Location.buildFrom(or);
                   return RecordWithLocation.builder()
-                      .id(or.getVerbatim().getId())
-                      .coreId(or.getVerbatim().getCoreId())
-                      .parentId(extractValue(or.getVerbatim(), parentEventID))
+                      .id(or.getId())
                       .hash(location.hash())
-                      .occurrenceRecord(or)
                       .location(location)
                       .build();
                 },
@@ -85,9 +83,7 @@ public class LocationInterpretation {
                           .build();
 
                   // look them up
-                  Optional<LocationRecord> converted =
-                      locationTransform.convert(
-                          er, MetadataRecord.newBuilder().build()); // TODO MetadataRecord
+                  Optional<LocationRecord> converted = locationTransform.convert(er, mdr);
 
                   if (converted.isPresent()) {
                     return KeyedLocationRecord.builder()
@@ -107,27 +103,23 @@ public class LocationInterpretation {
     Dataset<RecordWithRecords> expanded =
         spark
             .sql(
-                "SELECT r.id, r.coreId, r.parentId, r.occurrenceRecord, l.locationRecord"
+                "SELECT r.id, l.locationRecord"
                     + " FROM record_with_location r "
                     + " LEFT JOIN key_location l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithRecords.class));
 
     return expanded.map(
-        (MapFunction<RecordWithRecords, OccurrenceRecord>)
+        (MapFunction<RecordWithRecords, LocationRecord>)
             r -> {
-              OccurrenceRecord or = r.getOccurrenceRecord();
               LocationRecord locationRecord =
                   r.getLocationRecord() == null
                       ? LocationRecord.newBuilder().build()
                       : r.getLocationRecord();
 
               locationRecord.setId(r.getId());
-              locationRecord.setCoreId(r.getCoreId());
-              locationRecord.setParentId(r.getParentId());
-              or.setLocation(locationRecord);
-              return or;
+              return locationRecord;
             },
-        Encoders.bean(OccurrenceRecord.class));
+        Encoders.bean(LocationRecord.class));
   }
 
   @Data
@@ -136,10 +128,7 @@ public class LocationInterpretation {
   @AllArgsConstructor
   public static class RecordWithLocation {
     private String id;
-    private String coreId;
-    private String parentId;
     private String hash;
-    private OccurrenceRecord occurrenceRecord;
     private Location location;
   }
 
@@ -158,9 +147,6 @@ public class LocationInterpretation {
   @AllArgsConstructor
   public static class RecordWithRecords {
     private String id;
-    private String coreId;
-    private String parentId;
-    private OccurrenceRecord occurrenceRecord;
     private LocationRecord locationRecord;
   }
 
