@@ -18,6 +18,7 @@ import static org.gbif.pipelines.core.utils.ModelUtils.extractValue;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.spark.GrscicollInterpretation.grscicollTransform;
 import static org.gbif.pipelines.interpretation.spark.HdfsView.transformToHdfsView;
+import static org.gbif.pipelines.interpretation.spark.JsonView.transformToJsonView;
 import static org.gbif.pipelines.interpretation.spark.LocationInterpretation.locationTransform;
 import static org.gbif.pipelines.interpretation.spark.TaxonomyInterpretation.taxonomyTransform;
 import static org.gbif.pipelines.interpretation.spark.TemporalInterpretation.temporalTransform;
@@ -37,6 +38,7 @@ import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.Record;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
+import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import scala.Tuple2;
 
 @Slf4j
@@ -98,10 +100,11 @@ public class Interpretation implements Serializable {
 
     PipelinesConfig config = loadConfig(args.properties);
 
-    String datasetID = args.datasetId;
+    String datasetId = args.datasetId;
     int attempt = args.attempt;
-    String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
-    String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
+    String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
+    String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
+
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
     if (args.master != null && !args.master.isEmpty()) {
@@ -118,8 +121,8 @@ public class Interpretation implements Serializable {
     log.info("=== Step 2: Load metadata from registry and ES");
     MetadataServiceClient metadataServiceClient =
         MetadataServiceClient.create(config.getGbifApi(), config.getContent());
-    MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(datasetID).build();
-    MetadataInterpreter.interpret(metadataServiceClient).accept(datasetID, metadata);
+    MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
+    MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
 
     log.info("=== Step 3: Load identifiers from {}", outputPath);
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
@@ -158,13 +161,13 @@ public class Interpretation implements Serializable {
       Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(occurrenceRecords, metadata);
       hdfsView.write().mode("overwrite").parquet(outputPath + "/hdfsview");
     }
-    //
-    //    if (args.jsonView) {
-    //      log.info("=== Step 10: Generate JSON view");
-    //      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords,
-    // metadata);
-    //      jsonView.write().mode("overwrite").parquet(outputPath + "/json");
-    //    }
+
+    if (args.jsonView) {
+      log.info("=== Step 10: Generate JSON view");
+      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords,
+ metadata);
+      jsonView.write().mode("overwrite").parquet(outputPath + "/json");
+    }
 
     log.info("=== Interpretation pipeline finished successfully ===");
     spark.close();
