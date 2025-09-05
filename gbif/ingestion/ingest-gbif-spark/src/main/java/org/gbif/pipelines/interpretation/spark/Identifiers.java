@@ -11,6 +11,7 @@ import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.util.LongAccumulator;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.functions.SerializableSupplier;
 import org.gbif.pipelines.interpretation.transform.GbifIdTransform;
@@ -107,8 +108,12 @@ public class Identifiers implements Serializable {
             .repartition(args.numberOfShards)
             .as(Encoders.bean(ExtendedRecord.class));
 
+
+
     // run the identifier transform
-    Dataset<IdentifierRecord> identifiers = identifierTransform(config, datasetID, records);
+    Dataset<IdentifierRecord> identifiers = identifierTransform(spark,
+            config, datasetID, records
+    );
 
     // Write the identifiers to parquet
     identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
@@ -119,10 +124,13 @@ public class Identifiers implements Serializable {
   }
 
   private static Dataset<IdentifierRecord> identifierTransform(
+      final SparkSession  spark,
       final PipelinesConfig config,
       final String datasetId,
       Dataset<ExtendedRecord> records
   ) {
+
+    LongAccumulator processedRecord = spark.sparkContext().longAccumulator("Processed-records");
 
     GbifIdTransform transform =
         GbifIdTransform.builder()
@@ -137,7 +145,10 @@ public class Identifiers implements Serializable {
 
     return records
         .map(
-            (MapFunction<ExtendedRecord, IdentifierRecord>) er -> transform.convert(er).get(),
+            (MapFunction<ExtendedRecord, IdentifierRecord>) er -> {
+                processedRecord.add(1L);
+                return transform.convert(er).get();
+            },
             Encoders.bean(IdentifierRecord.class));
   }
 }
