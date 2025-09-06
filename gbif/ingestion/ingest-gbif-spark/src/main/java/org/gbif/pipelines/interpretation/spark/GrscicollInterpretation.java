@@ -32,7 +32,8 @@ public class GrscicollInterpretation {
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
-      MetadataRecord mdr) {
+      MetadataRecord mdr,
+      int numPartitions) {
 
     GrscicollTransform transform =
         GrscicollTransform.builder()
@@ -58,9 +59,7 @@ public class GrscicollInterpretation {
     // get the distinct lookups
     log.info("Getting distinct Grscicoll lookups");
     Dataset<RecordWithGrscicollLookup> distinctLookups =
-        recordWithLookup
-            .dropDuplicates("hash")
-            .repartition(config.getGrscicollLookup().getParallelism());
+        recordWithLookup.dropDuplicates("hash").repartition(numPartitions);
 
     // look up in kv store
     log.info("Looking up Grscicoll records");

@@ -80,6 +80,9 @@ public class Interpretation implements Serializable {
     @Parameter(names = "--jsonView", description = "Debug output", required = false, arity = 1)
     private boolean jsonView = true;
 
+    @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
+    private int numberOfShards = 10;
+
     @Parameter(
         names = {"--help", "-h"},
         help = true,
@@ -105,7 +108,6 @@ public class Interpretation implements Serializable {
     String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
-
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
     if (args.master != null && !args.master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(args.master);
@@ -113,7 +115,8 @@ public class Interpretation implements Serializable {
     SparkSession spark = sparkBuilder.getOrCreate();
 
     log.info("=== Step 1: Load extended records from {}", inputPath);
-    Dataset<ExtendedRecord> extendedRecords = loadExtendedRecords(spark, inputPath);
+    Dataset<ExtendedRecord> extendedRecords =
+        loadExtendedRecords(spark, inputPath, args.numberOfShards);
     Dataset<OccurrenceRecord> occurrenceRecords =
         extendedRecords.map(
             new ExtendedToOccurrenceMapper(), Encoders.bean(OccurrenceRecord.class));
@@ -132,7 +135,8 @@ public class Interpretation implements Serializable {
     writeDebug(basic, outputPath, "basic", args.debug);
 
     log.info("=== Step 5: Interpret location");
-    Dataset<LocationRecord> location = locationTransform(config, spark, extendedRecords, metadata);
+    Dataset<LocationRecord> location =
+        locationTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
     writeDebug(location, outputPath, "location", args.debug);
 
     log.info("=== Step 6: Interpret temporal");
@@ -140,12 +144,13 @@ public class Interpretation implements Serializable {
     writeDebug(temporal, outputPath, "temporal", args.debug);
 
     log.info("=== Step 7: Interpret taxonomy");
-    Dataset<MultiTaxonRecord> multiTaxon = taxonomyTransform(config, spark, extendedRecords);
+    Dataset<MultiTaxonRecord> multiTaxon =
+        taxonomyTransform(config, spark, extendedRecords, args.numberOfShards);
     writeDebug(multiTaxon, outputPath, "taxonomy", args.debug);
 
     log.info("=== Step 8: Interpret GrSciColl");
     Dataset<GrscicollRecord> grscicoll =
-        grscicollTransform(config, spark, extendedRecords, metadata);
+        grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
     writeDebug(grscicoll, outputPath, "grscicoll", args.debug);
 
     // Join all interpreted datasets into occurrence
@@ -164,8 +169,7 @@ public class Interpretation implements Serializable {
 
     if (args.jsonView) {
       log.info("=== Step 10: Generate JSON view");
-      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords,
- metadata);
+      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords, metadata);
       jsonView.write().mode("overwrite").parquet(outputPath + "/json");
     }
 
@@ -176,13 +180,14 @@ public class Interpretation implements Serializable {
 
   // ----------------- Helper Methods -----------------
 
-  private static Dataset<ExtendedRecord> loadExtendedRecords(SparkSession spark, String inputPath) {
+  private static Dataset<ExtendedRecord> loadExtendedRecords(
+      SparkSession spark, String inputPath, int numberOfShards) {
     return spark
         .read()
         .format("avro")
         .load(inputPath + "/verbatim.avro")
         .as(Encoders.bean(ExtendedRecord.class))
-        .repartition(10);
+        .repartition(numberOfShards);
   }
 
   private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {

@@ -42,7 +42,8 @@ public class LocationInterpretation {
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
-      MetadataRecord mdr) {
+      MetadataRecord mdr,
+      int numPartitions) {
 
     LocationTransform locationTransform =
         LocationTransform.builder().geocodeApiUrl(config.getGeocode().getApi().getWsUrl()).build();
@@ -66,7 +67,7 @@ public class LocationInterpretation {
     Dataset<Location> distinctLocations =
         spark
             .sql("SELECT DISTINCT location.* FROM record_with_location")
-            .repartition(config.getGeocode().getParallelism())
+            .repartition(numPartitions)
             .as(Encoders.bean(Location.class));
 
     // lookup the distinct locations, and create a dictionary of the results

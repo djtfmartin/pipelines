@@ -41,7 +41,10 @@ public class TaxonomyInterpretation {
 
   /** Interprets the temporal information contained in the extended records. */
   public static Dataset<MultiTaxonRecord> taxonomyTransform(
-      PipelinesConfig config, SparkSession spark, Dataset<ExtendedRecord> source) {
+      PipelinesConfig config,
+      SparkSession spark,
+      Dataset<ExtendedRecord> source,
+      int numPartitions) {
 
     MultiTaxonomyTransform multiTaxonomyTransform =
         MultiTaxonomyTransform.builder()
@@ -68,7 +71,7 @@ public class TaxonomyInterpretation {
     Dataset<Taxonomy> distinctClassifications =
         spark
             .sql("SELECT DISTINCT taxonomy.* FROM record_with_taxonomy")
-            .repartition(config.getNameUsageMatchingService().getParallelism())
+            .repartition(numPartitions)
             .as(Encoders.bean(TaxonomyInterpretation.Taxonomy.class));
 
     // lookup the distinct locations, and create a dictionary of the results
