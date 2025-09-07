@@ -114,61 +114,85 @@ public class Interpretation implements Serializable {
     }
     SparkSession spark = sparkBuilder.getOrCreate();
 
-    log.info("=== Step 1: Load extended records from {}", inputPath);
+    spark
+        .sparkContext()
+        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, inputPath, args.numberOfShards);
+
+    spark
+        .sparkContext()
+        .setJobGroup("initialise-occurrence", "Initialise occurrence records", true);
     Dataset<OccurrenceRecord> occurrenceRecords =
         extendedRecords.map(
             new ExtendedToOccurrenceMapper(), Encoders.bean(OccurrenceRecord.class));
 
     log.info("=== Step 2: Load metadata from registry and ES");
+    spark.sparkContext().setJobGroup("load-metadata", "Load metadata from registry and ES", true);
     MetadataServiceClient metadataServiceClient =
         MetadataServiceClient.create(config.getGbifApi(), config.getContent());
     MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
     MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
 
     log.info("=== Step 3: Load identifiers from {}", outputPath);
+    spark
+        .sparkContext()
+        .setJobGroup(
+            "load-identifiers", String.format("Load extended records from %s", outputPath), true);
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
 
     log.info("=== Step 4: Interpret basic terms");
+    spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
     Dataset<BasicRecord> basic = basicTransform(config, extendedRecords);
     writeDebug(basic, outputPath, "basic", args.debug);
 
     log.info("=== Step 5: Interpret location");
+    spark.sparkContext().setJobGroup("location-transform", "Run location transform", true);
     Dataset<LocationRecord> location =
         locationTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
     writeDebug(location, outputPath, "location", args.debug);
 
     log.info("=== Step 6: Interpret temporal");
+    spark.sparkContext().setJobGroup("temporal-transform", "Run temporal transform", true);
     Dataset<TemporalRecord> temporal = temporalTransform(extendedRecords);
     writeDebug(temporal, outputPath, "temporal", args.debug);
 
     log.info("=== Step 7: Interpret taxonomy");
+    spark.sparkContext().setJobGroup("taxonomy-transform", "Run taxonomy transform", true);
     Dataset<MultiTaxonRecord> multiTaxon =
         taxonomyTransform(config, spark, extendedRecords, args.numberOfShards);
     writeDebug(multiTaxon, outputPath, "taxonomy", args.debug);
 
     log.info("=== Step 8: Interpret GrSciColl");
+    spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
     Dataset<GrscicollRecord> grscicoll =
         grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
     writeDebug(grscicoll, outputPath, "grscicoll", args.debug);
 
     // Join all interpreted datasets into occurrence
+    spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence", true);
     occurrenceRecords = joinTo(occurrenceRecords, identifiers, OccurrenceRecord::setIdentifier);
+    spark.sparkContext().setJobGroup("join-basic", "Join basic to occurrence", true);
     occurrenceRecords = joinTo(occurrenceRecords, basic, OccurrenceRecord::setBasic);
+    spark.sparkContext().setJobGroup("join-location", "Join location to occurrence", true);
     occurrenceRecords = joinTo(occurrenceRecords, location, OccurrenceRecord::setLocation);
+    spark.sparkContext().setJobGroup("join-temporal", "Join temporal to occurrence", true);
     occurrenceRecords = joinTo(occurrenceRecords, temporal, OccurrenceRecord::setTemporal);
+    spark.sparkContext().setJobGroup("join-multitaxon", "Join multitaxon to occurrence", true);
     occurrenceRecords = joinTo(occurrenceRecords, multiTaxon, OccurrenceRecord::setMultiTaxon);
+    spark.sparkContext().setJobGroup("join-grscicoll", "Join grscicoll to occurrence", true);
     occurrenceRecords = joinTo(occurrenceRecords, grscicoll, OccurrenceRecord::setGrscicoll);
 
     if (args.hdfsView) {
       log.info("=== Step 9: Generate HDFS view");
+      spark.sparkContext().setJobGroup("hdfs-voew", "Generate HDFS view", true);
       Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(occurrenceRecords, metadata);
       hdfsView.write().mode("overwrite").parquet(outputPath + "/hdfsview");
     }
 
     if (args.jsonView) {
       log.info("=== Step 10: Generate JSON view");
+      spark.sparkContext().setJobGroup("json-view", "Generate JSON view", true);
       Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords, metadata);
       jsonView.write().mode("overwrite").parquet(outputPath + "/json");
     }
