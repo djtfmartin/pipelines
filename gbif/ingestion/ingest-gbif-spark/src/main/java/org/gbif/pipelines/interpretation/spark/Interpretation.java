@@ -144,30 +144,30 @@ public class Interpretation implements Serializable {
     log.info("=== Step 4: Interpret basic terms");
     spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
     Dataset<BasicRecord> basic = basicTransform(config, extendedRecords);
-    writeDebug(basic, outputPath, "basic", args.debug);
+    writeDebug(spark, basic, outputPath, "basic", args.debug);
 
     log.info("=== Step 5: Interpret location");
     spark.sparkContext().setJobGroup("location-transform", "Run location transform", true);
     Dataset<LocationRecord> location =
         locationTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
-    writeDebug(location, outputPath, "location", args.debug);
+    writeDebug(spark, location, outputPath, "location", args.debug);
 
     log.info("=== Step 6: Interpret temporal");
     spark.sparkContext().setJobGroup("temporal-transform", "Run temporal transform", true);
     Dataset<TemporalRecord> temporal = temporalTransform(extendedRecords);
-    writeDebug(temporal, outputPath, "temporal", args.debug);
+    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
 
     log.info("=== Step 7: Interpret taxonomy");
     spark.sparkContext().setJobGroup("taxonomy-transform", "Run taxonomy transform", true);
     Dataset<MultiTaxonRecord> multiTaxon =
         taxonomyTransform(config, spark, extendedRecords, args.numberOfShards);
-    writeDebug(multiTaxon, outputPath, "taxonomy", args.debug);
+    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
 
     log.info("=== Step 8: Interpret GrSciColl");
     spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
     Dataset<GrscicollRecord> grscicoll =
         grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
-    writeDebug(grscicoll, outputPath, "grscicoll", args.debug);
+    writeDebug(spark, grscicoll, outputPath, "grscicoll", args.debug);
 
     // Join all interpreted datasets into occurrence
     spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence", true);
@@ -185,7 +185,7 @@ public class Interpretation implements Serializable {
 
     if (args.hdfsView) {
       log.info("=== Step 9: Generate HDFS view");
-      spark.sparkContext().setJobGroup("hdfs-voew", "Generate HDFS view", true);
+      spark.sparkContext().setJobGroup("hdfs-view", "Generate HDFS view", true);
       Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(occurrenceRecords, metadata);
       hdfsView.write().mode("overwrite").parquet(outputPath + "/hdfsview");
     }
@@ -222,10 +222,18 @@ public class Interpretation implements Serializable {
   }
 
   private static <T> void writeDebug(
-      Dataset<? extends Record> records, String outputPath, String name, boolean debug) {
+      SparkSession spark,
+      Dataset<? extends Record> records,
+      String outputPath,
+      String name,
+      boolean debug) {
 
     if (debug) {
       log.info("Writing debug {}", name);
+      spark
+          .sparkContext()
+          .setJobGroup(
+              String.format("write-%s", name), String.format("Write %s to Parquet", name), true);
       records.write().mode("overwrite").parquet(outputPath + "/" + name);
     }
   }
@@ -248,14 +256,13 @@ public class Interpretation implements Serializable {
       PipelinesConfig config, Dataset<ExtendedRecord> source) {
     return source.map(
         (MapFunction<ExtendedRecord, BasicRecord>)
-            er -> {
-              return BasicTransform.builder()
-                  .useDynamicPropertiesInterpretation(true)
-                  .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
-                  .build()
-                  .convert(er)
-                  .get();
-            },
+            er ->
+                BasicTransform.builder()
+                    .useDynamicPropertiesInterpretation(true)
+                    .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
+                    .build()
+                    .convert(er)
+                    .get(),
         Encoders.bean(BasicRecord.class));
   }
 
