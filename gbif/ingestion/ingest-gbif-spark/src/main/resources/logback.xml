@@ -16,6 +16,8 @@
 
     <!-- Hadoop libraries -->
     <logger name="org.apache.hadoop" level="WARN" />
+    <logger name="org.apache.hbase" level="WARN" />
+    <logger name="org.elasticsearch.hadoop" level="WARN" />
 
     <!-- Jetty (Spark UI / web server) -->
     <logger name="org.eclipse.jetty" level="WARN" />

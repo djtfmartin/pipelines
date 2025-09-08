@@ -368,6 +368,31 @@
           <version>1.10.0</version>
           <scope>compile</scope>
       </dependency>
+
+      <dependency>
+          <groupId>org.elasticsearch</groupId>
+          <artifactId>elasticsearch-spark-30_2.12</artifactId>
+          <version>7.17.29</version> <!-- match your ES-Hadoop/Elasticsearch version -->
+      </dependency>
+      <!-- Old Apache Commons HttpClient (needed by ES-Hadoop 7.x) -->
+      <dependency>
+          <groupId>commons-httpclient</groupId>
+          <artifactId>commons-httpclient</artifactId>
+          <version>3.1</version>
+      </dependency>
+
+      <!-- Old Jackson 1.x (needed by ES-Hadoop 7.x) -->
+      <dependency>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+          <version>1.9.13</version>
+      </dependency>
+      <dependency>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+          <version>1.9.13</version>
+      </dependency>
+
   </dependencies>
 
   <build>
@@ -437,6 +462,14 @@
                   <pattern>com.google.gson</pattern>
                   <shadedPattern>org.shaded.com.google.gson</shadedPattern>
                 </relocation>
+                  <relocation>
+                      <pattern>org.codehaus.jackson</pattern>
+                      <shadedPattern>shaded.org.codehaus.jackson</shadedPattern>
+                  </relocation>
+                  <relocation>
+                      <pattern>org.apache.commons.httpclient</pattern>
+                      <shadedPattern>shaded.org.apache.commons.httpclient</shadedPattern>
+                  </relocation>
               </relocations>
             </configuration>
           </execution>
