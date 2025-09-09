@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
@@ -68,6 +67,9 @@ public class EsIndexUtils {
 
   private static IndexParams createIndexParams(Elastic.ElasticOptions options) {
     Path mappingsPath = Paths.get(options.getEsSchemaPath());
+    if (!mappingsPath.toFile().exists()) {
+      throw new IllegalArgumentException("The schema file doesn't exist: " + mappingsPath);
+    }
 
     boolean independentIndex = options.getEsIndexName().startsWith(options.getDatasetId());
 
@@ -106,30 +108,6 @@ public class EsIndexUtils {
         .pathMappings(mappingsPath)
         .settings(settings)
         .build();
-  }
-
-  /** Connects to Elasticsearch instance and swaps an index and an alias. */
-  public static void swapIndex(Elastic.ElasticOptions options, LockConfig lockConfig) {
-    EsConfig config = EsConfig.from(options.getEsHosts());
-
-    Set<String> aliases = new HashSet<>(Arrays.asList(options.getEsAlias()));
-    String index = options.getEsIndexName();
-
-    // Lock the index to avoid modifications and stop reads.
-    SharedLockUtils.doInWriteLock(
-        lockConfig,
-        () -> {
-          EsIndex.swapIndexInAliases(config, aliases, index);
-          log.info("ES index {} added to alias {}", index, aliases);
-        });
-  }
-
-  /** Connects to Elasticsearch instance and swaps an index and an alias, if alias exists. */
-  public static void swapIndexIfAliasExists(Elastic.ElasticOptions options, LockConfig lockConfig) {
-    String[] aliases = options.getEsAlias();
-    if (aliases != null && aliases.length > 0) {
-      swapIndex(options, lockConfig);
-    }
   }
 
   /** Connects to Elasticsearch instance and swaps an index and an alias, if alias exists. */
