@@ -58,11 +58,26 @@
 
 
   <dependencies>
+      <dependency>
+          <groupId>org.gbif</groupId>
+          <artifactId>gbif-wrangler</artifactId>
+          <version>1.0.0</version>
+      </dependency>
+      <dependency>
+          <groupId>org.gbif.pipelines</groupId>
+          <artifactId>models-pojo</artifactId>
+          <version>3.2.7-SNAPSHOT</version>
+      </dependency>
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>models-pojo</artifactId>
       <version>3.2.7-SNAPSHOT</version>
     </dependency>
+      <dependency>
+          <groupId>org.gbif.pipelines</groupId>
+          <artifactId>elasticsearch-tools</artifactId>
+          <version>3.2.7-SNAPSHOT</version>
+      </dependency>
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>core</artifactId>

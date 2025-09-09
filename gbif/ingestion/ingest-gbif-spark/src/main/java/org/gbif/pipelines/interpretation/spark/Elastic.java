@@ -5,21 +5,16 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
+import lombok.Builder;
+import lombok.Data;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.interpretation.EsIndexUtils;
 
 public class Elastic {
 
@@ -34,14 +29,6 @@ public class Elastic {
 
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
-
-    @Parameter(
-        names = "--esMaxBatchSizeBytes",
-        description = "Target Elasticsearch Max Batch Size bytes")
-    private Long esMaxBatchSizeBytes = 10_485_760L; // 10mb
-
-    @Parameter(names = "--esMaxBatchSize", description = "Elasticsearch max batch size")
-    private long esMaxBatchSize = 1_700L;
 
     @Parameter(
         names = "--esHosts",
@@ -60,17 +47,7 @@ public class Elastic {
     private List<String> esAlias;
 
     @Parameter(names = "--esSchemaPath", description = "Path to an occurrence indexing schema")
-    private String esSchemaPath = "elasticsearch/es-occurrence-schema.json";
-
-    @Parameter(
-        names = "--esUsername",
-        description = "Name of the Elasticsearch user for basic auth")
-    private String esUsername;
-
-    @Parameter(
-        names = "--esPassword",
-        description = "Name of the Elasticsearch password for basic auth")
-    private String esPassword;
+    private String esSchemaPath = "es-occurrence-schema.json";
 
     @Parameter(
         names = "--indexRefreshInterval",
@@ -107,14 +84,6 @@ public class Elastic {
         description = "Elasticsearch unassigned node delay timeout")
     private String unassignedNodeDelay = "5m";
 
-    @Parameter(names = "--esDocumentId", description = "Elasticsearch document id")
-    private String esDocumentId = "GBIF_ID";
-
-    @Parameter(
-        names = "--backPressure",
-        description = "Limit number of pushing queries at the time")
-    private Integer backPressure = -1;
-
     @Parameter(names = "--useSlowlog", description = "Use search slowlogs")
     private boolean useSlowlog = true;
 
@@ -147,7 +116,7 @@ public class Elastic {
     @Parameter(names = "--hdfsSiteConfig", description = "Path to hdfs-site.xml", required = false)
     private String hdfsSiteConfig;
 
-    @Parameter(names = "--properties", description = "Path to properties file", required = true)
+    @Parameter(names = "--properties", description = "Path to YAML file", required = true)
     private String properties;
 
     @Parameter(
@@ -185,14 +154,19 @@ public class Elastic {
             .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.12.1")
             .config("es.nodes", String.join(",", args.esHosts));
 
-
-  if (args.master != null && !args.master.isEmpty()) {
+    if (args.master != null && !args.master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(args.master);
-  }
-  SparkSession spark = sparkBuilder.getOrCreate();
+    }
 
-    // --- Create ES index with mapping if not exists ---
-    createIndexWithMapping(args.esHosts, args.esIndexName, "es-occurrence-schema.json");
+    SparkSession spark = sparkBuilder.getOrCreate();
+
+    ElasticOptions options = ElasticOptions.fromArgsAndConfig(args);
+
+    // Create ES index and alias if not exists
+    EsIndexUtils.createIndexAndAliasForDefault(options);
+
+    // Returns indices names in case of swapping
+    Set<String> indices = EsIndexUtils.deleteRecordsByDatasetId(options);
 
     // Read parquet files
     Dataset<Row> df = spark.read().parquet(inputPath);
@@ -210,40 +184,56 @@ public class Elastic {
         .save();
 
     spark.stop();
+
+    EsIndexUtils.updateAlias(options, indices, config != null ? config.getIndexLock() : null);
+    EsIndexUtils.refreshIndex(options);
   }
 
-    private static void createIndexWithMapping(
-            List<String> hosts, String indexName, String mappingFile) throws IOException {
+  @Builder
+  @Data
+  public static class ElasticOptions {
+    String esSchemaPath;
+    String esIndexName;
+    String[] esAlias;
+    String[] esHosts;
+    String datasetId;
+    Integer attempt;
+    @Builder.Default Integer indexNumberShards = 1;
+    @Builder.Default String indexRefreshInterval = "40s";
+    @Builder.Default Integer indexNumberReplicas = 1;
+    @Builder.Default Integer indexMaxResultWindow = 200000;
+    @Builder.Default String unassignedNodeDelay = "5m";
+    @Builder.Default Boolean useSlowlog = true;
+    @Builder.Default String indexSearchSlowlogThresholdQueryWarn = "20s";
+    @Builder.Default String indexSearchSlowlogThresholdQueryInfo = "10s";
+    @Builder.Default String indexSearchSlowlogThresholdFetchWarn = "2s";
+    @Builder.Default String indexSearchSlowlogThresholdFetchInfo = "1s";
+    @Builder.Default String indexSearchSlowlogLevel = "info";
+    @Builder.Default Integer searchQueryTimeoutSec = 5;
+    @Builder.Default Integer searchQueryAttempts = 200;
 
-        // Read JSON mapping from file
-        InputStream inputStream = Elastic.class.getResourceAsStream("/es-occurrence-schema.json");
-        if (inputStream == null) {
-            throw new RuntimeException("File not found in classpath: /es-occurrence-schema.json");
-        }
-        String mappingJson = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-
-        // Build REST client
-        RestClientBuilder builder =
-                RestClient.builder(
-                        hosts.stream()
-                                .map(h -> {
-                                    String[] parts = h.split(":");
-                                    return new org.apache.http.HttpHost(parts[0], Integer.parseInt(parts[1]), "http");
-                                })
-                                .toArray(org.apache.http.HttpHost[]::new));
-        try (RestClient restClient = builder.build()) {
-
-            // Check if index exists
-            Response existsResponse = restClient.performRequest(new Request("HEAD", "/" + indexName));
-            if (existsResponse.getStatusLine().getStatusCode() == 404) {
-                // Create index with mapping
-                Request createReq = new Request("PUT", "/" + indexName);
-                createReq.setJsonEntity(mappingJson);
-                restClient.performRequest(createReq);
-                System.out.println("Created index " + indexName + " with mapping.");
-            } else {
-                System.out.println("Index " + indexName + " already exists. Skipping creation.");
-            }
-        }
+    public static ElasticOptions fromArgsAndConfig(Elastic.Args args) {
+      return ElasticOptions.builder()
+          .esSchemaPath(args.esSchemaPath)
+          .esHosts(args.esHosts.toArray(new String[0]))
+          .esIndexName(args.esIndexName)
+          .esAlias(args.esAlias.toArray(new String[0]))
+          .datasetId(args.datasetId)
+          .attempt(args.attempt)
+          .indexNumberShards(args.indexNumberShards)
+          .indexRefreshInterval(args.indexRefreshInterval)
+          .indexNumberReplicas(args.indexNumberReplicas)
+          .indexMaxResultWindow(args.indexMaxResultWindow)
+          .unassignedNodeDelay(args.unassignedNodeDelay)
+          .useSlowlog(args.useSlowlog)
+          .indexSearchSlowlogThresholdQueryWarn(args.indexSearchSlowlogThresholdQueryWarn)
+          .indexSearchSlowlogThresholdQueryInfo(args.indexSearchSlowlogThresholdQueryInfo)
+          .indexSearchSlowlogThresholdFetchWarn(args.indexSearchSlowlogThresholdFetchWarn)
+          .indexSearchSlowlogThresholdFetchInfo(args.indexSearchSlowlogThresholdFetchInfo)
+          .indexSearchSlowlogLevel(args.indexSearchSlowlogLevel)
+          .searchQueryTimeoutSec(args.searchQueryTimeoutSec)
+          .searchQueryAttempts(args.searchQueryAttempts)
+          .build();
     }
+  }
 }
