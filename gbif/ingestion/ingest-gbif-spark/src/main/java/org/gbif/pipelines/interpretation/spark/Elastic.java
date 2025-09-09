@@ -30,9 +30,7 @@ public class Elastic {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(
-        names = "--esHosts",
-        description = "List of Elasticsearch hosts. Required for the DWCA_TO_ES_INDEX step.")
+    @Parameter(names = "--esHosts", description = "List of Elasticsearch hosts")
     private List<String> esHosts;
 
     @Parameter(
@@ -43,7 +41,7 @@ public class Elastic {
     @Parameter(
         names = "--esAlias",
         description =
-            "Name of the Elasticsearch aliases. The index created will be added to this aliases.")
+            "Name of the Elasticsearch aliases. The index created will be added to these aliases")
     private List<String> esAlias;
 
     @Parameter(names = "--esSchemaPath", description = "Path to an occurrence indexing schema")
@@ -170,9 +168,6 @@ public class Elastic {
 
     // Read parquet files
     Dataset<Row> df = spark.read().parquet(inputPath);
-
-    // Optional: print schema
-    df.printSchema();
 
     // Write to Elasticsearch
     df.write()
