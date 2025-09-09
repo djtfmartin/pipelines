@@ -25,6 +25,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -37,6 +38,7 @@ import org.gbif.pipelines.interpretation.transform.MultiTaxonomyTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MultiTaxonRecord;
 
+@Slf4j
 public class TaxonomyInterpretation {
 
   /** Interprets the temporal information contained in the extended records. */
@@ -53,6 +55,7 @@ public class TaxonomyInterpretation {
             .build();
 
     // extract the taxonomy from the extended records
+    spark.sparkContext().setJobGroup("taxonomy", "Extract the taxonomy ", true);
     Dataset<RecordWithTaxonomy> recordWithTaxonomy =
         source.map(
             (MapFunction<ExtendedRecord, RecordWithTaxonomy>)
@@ -67,14 +70,16 @@ public class TaxonomyInterpretation {
             Encoders.bean(RecordWithTaxonomy.class));
     recordWithTaxonomy.createOrReplaceTempView("record_with_taxonomy");
 
-    // distinct the locations to lookup
+    // distinct the classifications to lookup
+    spark.sparkContext().setJobGroup("taxonomy", "Distinct classifications", true);
     Dataset<Taxonomy> distinctClassifications =
         spark
             .sql("SELECT DISTINCT taxonomy.* FROM record_with_taxonomy")
             .repartition(numPartitions)
             .as(Encoders.bean(TaxonomyInterpretation.Taxonomy.class));
 
-    // lookup the distinct locations, and create a dictionary of the results
+    // lookup the distinct classifications, and create a dictionary of the results
+    spark.sparkContext().setJobGroup("taxonomy", "Lookup the distinct classifications", true);
     Dataset<KeyedMultiTaxonRecord> keyedLocation =
         distinctClassifications.map(
             (MapFunction<TaxonomyInterpretation.Taxonomy, KeyedMultiTaxonRecord>)
@@ -104,6 +109,7 @@ public class TaxonomyInterpretation {
     keyedLocation.createOrReplaceTempView("key_taxonomy");
 
     // join the dictionary back to the source records
+    spark.sparkContext().setJobGroup("taxonomy", "Join matches to source records", true);
     Dataset<RecordWithMultiTaxonRecord> expanded =
         spark
             .sql(
@@ -112,6 +118,7 @@ public class TaxonomyInterpretation {
                     + " LEFT JOIN key_taxonomy l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithMultiTaxonRecord.class));
 
+    spark.sparkContext().setJobGroup("taxonomy", "Output multitaxon records", true);
     return expanded.map(
         (MapFunction<RecordWithMultiTaxonRecord, MultiTaxonRecord>)
             r -> {
@@ -183,6 +190,7 @@ public class TaxonomyInterpretation {
     protected String genus;
     protected String subgenus;
     protected String species;
+    protected String nomenclaturalCode;
 
     static Taxonomy buildFrom(ExtendedRecord er) {
       TaxonomyBuilder builder = Taxonomy.builder();
@@ -205,7 +213,7 @@ public class TaxonomyInterpretation {
                       setter.invoke(builder, value);
                     }
                   } catch (NoSuchMethodException e) {
-                    System.err.println("No setter for: " + fieldName);
+                    log.debug("No setter for: " + fieldName);
                   } catch (Exception e) {
                     e.printStackTrace();
                   }
@@ -240,7 +248,8 @@ public class TaxonomyInterpretation {
           subtribe,
           genus,
           subgenus,
-          species);
+          species,
+          nomenclaturalCode);
     }
 
     public Map<String, String> toCoreTermsMap() {
@@ -275,6 +284,7 @@ public class TaxonomyInterpretation {
       ifNotNull.accept(DwcTerm.genus, genus);
       ifNotNull.accept(DwcTerm.subgenus, subgenus);
       ifNotNull.accept(GbifTerm.species, species);
+      ifNotNull.accept(DwcTerm.nomenclaturalCode, nomenclaturalCode);
       return coreTerms;
     }
   }

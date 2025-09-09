@@ -42,6 +42,9 @@ public class GrscicollInterpretation {
 
     // extract the
     log.info("Extracting Grscicoll lookups from the source records");
+    spark
+        .sparkContext()
+        .setJobGroup("grscicoll", "Extracting Grscicoll lookups from the source records", true);
     Dataset<RecordWithGrscicollLookup> recordWithLookup =
         source.map(
             (MapFunction<ExtendedRecord, RecordWithGrscicollLookup>)
@@ -58,11 +61,13 @@ public class GrscicollInterpretation {
 
     // get the distinct lookups
     log.info("Getting distinct Grscicoll lookups");
+    spark.sparkContext().setJobGroup("grscicoll", "Getting distinct Grscicoll lookups", true);
     Dataset<RecordWithGrscicollLookup> distinctLookups =
         recordWithLookup.dropDuplicates("hash").repartition(numPartitions);
 
     // look up in kv store
     log.info("Looking up Grscicoll records");
+    spark.sparkContext().setJobGroup("grscicoll", "Looking up Grscicoll records", true);
     Dataset<KeyedGrscicollRecord> keyed =
         distinctLookups.map(
             (MapFunction<RecordWithGrscicollLookup, KeyedGrscicollRecord>)
@@ -93,6 +98,9 @@ public class GrscicollInterpretation {
 
     // join the dictionary back to the source records
     log.info("Joining back Grscicoll records to the source records");
+    spark
+        .sparkContext()
+        .setJobGroup("grscicoll", "Joining back Grscicoll records to the source records", true);
     Dataset<RecordWithGrscicollRecord> expanded =
         spark
             .sql(
@@ -101,7 +109,8 @@ public class GrscicollInterpretation {
                     + " LEFT JOIN key_grscicollrecord l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithGrscicollRecord.class));
 
-    log.info("Merging Grscicoll records to the occurrence records");
+    log.info("Output Grscicoll Record");
+    spark.sparkContext().setJobGroup("grscicoll", "Output Grscicoll Record", true);
     return expanded.map(
         (MapFunction<RecordWithGrscicollRecord, GrscicollRecord>)
             r -> {

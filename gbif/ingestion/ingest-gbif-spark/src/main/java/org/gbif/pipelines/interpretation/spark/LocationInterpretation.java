@@ -49,6 +49,7 @@ public class LocationInterpretation {
         LocationTransform.builder().geocodeApiUrl(config.getGeocode().getApi().getWsUrl()).build();
 
     // extract the location
+    spark.sparkContext().setJobGroup("location", "Extract the location", true);
     Dataset<RecordWithLocation> recordWithLocation =
         source.map(
             (MapFunction<ExtendedRecord, RecordWithLocation>)
@@ -64,6 +65,7 @@ public class LocationInterpretation {
     recordWithLocation.createOrReplaceTempView("record_with_location");
 
     // distinct the locations to lookup
+    spark.sparkContext().setJobGroup("location", "Distinct the locations to lookup", true);
     Dataset<Location> distinctLocations =
         spark
             .sql("SELECT DISTINCT location.* FROM record_with_location")
@@ -71,6 +73,7 @@ public class LocationInterpretation {
             .as(Encoders.bean(Location.class));
 
     // lookup the distinct locations, and create a dictionary of the results
+    spark.sparkContext().setJobGroup("location", "Lookup the distinct locations", true);
     Dataset<KeyedLocationRecord> keyedLocation =
         distinctLocations.map(
             (MapFunction<Location, KeyedLocationRecord>)
@@ -101,6 +104,7 @@ public class LocationInterpretation {
     keyedLocation.createOrReplaceTempView("key_location");
 
     // join the dictionary back to the source records
+    spark.sparkContext().setJobGroup("location", "Join back to the source records", true);
     Dataset<RecordWithRecords> expanded =
         spark
             .sql(
@@ -109,6 +113,7 @@ public class LocationInterpretation {
                     + " LEFT JOIN key_location l ON r.hash = l.key")
             .as(Encoders.bean(RecordWithRecords.class));
 
+    spark.sparkContext().setJobGroup("location", "Output Location Records", true);
     return expanded.map(
         (MapFunction<RecordWithRecords, LocationRecord>)
             r -> {
