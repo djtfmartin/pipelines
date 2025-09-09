@@ -67,10 +67,6 @@ public class EsIndexUtils {
 
   private static IndexParams createIndexParams(Elastic.ElasticOptions options) {
     Path mappingsPath = Paths.get(options.getEsSchemaPath());
-    if (!mappingsPath.toFile().exists()) {
-      throw new IllegalArgumentException("The schema file doesn't exist: " + mappingsPath);
-    }
-
     boolean independentIndex = options.getEsIndexName().startsWith(options.getDatasetId());
 
     Map<String, String> settings = new HashMap<>(6);
