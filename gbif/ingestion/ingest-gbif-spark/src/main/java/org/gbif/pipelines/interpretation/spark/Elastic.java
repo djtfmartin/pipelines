@@ -45,7 +45,7 @@ public class Elastic {
     private List<String> esAlias;
 
     @Parameter(names = "--esSchemaPath", description = "Path to an occurrence indexing schema")
-    private String esSchemaPath = "es-occurrence-schema.json";
+    private String esSchemaPath = "elasticsearch/es-occurrence-schema.json";
 
     @Parameter(
         names = "--indexRefreshInterval",
