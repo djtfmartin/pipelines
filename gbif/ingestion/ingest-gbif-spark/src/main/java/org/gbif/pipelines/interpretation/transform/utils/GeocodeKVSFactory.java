@@ -15,6 +15,7 @@ package org.gbif.pipelines.interpretation.transform.utils;
 
 import java.io.IOException;
 import java.util.Optional;
+import javax.imageio.ImageIO;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.kvs.KeyValueStore;
@@ -26,6 +27,7 @@ import org.gbif.kvs.hbase.LoaderRetryConfig;
 import org.gbif.pipelines.core.config.model.KvConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.config.model.WsConfig;
+import org.gbif.pipelines.core.parsers.location.GeocodeKvStore;
 import org.gbif.rest.client.configuration.ClientConfiguration;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 
@@ -86,8 +88,16 @@ public class GeocodeKVSFactory {
           }
 
           try {
-            kvStore =
+            KeyValueStore<GeocodeRequest, GeocodeResponse> store =
                 GeocodeKVStoreFactory.simpleGeocodeKVStore(configBuilder.build(), clientConfig);
+
+            // try and use the bitmap cache if found
+            kvStore =
+                GeocodeKvStore.create(
+                    store,
+                    ImageIO.read(
+                        GeocodeKVSFactory.class.getResourceAsStream("/bitmap/bitmap.png")));
+
           } catch (IOException ex) {
             throw new IllegalStateException(ex);
           }
