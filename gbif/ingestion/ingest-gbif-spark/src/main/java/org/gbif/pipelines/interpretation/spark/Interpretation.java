@@ -197,7 +197,10 @@ public class Interpretation implements Serializable {
       jsonView.write().mode("overwrite").parquet(outputPath + "/json");
     }
 
-    log.info("=== Interpretation pipeline finished successfully ===");
+    log.info(
+        "=== Interpretation pipeline finished successfully in {} seconds ===",
+        (System.currentTimeMillis() - spark.sparkContext().startTime()) / 1000);
+    ;
     spark.close();
     System.exit(0);
   }

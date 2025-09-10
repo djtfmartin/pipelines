@@ -20,9 +20,9 @@ import org.gbif.kvs.grscicoll.GrscicollLookupRequest;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.transform.GrscicollTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.IssueRecord;
 import org.gbif.pipelines.io.avro.MetadataRecord;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
+import scala.Tuple2;
 
 @Slf4j
 public class GrscicollInterpretation {
@@ -57,7 +57,6 @@ public class GrscicollInterpretation {
                       .build();
                 },
             Encoders.bean(RecordWithGrscicollLookup.class));
-    recordWithLookup.createOrReplaceTempView("record_with_grscicollLookup");
 
     // get the distinct lookups
     log.info("Getting distinct Grscicoll lookups");
@@ -94,39 +93,28 @@ public class GrscicollInterpretation {
                   }
                 },
             Encoders.bean(KeyedGrscicollRecord.class));
-    keyed.createOrReplaceTempView("key_grscicollrecord");
 
     // join the dictionary back to the source records
-    log.info("Joining back Grscicoll records to the source records");
     spark
         .sparkContext()
-        .setJobGroup("grscicoll", "Joining back Grscicoll records to the source records", true);
-    Dataset<RecordWithGrscicollRecord> expanded =
-        spark
-            .sql(
-                "SELECT r.id, l.grscicollRecord"
-                    + " FROM record_with_grscicollLookup r "
-                    + " LEFT JOIN key_grscicollrecord l ON r.hash = l.key")
-            .as(Encoders.bean(RecordWithGrscicollRecord.class));
+        .setJobGroup("grscicoll", "Join the dictionary back to the source records", true);
+    return recordWithLookup
+        .joinWith(keyed, recordWithLookup.col("hash").equalTo(keyed.col("key")), "left_outer")
+        .map(
+            (MapFunction<Tuple2<RecordWithGrscicollLookup, KeyedGrscicollRecord>, GrscicollRecord>)
+                t -> {
+                  RecordWithGrscicollLookup rwl = t._1();
+                  KeyedGrscicollRecord klr = t._2();
 
-    log.info("Output Grscicoll Record");
-    spark.sparkContext().setJobGroup("grscicoll", "Output Grscicoll Record", true);
-    return expanded.map(
-        (MapFunction<RecordWithGrscicollRecord, GrscicollRecord>)
-            r -> {
-              GrscicollRecord grscicollRecord =
-                  r.getGrscicollRecord() == null
-                      ? GrscicollRecord.newBuilder().build()
-                      : r.getGrscicollRecord();
+                  GrscicollRecord record =
+                      (klr != null && klr.getGrscicollRecord() != null)
+                          ? klr.getGrscicollRecord()
+                          : GrscicollRecord.newBuilder().build();
 
-              grscicollRecord.setId(r.getId());
-
-              if (grscicollRecord.getIssues() == null) {
-                grscicollRecord.setIssues(IssueRecord.newBuilder().build());
-              }
-              return grscicollRecord;
-            },
-        Encoders.bean(GrscicollRecord.class));
+                  record.setId(rwl.getId());
+                  return record;
+                },
+            Encoders.bean(GrscicollRecord.class));
   }
 
   public static String hash(GrscicollLookupRequest request) {
@@ -179,15 +167,6 @@ public class GrscicollInterpretation {
     private String id;
     private String hash;
     private GrscicollLookupRequest grscicollLookupRequest;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class RecordWithGrscicollRecord {
-    private String id;
-    private GrscicollRecord grscicollRecord;
   }
 
   @Data

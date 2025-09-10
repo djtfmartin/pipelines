@@ -37,6 +37,7 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.transform.MultiTaxonomyTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MultiTaxonRecord;
+import scala.Tuple2;
 
 @Slf4j
 public class TaxonomyInterpretation {
@@ -68,69 +69,63 @@ public class TaxonomyInterpretation {
                       .build();
                 },
             Encoders.bean(RecordWithTaxonomy.class));
-    recordWithTaxonomy.createOrReplaceTempView("record_with_taxonomy");
 
     // distinct the classifications to lookup
     spark.sparkContext().setJobGroup("taxonomy", "Distinct classifications", true);
-    Dataset<Taxonomy> distinctClassifications =
-        spark
-            .sql("SELECT DISTINCT taxonomy.* FROM record_with_taxonomy")
-            .repartition(numPartitions)
-            .as(Encoders.bean(TaxonomyInterpretation.Taxonomy.class));
+    Dataset<RecordWithTaxonomy> distinctClassifications =
+        recordWithTaxonomy.dropDuplicates("hash").repartition(numPartitions);
 
     // lookup the distinct classifications, and create a dictionary of the results
     spark.sparkContext().setJobGroup("taxonomy", "Lookup the distinct classifications", true);
     Dataset<KeyedMultiTaxonRecord> keyedLocation =
         distinctClassifications.map(
-            (MapFunction<TaxonomyInterpretation.Taxonomy, KeyedMultiTaxonRecord>)
+            (MapFunction<RecordWithTaxonomy, KeyedMultiTaxonRecord>)
                 taxonomy -> {
 
                   // HACK - the function takes ExtendedRecord, but we have a Location
                   ExtendedRecord er =
                       ExtendedRecord.newBuilder()
                           .setId("UNUSED_BUT_NECESSARY")
-                          .setCoreTerms(taxonomy.toCoreTermsMap())
+                          .setCoreTerms(taxonomy.getTaxonomy().toCoreTermsMap())
                           .build();
 
                   // look them up
                   Optional<MultiTaxonRecord> converted = multiTaxonomyTransform.convert(er);
                   if (converted.isPresent()) {
                     return KeyedMultiTaxonRecord.builder()
-                        .key(taxonomy.hash())
+                        .key(taxonomy.getTaxonomy().hash())
                         .multiTaxonRecord(converted.get())
                         .build();
                   } else {
                     return KeyedMultiTaxonRecord.builder()
-                        .key(taxonomy.hash())
+                        .key(taxonomy.getTaxonomy().hash())
                         .build(); // TODO: null handling?
                   }
                 },
             Encoders.bean(KeyedMultiTaxonRecord.class));
-    keyedLocation.createOrReplaceTempView("key_taxonomy");
 
     // join the dictionary back to the source records
     spark.sparkContext().setJobGroup("taxonomy", "Join matches to source records", true);
-    Dataset<RecordWithMultiTaxonRecord> expanded =
-        spark
-            .sql(
-                "SELECT r.id, l.multiTaxonRecord"
-                    + " FROM record_with_taxonomy r "
-                    + " LEFT JOIN key_taxonomy l ON r.hash = l.key")
-            .as(Encoders.bean(RecordWithMultiTaxonRecord.class));
+    return recordWithTaxonomy
+        .joinWith(
+            keyedLocation,
+            recordWithTaxonomy.col("hash").equalTo(keyedLocation.col("key")),
+            "left_outer")
+        .map(
+            (MapFunction<Tuple2<RecordWithTaxonomy, KeyedMultiTaxonRecord>, MultiTaxonRecord>)
+                t -> {
+                  RecordWithTaxonomy rwl = t._1();
+                  KeyedMultiTaxonRecord klr = t._2();
 
-    spark.sparkContext().setJobGroup("taxonomy", "Output multitaxon records", true);
-    return expanded.map(
-        (MapFunction<RecordWithMultiTaxonRecord, MultiTaxonRecord>)
-            r -> {
-              MultiTaxonRecord multiTaxonRecord =
-                  r.getMultiTaxonRecord() == null
-                      ? MultiTaxonRecord.newBuilder().build()
-                      : r.getMultiTaxonRecord();
+                  MultiTaxonRecord multiTaxonRecord =
+                      (klr != null && klr.getMultiTaxonRecord() != null)
+                          ? klr.getMultiTaxonRecord()
+                          : MultiTaxonRecord.newBuilder().build();
 
-              multiTaxonRecord.setId(r.getId());
-              return multiTaxonRecord;
-            },
-        Encoders.bean(MultiTaxonRecord.class));
+                  multiTaxonRecord.setId(rwl.getId());
+                  return multiTaxonRecord;
+                },
+            Encoders.bean(MultiTaxonRecord.class));
   }
 
   @Data
@@ -156,17 +151,7 @@ public class TaxonomyInterpretation {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class RecordWithMultiTaxonRecord {
-    private String id;
-    private MultiTaxonRecord multiTaxonRecord;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
   public static class Taxonomy {
-    private String id;
     protected String taxonID;
     protected String taxonConceptID;
     protected String scientificNameID;
@@ -226,7 +211,6 @@ public class TaxonomyInterpretation {
     String hash() {
       return String.join(
           "|",
-          id,
           taxonID,
           taxonConceptID,
           scientificNameID,

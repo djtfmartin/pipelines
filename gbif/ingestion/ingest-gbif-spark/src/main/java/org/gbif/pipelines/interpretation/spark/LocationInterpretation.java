@@ -24,6 +24,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -34,7 +35,9 @@ import org.gbif.pipelines.interpretation.transform.LocationTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.LocationRecord;
 import org.gbif.pipelines.io.avro.MetadataRecord;
+import scala.Tuple2;
 
+@Slf4j
 public class LocationInterpretation {
 
   /** Transforms the source records into the location records using the geocode service. */
@@ -45,12 +48,13 @@ public class LocationInterpretation {
       MetadataRecord mdr,
       int numPartitions) {
 
+    // initialize the location transform
     LocationTransform locationTransform =
         LocationTransform.builder().geocodeApiUrl(config.getGeocode().getApi().getWsUrl()).build();
 
     // extract the location
     spark.sparkContext().setJobGroup("location", "Extract the location", true);
-    Dataset<RecordWithLocation> recordWithLocation =
+    Dataset<RecordWithLocation> recordWithLocations =
         source.map(
             (MapFunction<ExtendedRecord, RecordWithLocation>)
                 or -> {
@@ -62,28 +66,24 @@ public class LocationInterpretation {
                       .build();
                 },
             Encoders.bean(RecordWithLocation.class));
-    recordWithLocation.createOrReplaceTempView("record_with_location");
 
     // distinct the locations to lookup
     spark.sparkContext().setJobGroup("location", "Distinct the locations to lookup", true);
-    Dataset<Location> distinctLocations =
-        spark
-            .sql("SELECT DISTINCT location.* FROM record_with_location")
-            .repartition(numPartitions)
-            .as(Encoders.bean(Location.class));
+    Dataset<RecordWithLocation> distinctLocations =
+        recordWithLocations.dropDuplicates("hash").repartition(numPartitions);
 
     // lookup the distinct locations, and create a dictionary of the results
     spark.sparkContext().setJobGroup("location", "Lookup the distinct locations", true);
     Dataset<KeyedLocationRecord> keyedLocation =
         distinctLocations.map(
-            (MapFunction<Location, KeyedLocationRecord>)
-                location -> {
+            (MapFunction<RecordWithLocation, KeyedLocationRecord>)
+                recordWithLocation -> {
 
                   // HACK - the function takes ExtendedRecord, but we have a Location
                   ExtendedRecord er =
                       ExtendedRecord.newBuilder()
                           .setId("UNUSED_BUT_NECESSARY")
-                          .setCoreTerms(location.toCoreTermsMap())
+                          .setCoreTerms(recordWithLocation.getLocation().toCoreTermsMap())
                           .build();
 
                   // look them up
@@ -91,41 +91,39 @@ public class LocationInterpretation {
 
                   if (converted.isPresent()) {
                     return KeyedLocationRecord.builder()
-                        .key(location.hash())
+                        .key(recordWithLocation.getLocation().hash())
                         .locationRecord(converted.get())
                         .build();
                   } else {
                     return KeyedLocationRecord.builder()
-                        .key(location.hash())
+                        .key(recordWithLocation.getLocation().hash())
                         .build(); // TODO: null handling?
                   }
                 },
             Encoders.bean(KeyedLocationRecord.class));
-    keyedLocation.createOrReplaceTempView("key_location");
 
     // join the dictionary back to the source records
     spark.sparkContext().setJobGroup("location", "Join back to the source records", true);
-    Dataset<RecordWithRecords> expanded =
-        spark
-            .sql(
-                "SELECT r.id, l.locationRecord"
-                    + " FROM record_with_location r "
-                    + " LEFT JOIN key_location l ON r.hash = l.key")
-            .as(Encoders.bean(RecordWithRecords.class));
+    return recordWithLocations
+        .joinWith(
+            keyedLocation,
+            recordWithLocations.col("hash").equalTo(keyedLocation.col("key")),
+            "left_outer")
+        .map(
+            (MapFunction<Tuple2<RecordWithLocation, KeyedLocationRecord>, LocationRecord>)
+                t -> {
+                  RecordWithLocation rwl = t._1();
+                  KeyedLocationRecord klr = t._2();
 
-    spark.sparkContext().setJobGroup("location", "Output Location Records", true);
-    return expanded.map(
-        (MapFunction<RecordWithRecords, LocationRecord>)
-            r -> {
-              LocationRecord locationRecord =
-                  r.getLocationRecord() == null
-                      ? LocationRecord.newBuilder().build()
-                      : r.getLocationRecord();
+                  LocationRecord locationRecord =
+                      (klr != null && klr.getLocationRecord() != null)
+                          ? klr.getLocationRecord()
+                          : LocationRecord.newBuilder().build();
 
-              locationRecord.setId(r.getId());
-              return locationRecord;
-            },
-        Encoders.bean(LocationRecord.class));
+                  locationRecord.setId(rwl.getId());
+                  return locationRecord;
+                },
+            Encoders.bean(LocationRecord.class));
   }
 
   @Data
@@ -151,17 +149,7 @@ public class LocationInterpretation {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class RecordWithRecords {
-    private String id;
-    private LocationRecord locationRecord;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
   public static class Location {
-    private String id;
     private String locationID;
     private String higherGeographyID;
     private String higherGeography;
@@ -237,7 +225,6 @@ public class LocationInterpretation {
     String hash() {
       return String.join(
           "|",
-          id,
           locationID,
           higherGeographyID,
           higherGeography,
