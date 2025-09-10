@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.geocode.GeocodeRequest;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.LocationInterpreter;
 import org.gbif.pipelines.interpretation.transform.utils.GeocodeKVSFactory;
@@ -32,12 +33,13 @@ import org.gbif.rest.client.geocode.GeocodeResponse;
 @Builder
 public class LocationTransform implements Serializable {
 
-  private String geocodeApiUrl;
+  private PipelinesConfig config;
 
-  public Optional<LocationRecord> convert(ExtendedRecord source, MetadataRecord mdr) {
+  public Optional<LocationRecord> convert(ExtendedRecord source, MetadataRecord mdr)
+      throws Exception {
 
     KeyValueStore<GeocodeRequest, GeocodeResponse> geocodeKvStore =
-        GeocodeKVSFactory.getKvStore(geocodeApiUrl);
+        GeocodeKVSFactory.getKvStore(config);
 
     Interpretation<ExtendedRecord>.Handler<LocationRecord> handler =
         Interpretation.from(source)

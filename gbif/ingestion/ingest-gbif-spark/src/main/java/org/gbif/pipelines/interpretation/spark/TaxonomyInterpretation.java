@@ -50,10 +50,7 @@ public class TaxonomyInterpretation {
       int numPartitions) {
 
     MultiTaxonomyTransform multiTaxonomyTransform =
-        MultiTaxonomyTransform.builder()
-            .nameUsageMatchApiUrl(config.getNameUsageMatchingService().getWs().getApi().getWsUrl())
-            .checklistKeys(config.getNameUsageMatchingService().getChecklistKeys())
-            .build();
+        MultiTaxonomyTransform.builder().config(config).build();
 
     // extract the taxonomy from the extended records
     spark.sparkContext().setJobGroup("taxonomy", "Extract the taxonomy ", true);

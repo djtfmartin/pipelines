@@ -14,13 +14,18 @@
 package org.gbif.pipelines.interpretation.transform.utils;
 
 import java.io.IOException;
-import javax.imageio.ImageIO;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.gbif.kvs.KeyValueStore;
+import org.gbif.kvs.conf.CachedHBaseKVStoreConfiguration;
 import org.gbif.kvs.geocode.GeocodeKVStoreFactory;
 import org.gbif.kvs.geocode.GeocodeRequest;
-import org.gbif.pipelines.core.parsers.location.GeocodeKvStore;
+import org.gbif.kvs.hbase.HBaseKVStoreConfiguration;
+import org.gbif.kvs.hbase.LoaderRetryConfig;
+import org.gbif.pipelines.core.config.model.KvConfig;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.config.model.WsConfig;
 import org.gbif.rest.client.configuration.ClientConfiguration;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 
@@ -30,30 +35,58 @@ public class GeocodeKVSFactory {
   private static Object LOCK = new Object();
   private static KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore;
 
-  public static KeyValueStore<GeocodeRequest, GeocodeResponse> getKvStore(String api) {
+  public static KeyValueStore<GeocodeRequest, GeocodeResponse> getKvStore(PipelinesConfig config)
+      throws IOException {
     if (kvStore == null) {
       synchronized (LOCK) {
         if (kvStore == null) {
-          ClientConfiguration clientConfiguration =
+
+          KvConfig geocodeConfig = config.getGeocode();
+
+          String api =
+              Optional.ofNullable(geocodeConfig.getApi())
+                  .map(WsConfig::getWsUrl)
+                  .orElse(config.getGbifApi().getWsUrl());
+
+          ClientConfiguration clientConfig =
               ClientConfiguration.builder()
                   .withBaseApiUrl(api)
-                  .withFileCacheMaxSizeMb(100L) // 100MB
+                  .withFileCacheMaxSizeMb(geocodeConfig.getWsCacheSizeMb())
+                  .withTimeOutMillisec(geocodeConfig.getWsTimeoutSec() * 1000)
+                  .withMaxConnections(geocodeConfig.getMaxConnections())
                   .build();
 
-          KeyValueStore<GeocodeRequest, GeocodeResponse> store =
-              GeocodeKVStoreFactory.simpleGeocodeKVStore(clientConfiguration);
-          // TODO, config and exceptions
-          try {
-            // try and use the bitmap cache if found
-            kvStore =
-                GeocodeKvStore.create(
-                    store,
-                    ImageIO.read(
-                        GeocodeKVSFactory.class.getResourceAsStream("/bitmap/bitmap.png")));
-          } catch (IOException e) {
-            e.printStackTrace(); // TODO
-            kvStore = store;
+          String zk = geocodeConfig.getZkConnectionString();
+          zk = zk == null || zk.isEmpty() ? config.getZkConnectionString() : zk;
+          if (zk == null || geocodeConfig.isRestOnly()) {
+            return GeocodeKVStoreFactory.simpleGeocodeKVStore(clientConfig);
           }
+
+          CachedHBaseKVStoreConfiguration.Builder configBuilder =
+              CachedHBaseKVStoreConfiguration.builder()
+                  .withValueColumnQualifier("j") // stores JSON data
+                  .withHBaseKVStoreConfiguration(
+                      HBaseKVStoreConfiguration.builder()
+                          .withTableName(geocodeConfig.getTableName())
+                          .withColumnFamily("v") // Column in which qualifiers are stored
+                          .withNumOfKeyBuckets(geocodeConfig.getNumOfKeyBuckets())
+                          .withHBaseZk(zk)
+                          .withHBaseZnode(geocodeConfig.getHbaseZnode())
+                          .build())
+                  .withCacheCapacity(25_000L)
+                  .withCacheExpiryTimeInSeconds(geocodeConfig.getCacheExpiryTimeInSeconds());
+
+          KvConfig.LoaderRetryConfig retryConfig = geocodeConfig.getLoaderRetryConfig();
+          if (retryConfig != null) {
+            configBuilder.withLoaderRetryConfig(
+                new LoaderRetryConfig(
+                    retryConfig.getMaxAttempts(),
+                    retryConfig.getInitialIntervalMillis(),
+                    retryConfig.getMultiplier(),
+                    retryConfig.getRandomizationFactor()));
+          }
+
+          return GeocodeKVStoreFactory.simpleGeocodeKVStore(configBuilder.build(), clientConfig);
         }
       }
     }

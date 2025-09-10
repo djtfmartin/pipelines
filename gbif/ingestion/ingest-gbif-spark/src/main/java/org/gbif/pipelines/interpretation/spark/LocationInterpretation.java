@@ -49,8 +49,7 @@ public class LocationInterpretation {
       int numPartitions) {
 
     // initialize the location transform
-    LocationTransform locationTransform =
-        LocationTransform.builder().geocodeApiUrl(config.getGeocode().getApi().getWsUrl()).build();
+    LocationTransform locationTransform = LocationTransform.builder().config(config).build();
 
     // extract the location
     spark.sparkContext().setJobGroup("location", "Extract the location", true);

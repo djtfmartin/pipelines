@@ -15,12 +15,12 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.NameUsageMatchRequest;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.MultiTaxonomyInterpreter;
 import org.gbif.pipelines.interpretation.transform.utils.MultiTaxonomyKVSFactory;
@@ -32,13 +32,12 @@ import org.gbif.rest.client.species.NameUsageMatchResponse;
 @Builder
 public class MultiTaxonomyTransform implements Serializable {
 
-  private String nameUsageMatchApiUrl;
-  private List<String> checklistKeys;
+  private PipelinesConfig config;
 
   public Optional<MultiTaxonRecord> convert(ExtendedRecord source) {
 
     KeyValueStore<NameUsageMatchRequest, NameUsageMatchResponse> kvStore =
-        MultiTaxonomyKVSFactory.getKvStore(nameUsageMatchApiUrl);
+        MultiTaxonomyKVSFactory.getKvStore(config);
 
     return Interpretation.from(source)
         .to(
@@ -48,7 +47,9 @@ public class MultiTaxonomyTransform implements Serializable {
                     .setCreated(Instant.now().toEpochMilli())
                     .build())
         .when(er -> !er.getCoreTerms().isEmpty())
-        .via(MultiTaxonomyInterpreter.interpretMultiTaxonomy(kvStore, checklistKeys))
+        .via(
+            MultiTaxonomyInterpreter.interpretMultiTaxonomy(
+                kvStore, config.getNameUsageMatchingService().getChecklistKeys()))
         .getOfNullable();
   }
 }
