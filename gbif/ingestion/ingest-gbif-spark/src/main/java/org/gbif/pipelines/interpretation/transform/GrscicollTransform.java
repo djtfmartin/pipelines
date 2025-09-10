@@ -5,6 +5,7 @@ import java.util.Optional;
 import lombok.Builder;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.grscicoll.GrscicollLookupRequest;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.GrscicollInterpreter;
 import org.gbif.pipelines.interpretation.transform.utils.GrscicollLookupKvStoreFactory;
@@ -16,12 +17,13 @@ import org.gbif.rest.client.grscicoll.GrscicollLookupResponse;
 @Builder
 public class GrscicollTransform implements java.io.Serializable {
 
-  private String gbifApiUrl;
+  private PipelinesConfig config;
 
-  public Optional<GrscicollRecord> convert(ExtendedRecord source, MetadataRecord mdr) {
+  public Optional<GrscicollRecord> convert(ExtendedRecord source, MetadataRecord mdr)
+      throws Exception {
 
     KeyValueStore<GrscicollLookupRequest, GrscicollLookupResponse> kvStore =
-        GrscicollLookupKvStoreFactory.getKvStore(gbifApiUrl);
+        GrscicollLookupKvStoreFactory.getKvStore(config);
 
     return Interpretation.from(source)
         .to(GrscicollRecord.newBuilder().setCreated(Instant.now().toEpochMilli()).build())

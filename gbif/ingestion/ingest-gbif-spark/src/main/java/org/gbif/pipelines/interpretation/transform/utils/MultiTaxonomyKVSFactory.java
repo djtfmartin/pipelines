@@ -92,8 +92,9 @@ public class MultiTaxonomyKVSFactory {
         }
 
         try {
-          return NameUsageMatchKVStoreFactory.nameUsageMatchKVStore(
-              matchConfigBuilder.build(), clientConfiguration);
+          kvStore =
+              NameUsageMatchKVStoreFactory.nameUsageMatchKVStore(
+                  matchConfigBuilder.build(), clientConfiguration);
         } catch (IOException ex) {
           throw new IllegalStateException(ex);
         }

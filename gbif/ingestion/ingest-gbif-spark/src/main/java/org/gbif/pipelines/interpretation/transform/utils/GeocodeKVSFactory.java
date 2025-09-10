@@ -35,8 +35,7 @@ public class GeocodeKVSFactory {
   private static Object LOCK = new Object();
   private static KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore;
 
-  public static KeyValueStore<GeocodeRequest, GeocodeResponse> getKvStore(PipelinesConfig config)
-      throws IOException {
+  public static KeyValueStore<GeocodeRequest, GeocodeResponse> getKvStore(PipelinesConfig config) {
     if (kvStore == null) {
       synchronized (LOCK) {
         if (kvStore == null) {
@@ -86,7 +85,12 @@ public class GeocodeKVSFactory {
                     retryConfig.getRandomizationFactor()));
           }
 
-          return GeocodeKVStoreFactory.simpleGeocodeKVStore(configBuilder.build(), clientConfig);
+          try {
+            kvStore =
+                GeocodeKVStoreFactory.simpleGeocodeKVStore(configBuilder.build(), clientConfig);
+          } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+          }
         }
       }
     }

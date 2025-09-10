@@ -35,10 +35,7 @@ public class GrscicollInterpretation {
       MetadataRecord mdr,
       int numPartitions) {
 
-    GrscicollTransform transform =
-        GrscicollTransform.builder()
-            .gbifApiUrl(config.getGrscicollLookup().getApi().getWsUrl())
-            .build();
+    GrscicollTransform transform = GrscicollTransform.builder().config(config).build();
 
     // extract the
     log.info("Extracting Grscicoll lookups from the source records");
