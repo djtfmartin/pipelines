@@ -45,8 +45,9 @@ public final class HdfsView implements Serializable {
             record ->
                 OccurrenceHdfsRecordConverter.builder()
                     .metadataRecord(metadataRecord)
-                    .extendedRecord(
-                        objectMapper.readValue(record.getVerbatim(), ExtendedRecord.class))
+                    //                    .extendedRecord(
+                    //                        objectMapper.readValue(record.getVerbatim(),
+                    // ExtendedRecord.class))
                     .basicRecord(objectMapper.readValue(record.getBasic(), BasicRecord.class))
                     .locationRecord(
                         objectMapper.readValue(record.getLocation(), LocationRecord.class))
