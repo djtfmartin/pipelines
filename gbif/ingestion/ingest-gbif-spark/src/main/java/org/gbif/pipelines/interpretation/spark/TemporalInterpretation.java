@@ -19,12 +19,11 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.gbif.pipelines.interpretation.transform.TemporalTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
-import org.gbif.pipelines.io.avro.TemporalRecord;
 import scala.Tuple2;
 
 public class TemporalInterpretation {
 
-    final static ObjectMapper objectMapper = new ObjectMapper();
+  static final ObjectMapper objectMapper = new ObjectMapper();
 
   /** Interprets the temporal information contained in the extended records. */
   public static Dataset<Tuple2<String, String>> temporalTransform(Dataset<ExtendedRecord> source) {
@@ -35,10 +34,9 @@ public class TemporalInterpretation {
     return source.map(
         (MapFunction<ExtendedRecord, Tuple2<String, String>>)
             or -> {
-            return Tuple2.apply(
-                        or.getId(),
-                        objectMapper.writeValueAsString(temporalTransform.convert(or).get()
-                    ));
-            }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+              return Tuple2.apply(
+                  or.getId(), objectMapper.writeValueAsString(temporalTransform.convert(or).get()));
+            },
+        Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 }

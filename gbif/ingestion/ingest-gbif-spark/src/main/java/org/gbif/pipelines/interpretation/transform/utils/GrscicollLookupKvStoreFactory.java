@@ -45,7 +45,8 @@ public class GrscicollLookupKvStoreFactory {
           String zk = grscicollLookupConfig.getZkConnectionString();
           zk = zk == null || zk.isEmpty() ? config.getZkConnectionString() : zk;
           if (zk == null || grscicollLookupConfig.isRestOnly()) {
-            kvStore = GrscicollLookupKVStoreFactory.simpleGrscicollLookupKVStore(clientConfiguration);
+            kvStore =
+                GrscicollLookupKVStoreFactory.simpleGrscicollLookupKVStore(clientConfiguration);
             return kvStore;
           }
 

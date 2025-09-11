@@ -2,10 +2,9 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.Optional;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,7 +28,7 @@ import scala.Tuple2;
 @Slf4j
 public class GrscicollInterpretation {
 
-    final static ObjectMapper objectMapper = new ObjectMapper();
+  static final ObjectMapper objectMapper = new ObjectMapper();
 
   /** Transforms the source records into the location records using the geocode service. */
   public static Dataset<Tuple2<String, String>> grscicollTransform(
@@ -102,7 +101,9 @@ public class GrscicollInterpretation {
     return recordWithLookup
         .joinWith(keyed, recordWithLookup.col("hash").equalTo(keyed.col("key")), "left_outer")
         .map(
-            (MapFunction<Tuple2<RecordWithGrscicollLookup, KeyedGrscicollRecord>, Tuple2<String, String>>)
+            (MapFunction<
+                    Tuple2<RecordWithGrscicollLookup, KeyedGrscicollRecord>,
+                    Tuple2<String, String>>)
                 t -> {
                   RecordWithGrscicollLookup rwl = t._1();
                   KeyedGrscicollRecord klr = t._2();
@@ -113,8 +114,9 @@ public class GrscicollInterpretation {
                           : GrscicollRecord.newBuilder().build();
 
                   record.setId(rwl.getId());
-                    return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(record));
-                }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+                  return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(record));
+                },
+            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
   public static String hash(GrscicollLookupRequest request) {

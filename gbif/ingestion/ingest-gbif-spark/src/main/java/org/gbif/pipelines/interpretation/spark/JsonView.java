@@ -17,32 +17,34 @@ import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class JsonView {
 
-    final static ObjectMapper objectMapper = new ObjectMapper();
-
+  static final ObjectMapper objectMapper = new ObjectMapper();
 
   public static Dataset<OccurrenceJsonRecord> transformToJsonView(
-            Dataset<OccurrenceRecordJSON> records, MetadataRecord metadataRecord) {
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+      Dataset<OccurrenceRecordJSON> records, MetadataRecord metadataRecord) {
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     return records.map(
-                (MapFunction<OccurrenceRecordJSON, OccurrenceJsonRecord>)
-                        record -> {
+        (MapFunction<OccurrenceRecordJSON, OccurrenceJsonRecord>)
+            record -> {
               OccurrenceJsonConverter c =
                   OccurrenceJsonConverter.builder()
                       .metadata(metadataRecord)
-                                            .verbatim(objectMapper.readValue(record.getBasic(), ExtendedRecord.class))
-                                            .basic(objectMapper.readValue(record.getBasic(), BasicRecord.class))
-                                            .location(objectMapper.readValue(record.getLocation(), LocationRecord.class))
-                                            .temporal(objectMapper.readValue(record.getTemporal(), TemporalRecord.class))
-                                            .multiTaxon(objectMapper.readValue(record.getMultiTaxon(), MultiTaxonRecord.class))
-                                            .grscicoll(objectMapper.readValue(record.getGrscicoll(), GrscicollRecord.class))
-                                            .identifier(objectMapper.readValue(record.getIdentifier(), IdentifierRecord.class))
+                      .verbatim(objectMapper.readValue(record.getVerbatim(), ExtendedRecord.class))
+                      .basic(objectMapper.readValue(record.getBasic(), BasicRecord.class))
+                      .location(objectMapper.readValue(record.getLocation(), LocationRecord.class))
+                      .temporal(objectMapper.readValue(record.getTemporal(), TemporalRecord.class))
+                      .multiTaxon(
+                          objectMapper.readValue(record.getMultiTaxon(), MultiTaxonRecord.class))
+                      .grscicoll(
+                          objectMapper.readValue(record.getGrscicoll(), GrscicollRecord.class))
+                      .identifier(
+                          objectMapper.readValue(record.getIdentifier(), IdentifierRecord.class))
                       .clustering(
                           ClusteringRecord.newBuilder()
-                                                            .setId(record.getId())
+                              .setId(record.getId())
                               .build()) // placeholder
                       .multimedia(
                           MultimediaRecord.newBuilder()
-                                                            .setId(record.getId())
+                              .setId(record.getId())
                               .build()) // placeholder
                       .build();
 
@@ -51,4 +53,3 @@ public final class JsonView {
         Encoders.bean(OccurrenceJsonRecord.class));
   }
 }
-

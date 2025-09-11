@@ -15,13 +15,12 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.dwc.terms.DwcTerm.GROUP_LOCATION;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -42,7 +41,7 @@ import scala.Tuple2;
 @Slf4j
 public class LocationInterpretation {
 
- final static ObjectMapper objectMapper = new ObjectMapper();
+  static final ObjectMapper objectMapper = new ObjectMapper();
 
   /** Transforms the source records into the location records using the geocode service. */
   public static Dataset<Tuple2<String, String>> locationTransform(
@@ -125,7 +124,8 @@ public class LocationInterpretation {
 
                   locationRecord.setId(rwl.getId());
                   return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(locationRecord));
-                }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+                },
+            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
   @Data

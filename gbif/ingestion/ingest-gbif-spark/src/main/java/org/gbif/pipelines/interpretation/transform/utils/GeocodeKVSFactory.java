@@ -60,7 +60,7 @@ public class GeocodeKVSFactory {
           String zk = geocodeConfig.getZkConnectionString();
           zk = zk == null || zk.isEmpty() ? config.getZkConnectionString() : zk;
           if (zk == null || geocodeConfig.isRestOnly()) {
-            kvStore =  GeocodeKVStoreFactory.simpleGeocodeKVStore(clientConfig);
+            kvStore = GeocodeKVStoreFactory.simpleGeocodeKVStore(clientConfig);
             return kvStore;
           }
 
