@@ -130,12 +130,7 @@ public class Identifiers implements Serializable {
     GbifIdTransform transform =
         GbifIdTransform.builder()
             .keygenServiceSupplier(
-                new SerializableSupplier<HBaseLockingKey>() {
-                  @Override
-                  public HBaseLockingKey get() {
-                    return KeygenServiceFactory.create(config, datasetId);
-                  }
-                })
+                    (SerializableSupplier<HBaseLockingKey>) () -> KeygenServiceFactory.create(config, datasetId))
             .build();
 
     return records.map(

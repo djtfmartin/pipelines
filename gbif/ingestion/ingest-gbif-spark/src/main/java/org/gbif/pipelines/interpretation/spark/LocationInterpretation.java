@@ -20,6 +20,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -40,8 +42,10 @@ import scala.Tuple2;
 @Slf4j
 public class LocationInterpretation {
 
+ final static ObjectMapper objectMapper = new ObjectMapper();
+
   /** Transforms the source records into the location records using the geocode service. */
-  public static Dataset<LocationRecord> locationTransform(
+  public static Dataset<Tuple2<String, String>> locationTransform(
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
@@ -109,7 +113,7 @@ public class LocationInterpretation {
             recordWithLocations.col("hash").equalTo(keyedLocation.col("key")),
             "left_outer")
         .map(
-            (MapFunction<Tuple2<RecordWithLocation, KeyedLocationRecord>, LocationRecord>)
+            (MapFunction<Tuple2<RecordWithLocation, KeyedLocationRecord>, Tuple2<String, String>>)
                 t -> {
                   RecordWithLocation rwl = t._1();
                   KeyedLocationRecord klr = t._2();
@@ -120,9 +124,8 @@ public class LocationInterpretation {
                           : LocationRecord.newBuilder().build();
 
                   locationRecord.setId(rwl.getId());
-                  return locationRecord;
-                },
-            Encoders.bean(LocationRecord.class));
+                  return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(locationRecord));
+                }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
   @Data

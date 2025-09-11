@@ -13,26 +13,32 @@
  */
 package org.gbif.pipelines.interpretation.spark;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.gbif.pipelines.interpretation.transform.TemporalTransform;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.TemporalRecord;
+import scala.Tuple2;
 
 public class TemporalInterpretation {
 
+    final static ObjectMapper objectMapper = new ObjectMapper();
+
   /** Interprets the temporal information contained in the extended records. */
-  public static Dataset<TemporalRecord> temporalTransform(Dataset<ExtendedRecord> source) {
+  public static Dataset<Tuple2<String, String>> temporalTransform(Dataset<ExtendedRecord> source) {
 
     TemporalTransform temporalTransform =
         TemporalTransform.builder().build(); // TODO: add orderings from dataset tags
 
     return source.map(
-        (MapFunction<ExtendedRecord, TemporalRecord>)
+        (MapFunction<ExtendedRecord, Tuple2<String, String>>)
             or -> {
-              return temporalTransform.convert(or).get();
-            },
-        Encoders.bean(TemporalRecord.class));
+            return Tuple2.apply(
+                        or.getId(),
+                        objectMapper.writeValueAsString(temporalTransform.convert(or).get()
+                    ));
+            }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 }

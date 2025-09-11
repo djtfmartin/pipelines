@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -42,8 +44,10 @@ import scala.Tuple2;
 @Slf4j
 public class TaxonomyInterpretation {
 
-  /** Interprets the temporal information contained in the extended records. */
-  public static Dataset<MultiTaxonRecord> taxonomyTransform(
+    final static ObjectMapper objectMapper = new ObjectMapper();
+
+    /** Interprets the temporal information contained in the extended records. */
+  public static Dataset<Tuple2<String, String>> taxonomyTransform(
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
@@ -109,7 +113,7 @@ public class TaxonomyInterpretation {
             recordWithTaxonomy.col("hash").equalTo(keyedLocation.col("key")),
             "left_outer")
         .map(
-            (MapFunction<Tuple2<RecordWithTaxonomy, KeyedMultiTaxonRecord>, MultiTaxonRecord>)
+            (MapFunction<Tuple2<RecordWithTaxonomy, KeyedMultiTaxonRecord>, Tuple2<String, String>>)
                 t -> {
                   RecordWithTaxonomy rwl = t._1();
                   KeyedMultiTaxonRecord klr = t._2();
@@ -120,9 +124,8 @@ public class TaxonomyInterpretation {
                           : MultiTaxonRecord.newBuilder().build();
 
                   multiTaxonRecord.setId(rwl.getId());
-                  return multiTaxonRecord;
-                },
-            Encoders.bean(MultiTaxonRecord.class));
+                    return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(multiTaxonRecord));
+                }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
   @Data

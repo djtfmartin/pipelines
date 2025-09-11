@@ -17,7 +17,7 @@ import static org.gbif.dwc.terms.DwcTerm.parentEventID;
 import static org.gbif.pipelines.core.utils.ModelUtils.extractValue;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.spark.GrscicollInterpretation.grscicollTransform;
-import static org.gbif.pipelines.interpretation.spark.HdfsView.transformToHdfsView;
+import static org.gbif.pipelines.interpretation.spark.HdfsView.transformJsonToHdfsView;
 import static org.gbif.pipelines.interpretation.spark.JsonView.transformToJsonView;
 import static org.gbif.pipelines.interpretation.spark.LocationInterpretation.locationTransform;
 import static org.gbif.pipelines.interpretation.spark.TaxonomyInterpretation.taxonomyTransform;
@@ -28,6 +28,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.Serializable;
 import java.util.function.BiConsumer;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
@@ -123,9 +125,7 @@ public class Interpretation implements Serializable {
     spark
         .sparkContext()
         .setJobGroup("initialise-occurrence", "Initialise occurrence records", true);
-    Dataset<OccurrenceRecord> occurrenceRecords =
-        extendedRecords.map(
-            new ExtendedToOccurrenceMapper(), Encoders.bean(OccurrenceRecord.class));
+
 
     log.info("=== Step 2: Load metadata from registry and ES");
     spark.sparkContext().setJobGroup("load-metadata", "Load metadata from registry and ES", true);
@@ -139,54 +139,73 @@ public class Interpretation implements Serializable {
         .sparkContext()
         .setJobGroup(
             "load-identifiers", String.format("Load extended records from %s", outputPath), true);
-    Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
+    Dataset<Tuple2<String, String>> identifiers =  loadIdentifiers(spark, outputPath).map((MapFunction<IdentifierRecord, Tuple2<String, String>>) ir -> {
+          return Tuple2.apply(ir.getId(), objectMapper.writeValueAsString(ir));
+      }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
 
     log.info("=== Step 4: Interpret basic terms");
     spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
-    Dataset<BasicRecord> basic = basicTransform(config, extendedRecords);
-    writeDebug(spark, basic, outputPath, "basic", args.debug);
+    Dataset<Tuple2<String, String>> basic = basicTransform(config, extendedRecords);
+//    writeDebug(spark, basic, outputPath, "basic", args.debug);
 
     log.info("=== Step 5: Interpret location");
     spark.sparkContext().setJobGroup("location-transform", "Run location transform", true);
-    Dataset<LocationRecord> location =
+    Dataset<Tuple2<String, String>> location =
         locationTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
-    writeDebug(spark, location, outputPath, "location", args.debug);
+//    writeDebug(spark, location, outputPath, "location", args.debug);
 
     log.info("=== Step 6: Interpret temporal");
     spark.sparkContext().setJobGroup("temporal-transform", "Run temporal transform", true);
-    Dataset<TemporalRecord> temporal = temporalTransform(extendedRecords);
-    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
+    Dataset<Tuple2<String, String>> temporal = temporalTransform(extendedRecords);
+//    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
 
     log.info("=== Step 7: Interpret taxonomy");
     spark.sparkContext().setJobGroup("taxonomy-transform", "Run taxonomy transform", true);
-    Dataset<MultiTaxonRecord> multiTaxon =
+    Dataset<Tuple2<String, String>> multiTaxon =
         taxonomyTransform(config, spark, extendedRecords, args.numberOfShards);
-    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
+//    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
 
     log.info("=== Step 8: Interpret GrSciColl");
     spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
-    Dataset<GrscicollRecord> grscicoll =
+    Dataset<Tuple2<String,String>> grscicoll =
         grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
-    writeDebug(spark, grscicoll, outputPath, "grscicoll", args.debug);
+//    writeDebug(spark, grscicoll, outputPath, "grscicoll", args.debug);
 
-    // Join all interpreted datasets into occurrence
+//    // Join all interpreted datasets into occurrence
+//    spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence", true);
+//    occurrenceRecords = joinTo(occurrenceRecords, identifiers, OccurrenceRecord::setIdentifier);
+//    spark.sparkContext().setJobGroup("join-basic", "Join basic to occurrence", true);
+//    occurrenceRecords = joinTo(occurrenceRecords, basic, OccurrenceRecord::setBasic);
+//    spark.sparkContext().setJobGroup("join-location", "Join location to occurrence", true);
+//    occurrenceRecords = joinTo(occurrenceRecords, location, OccurrenceRecord::setLocation);
+//    spark.sparkContext().setJobGroup("join-temporal", "Join temporal to occurrence", true);
+//    occurrenceRecords = joinTo(occurrenceRecords, temporal, OccurrenceRecord::setTemporal);
+//    spark.sparkContext().setJobGroup("join-multitaxon", "Join multitaxon to occurrence", true);
+//    occurrenceRecords = joinTo(occurrenceRecords, multiTaxon, OccurrenceRecord::setMultiTaxon);
+//    spark.sparkContext().setJobGroup("join-grscicoll", "Join grscicoll to occurrence", true);
+//    occurrenceRecords = joinTo(occurrenceRecords, grscicoll, OccurrenceRecord::setGrscicoll);
+
+  Dataset<OccurrenceRecordJSON> occurrenceRecords =
+          extendedRecords.map(
+                  new ExtendedToOccurrenceJSONMapper(), Encoders.bean(OccurrenceRecordJSON.class));
+
     spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence", true);
-    occurrenceRecords = joinTo(occurrenceRecords, identifiers, OccurrenceRecord::setIdentifier);
+    occurrenceRecords = joinAsJsonTo(occurrenceRecords, identifiers, OccurrenceRecordJSON::setIdentifier);
     spark.sparkContext().setJobGroup("join-basic", "Join basic to occurrence", true);
-    occurrenceRecords = joinTo(occurrenceRecords, basic, OccurrenceRecord::setBasic);
+    occurrenceRecords = joinAsJsonTo(occurrenceRecords, basic, OccurrenceRecordJSON::setBasic);
     spark.sparkContext().setJobGroup("join-location", "Join location to occurrence", true);
-    occurrenceRecords = joinTo(occurrenceRecords, location, OccurrenceRecord::setLocation);
+    occurrenceRecords = joinAsJsonTo(occurrenceRecords, location, OccurrenceRecordJSON::setLocation);
     spark.sparkContext().setJobGroup("join-temporal", "Join temporal to occurrence", true);
-    occurrenceRecords = joinTo(occurrenceRecords, temporal, OccurrenceRecord::setTemporal);
+    occurrenceRecords = joinAsJsonTo(occurrenceRecords, temporal, OccurrenceRecordJSON::setTemporal);
     spark.sparkContext().setJobGroup("join-multitaxon", "Join multitaxon to occurrence", true);
-    occurrenceRecords = joinTo(occurrenceRecords, multiTaxon, OccurrenceRecord::setMultiTaxon);
+    occurrenceRecords = joinAsJsonTo(occurrenceRecords, multiTaxon, OccurrenceRecordJSON::setMultiTaxon);
     spark.sparkContext().setJobGroup("join-grscicoll", "Join grscicoll to occurrence", true);
-    occurrenceRecords = joinTo(occurrenceRecords, grscicoll, OccurrenceRecord::setGrscicoll);
+    occurrenceRecords = joinAsJsonTo(occurrenceRecords, grscicoll, OccurrenceRecordJSON::setGrscicoll);
 
     if (args.hdfsView) {
       log.info("=== Step 9: Generate HDFS view");
       spark.sparkContext().setJobGroup("hdfs-view", "Generate HDFS view", true);
-      Dataset<OccurrenceHdfsRecord> hdfsView = transformToHdfsView(occurrenceRecords, metadata);
+      Dataset<OccurrenceHdfsRecord> hdfsView = transformJsonToHdfsView(occurrenceRecords, metadata);
       hdfsView.write().mode("overwrite").parquet(outputPath + "/hdfsview");
     }
 
@@ -255,18 +274,38 @@ public class Interpretation implements Serializable {
     }
   }
 
-  private static Dataset<BasicRecord> basicTransform(
+  final static ObjectMapper objectMapper = new ObjectMapper();
+
+    // Mapper with explicit name for Spark UI
+    private static class ExtendedToOccurrenceJSONMapper
+            implements MapFunction<ExtendedRecord, OccurrenceRecordJSON> {
+        @Override
+        public OccurrenceRecordJSON call(ExtendedRecord extendedRecord) {
+            try {
+                return OccurrenceRecordJSON.builder()
+                        .verbatim(objectMapper.writeValueAsString(extendedRecord))
+                        .id(extendedRecord.getId())
+                        .coreId(extendedRecord.getCoreId())
+                        .parentId(extractValue(extendedRecord, parentEventID))
+                        .build();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+  private static Dataset<Tuple2<String, String>> basicTransform(
       PipelinesConfig config, Dataset<ExtendedRecord> source) {
     return source.map(
-        (MapFunction<ExtendedRecord, BasicRecord>)
-            er ->
-                BasicTransform.builder()
-                    .useDynamicPropertiesInterpretation(true)
-                    .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
-                    .build()
-                    .convert(er)
-                    .get(),
-        Encoders.bean(BasicRecord.class));
+        (MapFunction<ExtendedRecord, Tuple2<String, String>>)
+            er -> {
+                return Tuple2.apply(er.getId(), objectMapper.writeValueAsString(BasicTransform.builder()
+                        .useDynamicPropertiesInterpretation(true)
+                        .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
+                        .build()
+                        .convert(er)
+                        .get()));
+            }, Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
   @FunctionalInterface
@@ -287,4 +326,21 @@ public class Interpretation implements Serializable {
                 },
             Encoders.bean(OccurrenceRecord.class));
   }
+
+    private static <R extends Record> Dataset<OccurrenceRecordJSON> joinAsJsonTo(
+            Dataset<OccurrenceRecordJSON> source,
+            Dataset<Tuple2<String, String>> records,
+            SerializableBiConsumer<OccurrenceRecordJSON, String> recordMapper) {
+
+        return source
+                .joinWith(records, source.col("id").equalTo(records.col("_1")))
+                .map(
+                        (MapFunction<Tuple2<OccurrenceRecordJSON, Tuple2<String, String>>, OccurrenceRecordJSON>)
+                                row -> {
+                                    OccurrenceRecordJSON record = row._1;
+                                    recordMapper.accept(record, row._2._2);
+                                    return record;
+                                },
+                        Encoders.bean(OccurrenceRecordJSON.class));
+    }
 }
