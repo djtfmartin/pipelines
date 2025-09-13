@@ -27,6 +27,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.function.BiConsumer;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,8 @@ import scala.Tuple2;
 
 @Slf4j
 public class Interpretation implements Serializable {
+
+  @Serial private static final long serialVersionUID = 1L;
 
   @Parameters(separators = "=")
   private static class Args {
@@ -112,13 +115,19 @@ public class Interpretation implements Serializable {
     if (args.master != null && !args.master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(args.master);
     }
-    SparkSession spark = sparkBuilder.getOrCreate();
 
+      sparkBuilder.config("spark.kryo.registrator", "org.gbif.pipelines.interpretation.spark.CustomKryoRegistrator");
+
+
+    SparkSession spark = sparkBuilder.getOrCreate();
     spark
         .sparkContext()
         .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, inputPath, args.numberOfShards);
+
+
+
 
     spark
         .sparkContext()
@@ -136,40 +145,40 @@ public class Interpretation implements Serializable {
         .sparkContext()
         .setJobGroup(
             "load-identifiers", String.format("Load extended records from %s", outputPath), true);
-    Dataset<Tuple2<String, String>> identifiers =
+    Dataset<Tuple2<String, byte[]>> identifiers =
         loadIdentifiers(spark, outputPath)
             .map(
-                (MapFunction<IdentifierRecord, Tuple2<String, String>>)
+                (MapFunction<IdentifierRecord, Tuple2<String, byte[]>>)
                     ir -> {
-                      return Tuple2.apply(ir.getId(), objectMapper.writeValueAsString(ir));
+                      return Tuple2.apply(ir.getId(), KryoUtils.serialize(ir));
                     },
-                Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+                Encoders.tuple(Encoders.STRING(), Encoders.BINARY()));
 
     log.info("=== Step 4: Interpret basic terms");
     spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
-    Dataset<Tuple2<String, String>> basic = basicTransform(config, extendedRecords);
+    Dataset<Tuple2<String, byte[]>> basic = basicTransform(config, extendedRecords);
     //    writeDebug(spark, basic, outputPath, "basic", args.debug);
 
     log.info("=== Step 5: Interpret location");
     spark.sparkContext().setJobGroup("location-transform", "Run location transform", true);
-    Dataset<Tuple2<String, String>> location =
+    Dataset<Tuple2<String, byte[]>> location =
         locationTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
     //    writeDebug(spark, location, outputPath, "location", args.debug);
 
     log.info("=== Step 6: Interpret temporal");
     spark.sparkContext().setJobGroup("temporal-transform", "Run temporal transform", true);
-    Dataset<Tuple2<String, String>> temporal = temporalTransform(extendedRecords);
+    Dataset<Tuple2<String, byte[]>> temporal = temporalTransform(extendedRecords);
     //    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
 
     log.info("=== Step 7: Interpret taxonomy");
     spark.sparkContext().setJobGroup("taxonomy-transform", "Run taxonomy transform", true);
-    Dataset<Tuple2<String, String>> multiTaxon =
+    Dataset<Tuple2<String, byte[]>> multiTaxon =
         taxonomyTransform(config, spark, extendedRecords, args.numberOfShards);
     //    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
 
     log.info("=== Step 8: Interpret GrSciColl");
     spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
-    Dataset<Tuple2<String, String>> grscicoll =
+    Dataset<Tuple2<String, byte[]>> grscicoll =
         grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
     //    writeDebug(spark, grscicoll, outputPath, "grscicoll", args.debug);
 
@@ -191,27 +200,27 @@ public class Interpretation implements Serializable {
     //    spark.sparkContext().setJobGroup("join-grscicoll", "Join grscicoll to occurrence", true);
     //    occurrenceRecords = joinTo(occurrenceRecords, grscicoll, OccurrenceRecord::setGrscicoll);
 
-    Dataset<OccurrenceRecordJSON> occurrenceRecords =
+    Dataset<OccurrenceRecordKyro> occurrenceRecords =
         extendedRecords.map(
-            new ExtendedToOccurrenceJSONMapper(), Encoders.bean(OccurrenceRecordJSON.class));
+            new ExtendedToOccurrenceJSONMapper(), Encoders.bean(OccurrenceRecordKyro.class));
 
     spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence", true);
     occurrenceRecords =
-        joinAsJsonTo(occurrenceRecords, identifiers, OccurrenceRecordJSON::setIdentifier);
+        joinAsJsonTo(occurrenceRecords, identifiers, OccurrenceRecordKyro::setIdentifier);
     spark.sparkContext().setJobGroup("join-basic", "Join basic to occurrence", true);
-    occurrenceRecords = joinAsJsonTo(occurrenceRecords, basic, OccurrenceRecordJSON::setBasic);
+    occurrenceRecords = joinAsJsonTo(occurrenceRecords, basic, OccurrenceRecordKyro::setBasic);
     spark.sparkContext().setJobGroup("join-location", "Join location to occurrence", true);
     occurrenceRecords =
-        joinAsJsonTo(occurrenceRecords, location, OccurrenceRecordJSON::setLocation);
+        joinAsJsonTo(occurrenceRecords, location, OccurrenceRecordKyro::setLocation);
     spark.sparkContext().setJobGroup("join-temporal", "Join temporal to occurrence", true);
     occurrenceRecords =
-        joinAsJsonTo(occurrenceRecords, temporal, OccurrenceRecordJSON::setTemporal);
+        joinAsJsonTo(occurrenceRecords, temporal, OccurrenceRecordKyro::setTemporal);
     spark.sparkContext().setJobGroup("join-multitaxon", "Join multitaxon to occurrence", true);
     occurrenceRecords =
-        joinAsJsonTo(occurrenceRecords, multiTaxon, OccurrenceRecordJSON::setMultiTaxon);
+        joinAsJsonTo(occurrenceRecords, multiTaxon, OccurrenceRecordKyro::setMultiTaxon);
     spark.sparkContext().setJobGroup("join-grscicoll", "Join grscicoll to occurrence", true);
     occurrenceRecords =
-        joinAsJsonTo(occurrenceRecords, grscicoll, OccurrenceRecordJSON::setGrscicoll);
+        joinAsJsonTo(occurrenceRecords, grscicoll, OccurrenceRecordKyro::setGrscicoll);
 
     if (args.hdfsView) {
       log.info("=== Step 9: Generate HDFS view");
@@ -220,12 +229,13 @@ public class Interpretation implements Serializable {
       hdfsView.write().mode("overwrite").parquet(outputPath + "/hdfsview");
     }
 
-    if (args.jsonView) {
-      log.info("=== Step 10: Generate JSON view");
-      spark.sparkContext().setJobGroup("json-view", "Generate JSON view", true);
-      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords, metadata);
-      jsonView.write().mode("overwrite").parquet(outputPath + "/json");
-    }
+//    if (args.jsonView) {
+//      log.info("=== Step 10: Generate JSON view");
+//      spark.sparkContext().setJobGroup("json-view", "Generate JSON view", true);
+//      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords,
+// metadata);
+//      jsonView.write().mode("overwrite").parquet(outputPath + "/json");
+//    }
 
     log.info(
         "=== Interpretation pipeline finished successfully in {} seconds ===",
@@ -289,15 +299,15 @@ public class Interpretation implements Serializable {
 
   // Mapper with explicit name for Spark UI
   private static class ExtendedToOccurrenceJSONMapper
-      implements MapFunction<ExtendedRecord, OccurrenceRecordJSON> {
+      implements MapFunction<ExtendedRecord, OccurrenceRecordKyro> {
     @Override
-    public OccurrenceRecordJSON call(ExtendedRecord extendedRecord) {
+    public OccurrenceRecordKyro call(ExtendedRecord extendedRecord) {
       try {
-        return OccurrenceRecordJSON.builder()
-            .verbatim(objectMapper.writeValueAsString(extendedRecord))
+        return OccurrenceRecordKyro.builder()
             .id(extendedRecord.getId())
             .coreId(extendedRecord.getCoreId())
             .parentId(extractValue(extendedRecord, parentEventID))
+            .verbatim(extendedRecord)
             .build();
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -305,14 +315,14 @@ public class Interpretation implements Serializable {
     }
   }
 
-  private static Dataset<Tuple2<String, String>> basicTransform(
+  private static Dataset<Tuple2<String, byte[]>> basicTransform(
       PipelinesConfig config, Dataset<ExtendedRecord> source) {
     return source.map(
-        (MapFunction<ExtendedRecord, Tuple2<String, String>>)
+        (MapFunction<ExtendedRecord, Tuple2<String, byte[]>>)
             er -> {
               return Tuple2.apply(
                   er.getId(),
-                  objectMapper.writeValueAsString(
+                  KryoUtils.serialize(
                       BasicTransform.builder()
                           .useDynamicPropertiesInterpretation(true)
                           .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
@@ -320,7 +330,7 @@ public class Interpretation implements Serializable {
                           .convert(er)
                           .get()));
             },
-        Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+        Encoders.tuple(Encoders.STRING(), Encoders.BINARY()));
   }
 
   @FunctionalInterface
@@ -342,21 +352,39 @@ public class Interpretation implements Serializable {
             Encoders.bean(OccurrenceRecord.class));
   }
 
-  private static <R extends Record> Dataset<OccurrenceRecordJSON> joinAsJsonTo(
-      Dataset<OccurrenceRecordJSON> source,
-      Dataset<Tuple2<String, String>> records,
-      SerializableBiConsumer<OccurrenceRecordJSON, String> recordMapper) {
+  private static <R extends Record> Dataset<OccurrenceRecordKyro> joinAsKyroTo(
+      Dataset<OccurrenceRecordKyro> source,
+      Dataset<Tuple2<String, byte[]>> records,
+      SerializableBiConsumer<OccurrenceRecordKyro, byte[]> recordMapper) {
 
     return source
         .joinWith(records, source.col("id").equalTo(records.col("_1")))
         .map(
             (MapFunction<
-                    Tuple2<OccurrenceRecordJSON, Tuple2<String, String>>, OccurrenceRecordJSON>)
+                    Tuple2<OccurrenceRecordKyro, Tuple2<String, byte[]>>, OccurrenceRecordKyro>)
                 row -> {
-                  OccurrenceRecordJSON record = row._1;
+                  OccurrenceRecordKyro record = row._1;
                   recordMapper.accept(record, row._2._2);
                   return record;
                 },
-            Encoders.bean(OccurrenceRecordJSON.class));
+            Encoders.bean(OccurrenceRecordKyro.class));
+  }
+
+  private static <R extends Record> Dataset<OccurrenceRecordKyro> joinAsJsonTo(
+      Dataset<OccurrenceRecordKyro> source,
+      Dataset<Tuple2<String, byte[]>> records,
+      SerializableBiConsumer<OccurrenceRecordKyro, byte[]> recordMapper) {
+
+    return source
+        .joinWith(records, source.col("id").equalTo(records.col("_1")))
+        .map(
+            (MapFunction<
+                    Tuple2<OccurrenceRecordKyro, Tuple2<String, byte[]>>, OccurrenceRecordKyro>)
+                row -> {
+                  OccurrenceRecordKyro record = row._1;
+                  recordMapper.accept(record, row._2._2);
+                  return record;
+                },
+            Encoders.bean(OccurrenceRecordKyro.class));
   }
 }

@@ -1,7 +1,5 @@
 package org.gbif.pipelines.interpretation.spark;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,27 +15,24 @@ import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class JsonView {
 
-  static final ObjectMapper objectMapper = new ObjectMapper();
-
   public static Dataset<OccurrenceJsonRecord> transformToJsonView(
-      Dataset<OccurrenceRecordJSON> records, MetadataRecord metadataRecord) {
-    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+      Dataset<OccurrenceRecordKyro> records, MetadataRecord metadataRecord) {
     return records.map(
-        (MapFunction<OccurrenceRecordJSON, OccurrenceJsonRecord>)
+        (MapFunction<OccurrenceRecordKyro, OccurrenceJsonRecord>)
             record -> {
               OccurrenceJsonConverter c =
                   OccurrenceJsonConverter.builder()
                       .metadata(metadataRecord)
-                      .verbatim(objectMapper.readValue(record.getVerbatim(), ExtendedRecord.class))
-                      .basic(objectMapper.readValue(record.getBasic(), BasicRecord.class))
-                      .location(objectMapper.readValue(record.getLocation(), LocationRecord.class))
-                      .temporal(objectMapper.readValue(record.getTemporal(), TemporalRecord.class))
+                      .verbatim(record.getVerbatim())
+                      .basic(KryoUtils.deserialize(record.getBasic(), BasicRecord.class))
+                      .location(KryoUtils.deserialize(record.getLocation(), LocationRecord.class))
+                      .temporal(KryoUtils.deserialize(record.getTemporal(), TemporalRecord.class))
                       .multiTaxon(
-                          objectMapper.readValue(record.getMultiTaxon(), MultiTaxonRecord.class))
+                          KryoUtils.deserialize(record.getMultiTaxon(), MultiTaxonRecord.class))
                       .grscicoll(
-                          objectMapper.readValue(record.getGrscicoll(), GrscicollRecord.class))
+                          KryoUtils.deserialize(record.getGrscicoll(), GrscicollRecord.class))
                       .identifier(
-                          objectMapper.readValue(record.getIdentifier(), IdentifierRecord.class))
+                          KryoUtils.deserialize(record.getIdentifier(), IdentifierRecord.class))
                       .clustering(
                           ClusteringRecord.newBuilder()
                               .setId(record.getId())

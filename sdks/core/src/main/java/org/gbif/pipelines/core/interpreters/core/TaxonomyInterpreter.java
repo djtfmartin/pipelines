@@ -118,7 +118,6 @@ public class TaxonomyInterpreter {
           tr.setClassification(Collections.singletonList(INCERTAE_SEDIS));
         },
         r -> {
-          tr.setUsageParsedName(toParsedNameAvro(r.getUsage()));
 
           // convert taxon record
           TaxonRecordConverter.convert(r, tr);

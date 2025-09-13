@@ -1,7 +1,5 @@
 package org.gbif.pipelines.interpretation.spark;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -35,30 +33,25 @@ public final class HdfsView implements Serializable {
         Encoders.bean(OccurrenceHdfsRecord.class));
   }
 
-  static final ObjectMapper objectMapper = new ObjectMapper();
-
   public static Dataset<OccurrenceHdfsRecord> transformJsonToHdfsView(
-      Dataset<OccurrenceRecordJSON> records, MetadataRecord metadataRecord) {
-    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+      Dataset<OccurrenceRecordKyro> records, MetadataRecord metadataRecord) {
     return records.map(
-        (MapFunction<OccurrenceRecordJSON, OccurrenceHdfsRecord>)
+        (MapFunction<OccurrenceRecordKyro, OccurrenceHdfsRecord>)
             record ->
                 OccurrenceHdfsRecordConverter.builder()
                     .metadataRecord(metadataRecord)
-                    //                    .extendedRecord(
-                    //                        objectMapper.readValue(record.getVerbatim(),
-                    // ExtendedRecord.class))
-                    .basicRecord(objectMapper.readValue(record.getBasic(), BasicRecord.class))
+                    .extendedRecord(record.getVerbatim())
+                    .basicRecord(KryoUtils.deserialize(record.getBasic(), BasicRecord.class))
                     .locationRecord(
-                        objectMapper.readValue(record.getLocation(), LocationRecord.class))
+                        KryoUtils.deserialize(record.getLocation(), LocationRecord.class))
                     .temporalRecord(
-                        objectMapper.readValue(record.getTemporal(), TemporalRecord.class))
+                        KryoUtils.deserialize(record.getTemporal(), TemporalRecord.class))
                     .multiTaxonRecord(
-                        objectMapper.readValue(record.getMultiTaxon(), MultiTaxonRecord.class))
+                        KryoUtils.deserialize(record.getMultiTaxon(), MultiTaxonRecord.class))
                     .grscicollRecord(
-                        objectMapper.readValue(record.getGrscicoll(), GrscicollRecord.class))
+                        KryoUtils.deserialize(record.getGrscicoll(), GrscicollRecord.class))
                     .identifierRecord(
-                        objectMapper.readValue(record.getIdentifier(), IdentifierRecord.class))
+                        KryoUtils.deserialize(record.getIdentifier(), IdentifierRecord.class))
                     .build()
                     .convert(),
         Encoders.bean(OccurrenceHdfsRecord.class));

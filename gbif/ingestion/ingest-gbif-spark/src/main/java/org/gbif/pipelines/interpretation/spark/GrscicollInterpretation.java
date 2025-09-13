@@ -31,7 +31,7 @@ public class GrscicollInterpretation {
   static final ObjectMapper objectMapper = new ObjectMapper();
 
   /** Transforms the source records into the location records using the geocode service. */
-  public static Dataset<Tuple2<String, String>> grscicollTransform(
+  public static Dataset<Tuple2<String, byte[]>> grscicollTransform(
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
@@ -103,7 +103,7 @@ public class GrscicollInterpretation {
         .map(
             (MapFunction<
                     Tuple2<RecordWithGrscicollLookup, KeyedGrscicollRecord>,
-                    Tuple2<String, String>>)
+                    Tuple2<String, byte[]>>)
                 t -> {
                   RecordWithGrscicollLookup rwl = t._1();
                   KeyedGrscicollRecord klr = t._2();
@@ -114,9 +114,9 @@ public class GrscicollInterpretation {
                           : GrscicollRecord.newBuilder().build();
 
                   record.setId(rwl.getId());
-                  return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(record));
+                  return Tuple2.apply(rwl.getId(), KryoUtils.serialize(record));
                 },
-            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+            Encoders.tuple(Encoders.STRING(), Encoders.BINARY()));
   }
 
   public static String hash(GrscicollLookupRequest request) {

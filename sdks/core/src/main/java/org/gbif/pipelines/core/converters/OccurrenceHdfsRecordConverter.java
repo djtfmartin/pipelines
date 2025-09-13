@@ -958,12 +958,14 @@ public class OccurrenceHdfsRecordConverter {
   /** Gets the {@link Schema.Field} associated to a verbatim term. */
   private static Schema.Field verbatimSchemaField(Term term) {
     // return OccurrenceHdfsRecord.SCHEMA$.getField("v_" + term.simpleName().toLowerCase());
-    throw new RuntimeException("This functionality removed when we moved to Beans from Avro");
+//    throw new RuntimeException("This functionality removed when we moved to Beans from Avro");
+      return null;
   }
 
   /** Gets the {@link Schema.Field} associated to a interpreted term. */
   private static Schema.Field interpretedSchemaField(Term term) {
     // return OccurrenceHdfsRecord.SCHEMA$.getField(HiveColumns.columnFor(term));
-    throw new RuntimeException("This functionality removed when we moved to Beans from Avro");
+//    throw new RuntimeException("This functionality removed when we moved to Beans from Avro");
+      return null;
   }
 }
