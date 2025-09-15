@@ -115,6 +115,7 @@ public class AvroPojoGenerator extends AbstractMojo {
             "lombok.Data",
             "lombok.Builder",
             "lombok.Getter",
+            "lombok.Setter",
             "lombok.NoArgsConstructor",
             "lombok.experimental.SuperBuilder",
             "lombok.NoArgsConstructor"));
@@ -175,9 +176,11 @@ public class AvroPojoGenerator extends AbstractMojo {
     @Builder(builderClassName = "Builder", builderMethodName = "newBuilder", setterPrefix = "set")
     """);
     } else { // use SuperBuilder to avoid constructor issues with too many parameters
-      sb.append("""
+      sb.append(
+          """
     @Data
     @Getter
+    @Setter
     @NoArgsConstructor
     @SuperBuilder
     """);

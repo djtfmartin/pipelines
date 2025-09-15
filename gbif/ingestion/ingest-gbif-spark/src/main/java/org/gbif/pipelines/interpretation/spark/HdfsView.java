@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
 import org.gbif.pipelines.core.converters.OccurrenceHdfsRecordConverter;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
@@ -38,29 +39,37 @@ public final class HdfsView implements Serializable {
   static final ObjectMapper objectMapper = new ObjectMapper();
 
   public static Dataset<OccurrenceHdfsRecord> transformJsonToHdfsView(
-      Dataset<OccurrenceRecordJSON> records, MetadataRecord metadataRecord) {
+      Dataset<Row> records, MetadataRecord metadataRecord) {
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
     return records.map(
-        (MapFunction<OccurrenceRecordJSON, OccurrenceHdfsRecord>)
-            record ->
-                OccurrenceHdfsRecordConverter.builder()
-                    .metadataRecord(metadataRecord)
-                    //                    .extendedRecord(
-                    //                        objectMapper.readValue(record.getVerbatim(),
-                    // ExtendedRecord.class))
-                    .basicRecord(objectMapper.readValue(record.getBasic(), BasicRecord.class))
-                    .locationRecord(
-                        objectMapper.readValue(record.getLocation(), LocationRecord.class))
-                    .temporalRecord(
-                        objectMapper.readValue(record.getTemporal(), TemporalRecord.class))
-                    .multiTaxonRecord(
-                        objectMapper.readValue(record.getMultiTaxon(), MultiTaxonRecord.class))
-                    .grscicollRecord(
-                        objectMapper.readValue(record.getGrscicoll(), GrscicollRecord.class))
-                    .identifierRecord(
-                        objectMapper.readValue(record.getIdentifier(), IdentifierRecord.class))
-                    .build()
-                    .convert(),
+        (MapFunction<Row, OccurrenceHdfsRecord>)
+            record -> {
+              return OccurrenceHdfsRecordConverter.builder()
+                  .metadataRecord(metadataRecord)
+                  .extendedRecord(
+                      objectMapper.readValue(
+                          (String) record.getAs("verbatim"), ExtendedRecord.class))
+                  .basicRecord(
+                      objectMapper.readValue((String) record.getAs("basic"), BasicRecord.class))
+                  .locationRecord(
+                      objectMapper.readValue(
+                          (String) record.getAs("location"), LocationRecord.class))
+                  .temporalRecord(
+                      objectMapper.readValue(
+                          (String) record.getAs("temporal"), TemporalRecord.class))
+                  .multiTaxonRecord(
+                      objectMapper.readValue(
+                          (String) record.getAs("taxonomy"), MultiTaxonRecord.class))
+                  .grscicollRecord(
+                      objectMapper.readValue(
+                          (String) record.getAs("grscicoll"), GrscicollRecord.class))
+                  .identifierRecord(
+                      objectMapper.readValue(
+                          (String) record.getAs("identifier"), IdentifierRecord.class))
+                  .build()
+                  .convert();
+            },
         Encoders.bean(OccurrenceHdfsRecord.class));
   }
 }

@@ -1,5 +1,5 @@
-inputPath: /Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/test-data
-outputPath: /Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/interpreted-out
+inputPath: file:///Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/test-data
+outputPath: file:///Users/djtfmartin/dev/my-forks/pipelines/gbif/ingestion/ingest-gbif-spark/interpreted-out
 zkConnectionString:
 gbifApi:
   wsUrl: https://api.gbif.org/v1/

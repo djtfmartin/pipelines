@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
 import org.gbif.pipelines.core.converters.OccurrenceJsonConverter;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
@@ -20,31 +21,41 @@ public final class JsonView {
   static final ObjectMapper objectMapper = new ObjectMapper();
 
   public static Dataset<OccurrenceJsonRecord> transformToJsonView(
-      Dataset<OccurrenceRecordJSON> records, MetadataRecord metadataRecord) {
+      Dataset<Row> records, MetadataRecord metadataRecord) {
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     return records.map(
-        (MapFunction<OccurrenceRecordJSON, OccurrenceJsonRecord>)
+        (MapFunction<Row, OccurrenceJsonRecord>)
             record -> {
               OccurrenceJsonConverter c =
                   OccurrenceJsonConverter.builder()
                       .metadata(metadataRecord)
-                      .verbatim(objectMapper.readValue(record.getVerbatim(), ExtendedRecord.class))
-                      .basic(objectMapper.readValue(record.getBasic(), BasicRecord.class))
-                      .location(objectMapper.readValue(record.getLocation(), LocationRecord.class))
-                      .temporal(objectMapper.readValue(record.getTemporal(), TemporalRecord.class))
+                      .verbatim(
+                          objectMapper.readValue(
+                              (String) record.getAs("verbatim"), ExtendedRecord.class))
+                      .basic(
+                          objectMapper.readValue((String) record.getAs("basic"), BasicRecord.class))
+                      .location(
+                          objectMapper.readValue(
+                              (String) record.getAs("location"), LocationRecord.class))
+                      .temporal(
+                          objectMapper.readValue(
+                              (String) record.getAs("temporal"), TemporalRecord.class))
                       .multiTaxon(
-                          objectMapper.readValue(record.getMultiTaxon(), MultiTaxonRecord.class))
+                          objectMapper.readValue(
+                              (String) record.getAs("taxonomy"), MultiTaxonRecord.class))
                       .grscicoll(
-                          objectMapper.readValue(record.getGrscicoll(), GrscicollRecord.class))
+                          objectMapper.readValue(
+                              (String) record.getAs("grscicoll"), GrscicollRecord.class))
                       .identifier(
-                          objectMapper.readValue(record.getIdentifier(), IdentifierRecord.class))
+                          objectMapper.readValue(
+                              (String) record.getAs("identifier"), IdentifierRecord.class))
                       .clustering(
                           ClusteringRecord.newBuilder()
-                              .setId(record.getId())
+                              .setId((String) record.getAs("id"))
                               .build()) // placeholder
                       .multimedia(
                           MultimediaRecord.newBuilder()
-                              .setId(record.getId())
+                              .setId((String) record.getAs("id"))
                               .build()) // placeholder
                       .build();
 
