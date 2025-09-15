@@ -1,7 +1,5 @@
 package org.gbif.pipelines.interpretation.spark;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -36,37 +34,35 @@ public final class HdfsView implements Serializable {
         Encoders.bean(OccurrenceHdfsRecord.class));
   }
 
-  static final ObjectMapper objectMapper = new ObjectMapper();
-
   public static Dataset<OccurrenceHdfsRecord> transformJsonToHdfsView(
       Dataset<Row> records, MetadataRecord metadataRecord) {
-    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     return records.map(
         (MapFunction<Row, OccurrenceHdfsRecord>)
             record -> {
               return OccurrenceHdfsRecordConverter.builder()
                   .metadataRecord(metadataRecord)
-                  .extendedRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("verbatim"), ExtendedRecord.class))
+                  //                  .extendedRecord(
+                  //                          KryoUtils.deserialize(
+                  //                              (byte[]) record.getAs("verbatim"),
+                  // ExtendedRecord.class))
                   .basicRecord(
-                      objectMapper.readValue((String) record.getAs("basic"), BasicRecord.class))
+                      KryoUtils.deserialize((byte[]) record.getAs("basic"), BasicRecord.class))
                   .locationRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("location"), LocationRecord.class))
+                      KryoUtils.deserialize(
+                          (byte[]) record.getAs("location"), LocationRecord.class))
                   .temporalRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("temporal"), TemporalRecord.class))
+                      KryoUtils.deserialize(
+                          (byte[]) record.getAs("temporal"), TemporalRecord.class))
                   .multiTaxonRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("taxonomy"), MultiTaxonRecord.class))
+                      KryoUtils.deserialize(
+                          (byte[]) record.getAs("taxonomy"), MultiTaxonRecord.class))
                   .grscicollRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("grscicoll"), GrscicollRecord.class))
+                      KryoUtils.deserialize(
+                          (byte[]) record.getAs("grscicoll"), GrscicollRecord.class))
                   .identifierRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("identifier"), IdentifierRecord.class))
+                      KryoUtils.deserialize(
+                          (byte[]) record.getAs("identifier"), IdentifierRecord.class))
                   .build()
                   .convert();
             },

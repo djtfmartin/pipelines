@@ -15,7 +15,6 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.dwc.terms.DwcTerm.GROUP_LOCATION;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -41,10 +40,8 @@ import scala.Tuple2;
 @Slf4j
 public class LocationInterpretation {
 
-  static final ObjectMapper objectMapper = new ObjectMapper();
-
   /** Transforms the source records into the location records using the geocode service. */
-  public static Dataset<Tuple2<String, String>> locationTransform(
+  public static Dataset<Tuple2<String, byte[]>> locationTransform(
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
@@ -112,7 +109,7 @@ public class LocationInterpretation {
             recordWithLocations.col("hash").equalTo(keyedLocation.col("key")),
             "left_outer")
         .map(
-            (MapFunction<Tuple2<RecordWithLocation, KeyedLocationRecord>, Tuple2<String, String>>)
+            (MapFunction<Tuple2<RecordWithLocation, KeyedLocationRecord>, Tuple2<String, byte[]>>)
                 t -> {
                   RecordWithLocation rwl = t._1();
                   KeyedLocationRecord klr = t._2();
@@ -123,9 +120,9 @@ public class LocationInterpretation {
                           : LocationRecord.newBuilder().build();
 
                   locationRecord.setId(rwl.getId());
-                  return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(locationRecord));
+                  return Tuple2.apply(rwl.getId(), KryoUtils.serialize(locationRecord));
                 },
-            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+            Encoders.tuple(Encoders.STRING(), Encoders.BINARY()));
   }
 
   @Data

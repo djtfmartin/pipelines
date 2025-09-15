@@ -2,9 +2,9 @@
 #input: "/Users/tim/dev/data/svampeatlas.verbatim.avro"
 #input: "../pontaurus.verbatim.avro"
 #input: "../fmnh-lc.verbatim.avro"
-input: "../pipelines/gbif/ingestion/ingest-gbif-spark/berry.verbatim.avro"
+input: "../pipelines/gbif/ingestion/ingest-gbif-spark/verbatim.avro"
 #/Users/djtfmartin/dev/pipelines/gbif/ingestion/ingest-gbif-spark
-#input: "../berry.verbatim.avro"
+#input: "../verbatim.avro"
 
 #input: "/Users/tsj442/dev/data/inaturalist.verbatim.avro"
 
