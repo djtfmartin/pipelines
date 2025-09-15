@@ -26,17 +26,17 @@ public class TemporalInterpretation {
   static final ObjectMapper objectMapper = new ObjectMapper();
 
   /** Interprets the temporal information contained in the extended records. */
-  public static Dataset<Tuple2<String, byte[]>> temporalTransform(Dataset<ExtendedRecord> source) {
+  public static Dataset<Tuple2<String, String>> temporalTransform(Dataset<ExtendedRecord> source) {
 
     TemporalTransform temporalTransform =
         TemporalTransform.builder().build(); // TODO: add orderings from dataset tags
 
     return source.map(
-        (MapFunction<ExtendedRecord, Tuple2<String, byte[]>>)
+        (MapFunction<ExtendedRecord, Tuple2<String, String>>)
             or -> {
               return Tuple2.apply(
-                  or.getId(), KryoUtils.serialize(temporalTransform.convert(or).get()));
+                  or.getId(), objectMapper.writeValueAsString(temporalTransform.convert(or).get()));
             },
-        Encoders.tuple(Encoders.STRING(), Encoders.BINARY()));
+        Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 }

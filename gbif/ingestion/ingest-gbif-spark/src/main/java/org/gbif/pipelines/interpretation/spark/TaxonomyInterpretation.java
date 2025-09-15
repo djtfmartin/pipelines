@@ -15,6 +15,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.dwc.terms.DwcTerm.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,8 +43,10 @@ import scala.Tuple2;
 @Slf4j
 public class TaxonomyInterpretation {
 
+  static final ObjectMapper objectMapper = new ObjectMapper();
+
   /** Interprets the temporal information contained in the extended records. */
-  public static Dataset<Tuple2<String, byte[]>> taxonomyTransform(
+  public static Dataset<Tuple2<String, String>> taxonomyTransform(
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
@@ -109,7 +112,7 @@ public class TaxonomyInterpretation {
             recordWithTaxonomy.col("hash").equalTo(keyedLocation.col("key")),
             "left_outer")
         .map(
-            (MapFunction<Tuple2<RecordWithTaxonomy, KeyedMultiTaxonRecord>, Tuple2<String, byte[]>>)
+            (MapFunction<Tuple2<RecordWithTaxonomy, KeyedMultiTaxonRecord>, Tuple2<String, String>>)
                 t -> {
                   RecordWithTaxonomy rwl = t._1();
                   KeyedMultiTaxonRecord klr = t._2();
@@ -120,9 +123,10 @@ public class TaxonomyInterpretation {
                           : MultiTaxonRecord.newBuilder().build();
 
                   multiTaxonRecord.setId(rwl.getId());
-                  return Tuple2.apply(rwl.getId(), KryoUtils.serialize(multiTaxonRecord));
+                  return Tuple2.apply(
+                      rwl.getId(), objectMapper.writeValueAsString(multiTaxonRecord));
                 },
-            Encoders.tuple(Encoders.STRING(), Encoders.BINARY()));
+            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
   @Data
