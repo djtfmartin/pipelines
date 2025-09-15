@@ -462,26 +462,26 @@ public class OccurrenceHdfsRecordConverter {
           taxonRecord.getUsage().getStatus() != null ? taxonRecord.getUsage().getStatus() : "");
     }
 
-//    if (Objects.nonNull(taxonRecord.getUsageParsedName())
-//        && Objects.nonNull(taxonRecord.getUsage())) {
-//      String rank = taxonRecord.getUsage().getRank();
-//      if (Rank.GENUS.compareTo(Rank.valueOf(rank)) <= 0) {
-//        occurrenceHdfsRecord.setGenericname(
-//            Objects.nonNull(taxonRecord.getUsageParsedName().getGenus())
-//                ? taxonRecord.getUsageParsedName().getGenus()
-//                : taxonRecord.getUsageParsedName().getUninomial());
-//      }
-//
-//      if (Rank.SPECIES.compareTo(Rank.valueOf(rank)) <= 0) {
-//        occurrenceHdfsRecord.setSpecificepithet(
-//            taxonRecord.getUsageParsedName().getSpecificEpithet());
-//      }
-//
-//      if (Rank.INFRASPECIFIC_NAME.compareTo(Rank.valueOf(rank)) <= 0) {
-//        occurrenceHdfsRecord.setInfraspecificepithet(
-//            taxonRecord.getUsageParsedName().getInfraspecificEpithet());
-//      }
-//    }
+    //    if (Objects.nonNull(taxonRecord.getUsageParsedName())
+    //        && Objects.nonNull(taxonRecord.getUsage())) {
+    //      String rank = taxonRecord.getUsage().getRank();
+    //      if (Rank.GENUS.compareTo(Rank.valueOf(rank)) <= 0) {
+    //        occurrenceHdfsRecord.setGenericname(
+    //            Objects.nonNull(taxonRecord.getUsageParsedName().getGenus())
+    //                ? taxonRecord.getUsageParsedName().getGenus()
+    //                : taxonRecord.getUsageParsedName().getUninomial());
+    //      }
+    //
+    //      if (Rank.SPECIES.compareTo(Rank.valueOf(rank)) <= 0) {
+    //        occurrenceHdfsRecord.setSpecificepithet(
+    //            taxonRecord.getUsageParsedName().getSpecificEpithet());
+    //      }
+    //
+    //      if (Rank.INFRASPECIFIC_NAME.compareTo(Rank.valueOf(rank)) <= 0) {
+    //        occurrenceHdfsRecord.setInfraspecificepithet(
+    //            taxonRecord.getUsageParsedName().getInfraspecificEpithet());
+    //      }
+    //    }
 
     setCreatedIfGreater(occurrenceHdfsRecord, taxonRecord.getCreated());
 

@@ -128,8 +128,10 @@ public class OccurrenceJsonConverter {
   }
 
   private void mapIdentifierRecord(OccurrenceJsonRecord.Builder builder) {
-    if (identifier  == null || identifier.getInternalId() == null){
-      log.error("IdentifierRecord.internalId is null. Occurrence will be skipped for record id={}", verbatim.getId());
+    if (identifier == null || identifier.getInternalId() == null) {
+      log.error(
+          "IdentifierRecord.internalId is null. Occurrence will be skipped for record id={}",
+          verbatim.getId());
       return;
     }
     builder.setGbifId(Long.parseLong(identifier.getInternalId()));
