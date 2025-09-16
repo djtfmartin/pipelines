@@ -18,29 +18,15 @@ import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class HdfsView implements Serializable {
 
-  public static Dataset<OccurrenceHdfsRecord> transformToHdfsView(
-      Dataset<OccurrenceRecord> records, MetadataRecord metadataRecord) {
-    return records.map(
-        (MapFunction<OccurrenceRecord, OccurrenceHdfsRecord>)
-            record ->
-                OccurrenceHdfsRecordConverter.builder()
-                    .metadataRecord(metadataRecord)
-                    .basicRecord(record.getBasic())
-                    .locationRecord(record.getLocation())
-                    .temporalRecord(record.getTemporal())
-                    .multiTaxonRecord(record.getMultiTaxon())
-                    .grscicollRecord(record.getGrscicoll())
-                    .identifierRecord(record.getIdentifier())
-                    .build()
-                    .convert(),
-        Encoders.bean(OccurrenceHdfsRecord.class));
-  }
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  static final ObjectMapper objectMapper = new ObjectMapper();
+  static {
+    MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  }
 
   public static Dataset<OccurrenceHdfsRecord> transformJsonToHdfsView(
       Dataset<Row> records, MetadataRecord metadataRecord) {
-    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     return records.map(
         (MapFunction<Row, OccurrenceHdfsRecord>)
@@ -48,25 +34,18 @@ public final class HdfsView implements Serializable {
               return OccurrenceHdfsRecordConverter.builder()
                   .metadataRecord(metadataRecord)
                   .extendedRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("verbatim"), ExtendedRecord.class))
-                  .basicRecord(
-                      objectMapper.readValue((String) record.getAs("basic"), BasicRecord.class))
+                      MAPPER.readValue((String) record.getAs("verbatim"), ExtendedRecord.class))
+                  .basicRecord(MAPPER.readValue((String) record.getAs("basic"), BasicRecord.class))
                   .locationRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("location"), LocationRecord.class))
+                      MAPPER.readValue((String) record.getAs("location"), LocationRecord.class))
                   .temporalRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("temporal"), TemporalRecord.class))
+                      MAPPER.readValue((String) record.getAs("temporal"), TemporalRecord.class))
                   .multiTaxonRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("taxonomy"), MultiTaxonRecord.class))
+                      MAPPER.readValue((String) record.getAs("taxonomy"), MultiTaxonRecord.class))
                   .grscicollRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("grscicoll"), GrscicollRecord.class))
+                      MAPPER.readValue((String) record.getAs("grscicoll"), GrscicollRecord.class))
                   .identifierRecord(
-                      objectMapper.readValue(
-                          (String) record.getAs("identifier"), IdentifierRecord.class))
+                      MAPPER.readValue((String) record.getAs("identifier"), IdentifierRecord.class))
                   .build()
                   .convert();
             },

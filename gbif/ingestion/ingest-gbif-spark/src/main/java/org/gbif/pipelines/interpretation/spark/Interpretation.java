@@ -34,7 +34,6 @@ import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.io.avro.Record;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import scala.Tuple2;
 
@@ -145,31 +144,30 @@ public class Interpretation implements Serializable {
     log.info("=== Step 4: Interpret basic terms");
     spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
     Dataset<Tuple2<String, String>> basic = basicTransform(config, extendedRecords);
-    //    writeDebug(spark, basic, outputPath, "basic", args.debug);
+    writeDebug(spark, basic, outputPath, "basic", args.debug);
 
     log.info("=== Step 5: Interpret location");
     spark.sparkContext().setJobGroup("location-transform", "Run location transform", true);
     Dataset<Tuple2<String, String>> location =
         locationTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
-    //    writeDebug(spark, location, outputPath, "location", args.debug);
+    writeDebug(spark, location, outputPath, "location", args.debug);
 
     log.info("=== Step 6: Interpret temporal");
     spark.sparkContext().setJobGroup("temporal-transform", "Run temporal transform", true);
     Dataset<Tuple2<String, String>> temporal = temporalTransform(extendedRecords);
-    //    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
+    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
 
     log.info("=== Step 7: Interpret taxonomy");
     spark.sparkContext().setJobGroup("taxonomy-transform", "Run taxonomy transform", true);
     Dataset<Tuple2<String, String>> multiTaxon =
         taxonomyTransform(config, spark, extendedRecords, args.numberOfShards);
-    //    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
+    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
 
     log.info("=== Step 8: Interpret GrSciColl");
     spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
     Dataset<Tuple2<String, String>> grscicoll =
         grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
 
-    //    Dataset<Row> occurrenceRecords = extendedRecords.toDF();
     Dataset<Row> occurrenceRecords =
         extendedRecords
             .map(
@@ -182,6 +180,7 @@ public class Interpretation implements Serializable {
 
     spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence", true);
     occurrenceRecords = joinAsRowTo(occurrenceRecords, identifiers, "identifier");
+
     spark.sparkContext().setJobGroup("join-basic", "Join basic to occurrence", true);
     occurrenceRecords = joinAsRowTo(occurrenceRecords, basic, "basic");
 
@@ -238,9 +237,9 @@ public class Interpretation implements Serializable {
         .as(Encoders.bean(IdentifierRecord.class));
   }
 
-  private static <T> void writeDebug(
+  private static void writeDebug(
       SparkSession spark,
-      Dataset<? extends Record> records,
+      Dataset<Tuple2<String, String>> records,
       String outputPath,
       String name,
       boolean debug) {

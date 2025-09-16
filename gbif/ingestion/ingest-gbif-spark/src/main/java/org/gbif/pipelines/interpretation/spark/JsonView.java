@@ -18,11 +18,14 @@ import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class JsonView {
 
-  static final ObjectMapper objectMapper = new ObjectMapper();
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  static {
+    MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  }
 
   public static Dataset<OccurrenceJsonRecord> transformToJsonView(
       Dataset<Row> records, MetadataRecord metadataRecord) {
-    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     return records.map(
         (MapFunction<Row, OccurrenceJsonRecord>)
             record -> {
@@ -30,32 +33,28 @@ public final class JsonView {
                   OccurrenceJsonConverter.builder()
                       .metadata(metadataRecord)
                       .verbatim(
-                          objectMapper.readValue(
-                              (String) record.getAs("verbatim"), ExtendedRecord.class))
-                      .basic(
-                          objectMapper.readValue((String) record.getAs("basic"), BasicRecord.class))
+                          MAPPER.readValue((String) record.getAs("verbatim"), ExtendedRecord.class))
+                      .basic(MAPPER.readValue((String) record.getAs("basic"), BasicRecord.class))
                       .location(
-                          objectMapper.readValue(
-                              (String) record.getAs("location"), LocationRecord.class))
+                          MAPPER.readValue((String) record.getAs("location"), LocationRecord.class))
                       .temporal(
-                          objectMapper.readValue(
-                              (String) record.getAs("temporal"), TemporalRecord.class))
+                          MAPPER.readValue((String) record.getAs("temporal"), TemporalRecord.class))
                       .multiTaxon(
-                          objectMapper.readValue(
+                          MAPPER.readValue(
                               (String) record.getAs("taxonomy"), MultiTaxonRecord.class))
                       .grscicoll(
-                          objectMapper.readValue(
+                          MAPPER.readValue(
                               (String) record.getAs("grscicoll"), GrscicollRecord.class))
                       .identifier(
-                          objectMapper.readValue(
+                          MAPPER.readValue(
                               (String) record.getAs("identifier"), IdentifierRecord.class))
                       .clustering(
                           ClusteringRecord.newBuilder()
-                              .setId((String) record.getAs("id"))
+                              .setId(record.getAs("id"))
                               .build()) // placeholder
                       .multimedia(
                           MultimediaRecord.newBuilder()
-                              .setId((String) record.getAs("id"))
+                              .setId(record.getAs("id"))
                               .build()) // placeholder
                       .build();
 
