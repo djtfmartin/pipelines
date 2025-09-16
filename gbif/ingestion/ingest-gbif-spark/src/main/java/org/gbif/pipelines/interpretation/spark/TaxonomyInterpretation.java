@@ -50,7 +50,8 @@ public class TaxonomyInterpretation {
       PipelinesConfig config,
       SparkSession spark,
       Dataset<ExtendedRecord> source,
-      int numPartitions) {
+      int numPartitions,
+      String outputPath) {
 
     MultiTaxonomyTransform multiTaxonomyTransform =
         MultiTaxonomyTransform.builder().config(config).build();
@@ -69,15 +70,23 @@ public class TaxonomyInterpretation {
                       .build();
                 },
             Encoders.bean(RecordWithTaxonomy.class));
+    recordWithTaxonomy
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/taxonomy-RecordWithTaxonomy");
 
     // distinct the classifications to lookup
     spark.sparkContext().setJobGroup("taxonomy", "Distinct classifications", true);
     Dataset<RecordWithTaxonomy> distinctClassifications =
         recordWithTaxonomy.dropDuplicates("hash").repartition(numPartitions);
+    distinctClassifications
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/taxonomy-distinctClassifications");
 
     // lookup the distinct classifications, and create a dictionary of the results
     spark.sparkContext().setJobGroup("taxonomy", "Lookup the distinct classifications", true);
-    Dataset<KeyedMultiTaxonRecord> keyedLocation =
+    Dataset<KeyedMultiTaxonRecord> keyedTaxonomy =
         distinctClassifications.map(
             (MapFunction<RecordWithTaxonomy, KeyedMultiTaxonRecord>)
                 taxonomy -> {
@@ -103,13 +112,14 @@ public class TaxonomyInterpretation {
                   }
                 },
             Encoders.bean(KeyedMultiTaxonRecord.class));
+    keyedTaxonomy.write().mode("overwrite").parquet(outputPath + "/taxonomy-keyedTaxonomy");
 
     // join the dictionary back to the source records
     spark.sparkContext().setJobGroup("taxonomy", "Join matches to source records", true);
     return recordWithTaxonomy
         .joinWith(
-            keyedLocation,
-            recordWithTaxonomy.col("hash").equalTo(keyedLocation.col("key")),
+            keyedTaxonomy,
+            recordWithTaxonomy.col("hash").equalTo(keyedTaxonomy.col("key")),
             "left_outer")
         .map(
             (MapFunction<Tuple2<RecordWithTaxonomy, KeyedMultiTaxonRecord>, Tuple2<String, String>>)

@@ -49,7 +49,8 @@ public class LocationInterpretation {
       SparkSession spark,
       Dataset<ExtendedRecord> source,
       MetadataRecord mdr,
-      int numPartitions) {
+      int numPartitions,
+      String outputPath) {
 
     // initialize the location transform
     LocationTransform locationTransform = LocationTransform.builder().config(config).build();
@@ -68,11 +69,19 @@ public class LocationInterpretation {
                       .build();
                 },
             Encoders.bean(RecordWithLocation.class));
+    recordWithLocations
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/location-RecordWithLocation");
 
     // distinct the locations to lookup
     spark.sparkContext().setJobGroup("location", "Distinct the locations to lookup", true);
     Dataset<RecordWithLocation> distinctLocations =
         recordWithLocations.dropDuplicates("hash").repartition(numPartitions);
+    distinctLocations
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/location-RecordWithLocation-distinct");
 
     // lookup the distinct locations, and create a dictionary of the results
     spark.sparkContext().setJobGroup("location", "Lookup the distinct locations", true);
@@ -103,6 +112,7 @@ public class LocationInterpretation {
                   }
                 },
             Encoders.bean(KeyedLocationRecord.class));
+    keyedLocation.write().mode("overwrite").parquet(outputPath + "/location-keyedLocation");
 
     // join the dictionary back to the source records
     spark.sparkContext().setJobGroup("location", "Join back to the source records", true);
