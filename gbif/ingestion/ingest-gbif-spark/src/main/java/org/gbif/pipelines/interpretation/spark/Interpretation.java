@@ -110,6 +110,8 @@ public class Interpretation implements Serializable {
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, inputPath, args.numberOfShards);
 
+    log.info("=== Step 1: Initialise occurrence records {}", extendedRecords.count());
+
     spark
         .sparkContext()
         .setJobGroup("initialise-occurrence", "Initialise occurrence records", true);
@@ -126,7 +128,7 @@ public class Interpretation implements Serializable {
     Dataset<Tuple2<String, String>> location =
         locationTransform(
             config, spark, extendedRecords, metadata, args.numberOfShards, outputPath);
-    writeDebug(spark, location, outputPath, "location", args.debug);
+    //    writeDebug(spark, location, outputPath, "location", args.debug);
 
     //
     //    log.info("=== Step 4: Interpret basic terms");
