@@ -128,6 +128,8 @@ public class Interpretation implements Serializable {
     Dataset<Tuple2<String, String>> location =
         locationTransform(
             config, spark, extendedRecords, metadata, args.numberOfShards, outputPath);
+
+    log.info("Count of looked up locations {}", location.count());
     //    writeDebug(spark, location, outputPath, "location", args.debug);
 
     //

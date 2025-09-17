@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -86,63 +87,61 @@ public class LocationInterpretation {
     //        .mode("overwrite")
     //        .parquet(outputPath + "/location-RecordWithLocation-distinct");
 
-    return null;
-    //
-    //    // lookup the distinct locations, and create a dictionary of the results
-    //    spark.sparkContext().setJobGroup("location", "Lookup the distinct locations", true);
-    //    Dataset<KeyedLocationRecord> keyedLocation =
-    //        distinctLocations.map(
-    //            (MapFunction<RecordWithLocation, KeyedLocationRecord>)
-    //                recordWithLocation -> {
-    //
-    //                  // HACK - the function takes ExtendedRecord, but we have a Location
-    //                  ExtendedRecord er =
-    //                      ExtendedRecord.newBuilder()
-    //                          .setId("UNUSED_BUT_NECESSARY")
-    //                          .setCoreTerms(recordWithLocation.getLocation().toCoreTermsMap())
-    //                          .build();
-    //
-    //                  // look them up
-    //                  Optional<LocationRecord> converted = locationTransform.convert(er, mdr);
-    //
-    //                  if (converted.isPresent()) {
-    //                    return KeyedLocationRecord.builder()
-    //                        .key(recordWithLocation.getLocation().hash())
-    //                        .locationRecord(converted.get())
-    //                        .build();
-    //                  } else {
-    //                    return KeyedLocationRecord.builder()
-    //                        .key(recordWithLocation.getLocation().hash())
-    //                        .build(); // TODO: null handling?
-    //                  }
-    //                },
-    //            Encoders.bean(KeyedLocationRecord.class));
-    //    keyedLocation.write().mode("overwrite").parquet(outputPath + "/location-keyedLocation");
-    //
-    //    // join the dictionary back to the source records
-    //    spark.sparkContext().setJobGroup("location", "Join back to the source records", true);
-    //    return recordWithLocations
-    //        .joinWith(
-    //            keyedLocation,
-    //            recordWithLocations.col("hash").equalTo(keyedLocation.col("key")),
-    //            "left_outer")
-    //        .map(
-    //            (MapFunction<Tuple2<RecordWithLocation, KeyedLocationRecord>, Tuple2<String,
-    // String>>)
-    //                t -> {
-    //                  RecordWithLocation rwl = t._1();
-    //                  KeyedLocationRecord klr = t._2();
-    //
-    //                  LocationRecord locationRecord =
-    //                      (klr != null && klr.getLocationRecord() != null)
-    //                          ? klr.getLocationRecord()
-    //                          : LocationRecord.newBuilder().build();
-    //
-    //                  locationRecord.setId(rwl.getId());
-    //                  return Tuple2.apply(rwl.getId(),
-    // objectMapper.writeValueAsString(locationRecord));
-    //                },
-    //            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+    // lookup the distinct locations, and create a dictionary of the results
+    spark.sparkContext().setJobGroup("location", "Lookup the distinct locations", true);
+    Dataset<KeyedLocationRecord> keyedLocation =
+        distinctLocations.map(
+            (MapFunction<RecordWithLocation, KeyedLocationRecord>)
+                recordWithLocation -> {
+
+                  // HACK - the function takes ExtendedRecord, but we have a Location
+                  ExtendedRecord er =
+                      ExtendedRecord.newBuilder()
+                          .setId("UNUSED_BUT_NECESSARY")
+                          .setCoreTerms(recordWithLocation.getLocation().toCoreTermsMap())
+                          .build();
+
+                  // look them up
+                  Optional<LocationRecord> converted = locationTransform.convert(er, mdr);
+
+                  if (converted.isPresent()) {
+                    return KeyedLocationRecord.builder()
+                        .key(recordWithLocation.getLocation().hash())
+                        .locationRecord(converted.get())
+                        .build();
+                  } else {
+                    return KeyedLocationRecord.builder()
+                        .key(recordWithLocation.getLocation().hash())
+                        .build(); // TODO: null handling?
+                  }
+                },
+            Encoders.bean(KeyedLocationRecord.class));
+    //        keyedLocation.write().mode("overwrite").parquet(outputPath +
+    // "/location-keyedLocation");
+    log.info("Count of looked up locations {}", keyedLocation.count());
+
+    // join the dictionary back to the source records
+    spark.sparkContext().setJobGroup("location", "Join back to the source records", true);
+    return recordWithLocations
+        .joinWith(
+            keyedLocation,
+            recordWithLocations.col("hash").equalTo(keyedLocation.col("key")),
+            "left_outer")
+        .map(
+            (MapFunction<Tuple2<RecordWithLocation, KeyedLocationRecord>, Tuple2<String, String>>)
+                t -> {
+                  RecordWithLocation rwl = t._1();
+                  KeyedLocationRecord klr = t._2();
+
+                  LocationRecord locationRecord =
+                      (klr != null && klr.getLocationRecord() != null)
+                          ? klr.getLocationRecord()
+                          : LocationRecord.newBuilder().build();
+
+                  locationRecord.setId(rwl.getId());
+                  return Tuple2.apply(rwl.getId(), objectMapper.writeValueAsString(locationRecord));
+                },
+            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
   @Data
