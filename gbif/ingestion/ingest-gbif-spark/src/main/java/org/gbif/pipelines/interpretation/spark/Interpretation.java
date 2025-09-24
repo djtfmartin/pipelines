@@ -14,7 +14,12 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.spark.GrscicollInterpretation.grscicollTransform;
+import static org.gbif.pipelines.interpretation.spark.HdfsView.transformJsonToHdfsView;
+import static org.gbif.pipelines.interpretation.spark.JsonView.transformToJsonView;
 import static org.gbif.pipelines.interpretation.spark.LocationInterpretation.locationTransform;
+import static org.gbif.pipelines.interpretation.spark.TaxonomyInterpretation.taxonomyTransform;
+import static org.gbif.pipelines.interpretation.spark.TemporalInterpretation.temporalTransform;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -29,6 +34,7 @@ import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
+import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import scala.Tuple2;
 
 @Slf4j
@@ -130,97 +136,87 @@ public class Interpretation implements Serializable {
             config, spark, extendedRecords, metadata, args.numberOfShards, outputPath);
 
     log.info("Count of looked up locations {}", location.count());
-    //    writeDebug(spark, location, outputPath, "location", args.debug);
 
-    //
-    //    log.info("=== Step 4: Interpret basic terms");
-    //    spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
-    //    Dataset<Tuple2<String, String>> basic = basicTransform(config, extendedRecords);
-    //    writeDebug(spark, basic, outputPath, "basic", args.debug);
-    //
-    //    log.info("=== Step 6: Interpret temporal");
-    //    spark.sparkContext().setJobGroup("temporal-transform", "Run temporal transform", true);
-    //    Dataset<Tuple2<String, String>> temporal = temporalTransform(extendedRecords);
-    //    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
-    //
-    //    log.info("=== Step 7: Interpret taxonomy");
-    //    spark.sparkContext().setJobGroup("taxonomy-transform", "Run taxonomy transform", true);
-    //    Dataset<Tuple2<String, String>> multiTaxon =
-    //        taxonomyTransform(config, spark, extendedRecords, args.numberOfShards, outputPath);
-    //    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
-    //
-    //    log.info("=== Step 8: Interpret GrSciColl");
-    //    spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
-    //    Dataset<Tuple2<String, String>> grscicoll =
-    //        grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
-    //
-    //      log.info("=== Step 3: Load identifiers from {}", outputPath);
-    //      spark
-    //              .sparkContext()
-    //              .setJobGroup(
-    //                      "load-identifiers", String.format("Load extended records from %s",
-    // outputPath), true);
-    //      Dataset<Tuple2<String, String>> identifiers =
-    //              loadIdentifiers(spark, outputPath)
-    //                      .map(
-    //                              (MapFunction<IdentifierRecord, Tuple2<String, String>>)
-    //                                      ir -> {
-    //                                          return Tuple2.apply(ir.getId(),
-    // objectMapper.writeValueAsString(ir));
-    //                                      },
-    //                              Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
-    //
-    //
-    //    Dataset<Row> occurrenceRecords =
-    //        extendedRecords
-    //            .map(
-    //                (MapFunction<ExtendedRecord, Tuple2<String, String>>)
-    //                    record ->
-    //                        Tuple2.<String, String>apply(
-    //                            record.getId(), objectMapper.writeValueAsString(record)),
-    //                Encoders.tuple(Encoders.STRING(), Encoders.STRING()))
-    //            .toDF("id", "verbatim");
-    //
-    //    spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence",
-    // true);
-    //    occurrenceRecords = joinAsRowTo(occurrenceRecords, identifiers, "identifier", outputPath);
-    //
-    //    spark.sparkContext().setJobGroup("join-basic", "Join basic to occurrence", true);
-    //    occurrenceRecords = joinAsRowTo(occurrenceRecords, basic, "basic", outputPath);
-    //
-    //    spark.sparkContext().setJobGroup("join-location", "Join location to occurrence", true);
-    //    occurrenceRecords = joinAsRowTo(occurrenceRecords, location, "location", outputPath);
-    //
-    //    spark.sparkContext().setJobGroup("join-temporal", "Join temporal to occurrence", true);
-    //    occurrenceRecords = joinAsRowTo(occurrenceRecords, temporal, "temporal", outputPath);
-    //
-    //    spark.sparkContext().setJobGroup("join-multitaxon", "Join multitaxon to occurrence",
-    // true);
-    //    occurrenceRecords = joinAsRowTo(occurrenceRecords, multiTaxon, "taxonomy", outputPath);
-    //
-    //    spark.sparkContext().setJobGroup("join-grscicoll", "Join grscicoll to occurrence", true);
-    //    occurrenceRecords = joinAsRowTo(occurrenceRecords, grscicoll, "grscicoll", outputPath);
-    //
-    //    //    if (args.hdfsView) {
-    //    //      log.info("=== Step 9: Generate HDFS view");
-    //    //      spark.sparkContext().setJobGroup("hdfs-view", "Generate HDFS view", true);
-    //    //      Dataset<OccurrenceHdfsRecord> hdfsView =
-    // transformJsonToHdfsView(occurrenceRecords,
-    //    // metadata);
-    //    //      hdfsView.write().mode("overwrite").parquet(outputPath + "/hdfsview");
-    //    //    }
-    //    //
-    //    //    if (args.jsonView) {
-    //    //      log.info("=== Step 10: Generate JSON view");
-    //    //      spark.sparkContext().setJobGroup("json-view", "Generate JSON view", true);
-    //    //      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords,
-    //    // metadata);
-    //    //      jsonView.write().mode("overwrite").parquet(outputPath + "/json");
-    //    //    }
-    //
-    //    log.info(
-    //        "=== Interpretation pipeline finished successfully in {} seconds ===",
-    //        (System.currentTimeMillis() - spark.sparkContext().startTime()) / 1000);
+    log.info("=== Step 4: Interpret basic terms");
+    spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
+    Dataset<Tuple2<String, String>> basic = basicTransform(config, extendedRecords);
+    writeDebug(spark, basic, outputPath, "basic", args.debug);
+
+    log.info("=== Step 6: Interpret temporal");
+    spark.sparkContext().setJobGroup("temporal-transform", "Run temporal transform", true);
+    Dataset<Tuple2<String, String>> temporal = temporalTransform(extendedRecords);
+    writeDebug(spark, temporal, outputPath, "temporal", args.debug);
+
+    log.info("=== Step 7: Interpret taxonomy");
+    spark.sparkContext().setJobGroup("taxonomy-transform", "Run taxonomy transform", true);
+    Dataset<Tuple2<String, String>> multiTaxon =
+        taxonomyTransform(config, spark, extendedRecords, args.numberOfShards, outputPath);
+    writeDebug(spark, multiTaxon, outputPath, "taxonomy", args.debug);
+
+    log.info("=== Step 8: Interpret GrSciColl");
+    spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
+    Dataset<Tuple2<String, String>> grscicoll =
+        grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
+
+    log.info("=== Step 3: Load identifiers from {}", outputPath);
+    spark
+        .sparkContext()
+        .setJobGroup(
+            "load-identifiers", String.format("Load extended records from %s", outputPath), true);
+    Dataset<Tuple2<String, String>> identifiers =
+        loadIdentifiers(spark, outputPath)
+            .map(
+                (MapFunction<IdentifierRecord, Tuple2<String, String>>)
+                    ir -> {
+                      return Tuple2.apply(ir.getId(), objectMapper.writeValueAsString(ir));
+                    },
+                Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+
+    Dataset<Row> occurrenceRecords =
+        extendedRecords
+            .map(
+                (MapFunction<ExtendedRecord, Tuple2<String, String>>)
+                    record ->
+                        Tuple2.<String, String>apply(
+                            record.getId(), objectMapper.writeValueAsString(record)),
+                Encoders.tuple(Encoders.STRING(), Encoders.STRING()))
+            .toDF("id", "verbatim");
+
+    spark.sparkContext().setJobGroup("join-identifiers", "Join identifiers to occurrence", true);
+    occurrenceRecords = joinAsRowTo(occurrenceRecords, identifiers, "identifier", outputPath);
+
+    spark.sparkContext().setJobGroup("join-basic", "Join basic to occurrence", true);
+    occurrenceRecords = joinAsRowTo(occurrenceRecords, basic, "basic", outputPath);
+
+    spark.sparkContext().setJobGroup("join-location", "Join location to occurrence", true);
+    occurrenceRecords = joinAsRowTo(occurrenceRecords, location, "location", outputPath);
+
+    spark.sparkContext().setJobGroup("join-temporal", "Join temporal to occurrence", true);
+    occurrenceRecords = joinAsRowTo(occurrenceRecords, temporal, "temporal", outputPath);
+
+    spark.sparkContext().setJobGroup("join-multitaxon", "Join multitaxon to occurrence", true);
+    occurrenceRecords = joinAsRowTo(occurrenceRecords, multiTaxon, "taxonomy", outputPath);
+
+    spark.sparkContext().setJobGroup("join-grscicoll", "Join grscicoll to occurrence", true);
+    occurrenceRecords = joinAsRowTo(occurrenceRecords, grscicoll, "grscicoll", outputPath);
+
+    if (args.hdfsView) {
+      log.info("=== Step 9: Generate HDFS view");
+      spark.sparkContext().setJobGroup("hdfs-view", "Generate HDFS view", true);
+      Dataset<OccurrenceHdfsRecord> hdfsView = transformJsonToHdfsView(occurrenceRecords, metadata);
+      hdfsView.write().mode("overwrite").parquet(outputPath + "/hdfsview");
+    }
+
+    if (args.jsonView) {
+      log.info("=== Step 10: Generate JSON view");
+      spark.sparkContext().setJobGroup("json-view", "Generate JSON view", true);
+      Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords, metadata);
+      jsonView.write().mode("overwrite").parquet(outputPath + "/json");
+    }
+
+    log.info(
+        "=== Interpretation pipeline finished successfully in {} seconds ===",
+        (System.currentTimeMillis() - spark.sparkContext().startTime()) / 1000);
     ;
     spark.close();
     System.exit(0);
