@@ -100,7 +100,7 @@ public class HBaseTest implements Serializable {
 
                   return results.iterator();
                 });
-      Dataset<String> countries = spark.createDataset(processed.rdd(), Encoders.STRING());
+    Dataset<String> countries = spark.createDataset(processed.rdd(), Encoders.STRING());
 
     // lookup in HBase and add a country using GBIF Code
     /*
