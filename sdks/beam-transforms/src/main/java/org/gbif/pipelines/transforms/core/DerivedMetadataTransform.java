@@ -81,7 +81,6 @@ public class DerivedMetadataTransform implements Serializable {
                       .setLte(temporalCoverage.getLte()));
             }
 
-            // FIXME
             //            builder.setTaxonomicCoverage(
             //                classifications.stream()
             //                    .map(

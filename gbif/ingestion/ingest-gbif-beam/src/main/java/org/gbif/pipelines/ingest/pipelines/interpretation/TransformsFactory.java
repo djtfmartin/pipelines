@@ -46,7 +46,6 @@ import org.gbif.pipelines.transforms.core.TemporalTransform;
 import org.gbif.pipelines.transforms.core.VerbatimTransform;
 import org.gbif.pipelines.transforms.extension.AudubonTransform;
 import org.gbif.pipelines.transforms.extension.DnaDerivedDataTransform;
-import org.gbif.pipelines.transforms.extension.HumboldtTransform;
 import org.gbif.pipelines.transforms.extension.ImageTransform;
 import org.gbif.pipelines.transforms.extension.MeasurementOrFactTransform;
 import org.gbif.pipelines.transforms.extension.MultimediaTransform;
@@ -235,17 +234,18 @@ public class TransformsFactory {
     return AudubonTransform.builder().orderings(dateComponentOrdering).create();
   }
 
-  public HumboldtTransform createHumboldtTransform() {
-    return HumboldtTransform.builder()
-        .nameUsageMatchKvStoreSupplier(
-            NameUsageMatchStoreFactory.createMultiServiceSupplier(config))
-        .vocabularyServiceSupplier(FileVocabularyFactory.createSupplier(hdfsConfigs, config))
-        .checklistKeys(
-            config.getNameUsageMatchingService() != null
-                ? config.getNameUsageMatchingService().getChecklistKeys()
-                : List.of())
-        .create();
-  }
+  //
+  //  public HumboldtTransform createHumboldtTransform() {
+  //    return HumboldtTransform.builder()
+  //        .nameUsageMatchKvStoreSupplier(
+  //            NameUsageMatchStoreFactory.createMultiServiceSupplier(config))
+  //        .vocabularyServiceSupplier(FileVocabularyFactory.createSupplier(hdfsConfigs, config))
+  //        .checklistKeys(
+  //            config.getNameUsageMatchingService() != null
+  //                ? config.getNameUsageMatchingService().getChecklistKeys()
+  //                : List.of())
+  //        .create();
+  //  }
 
   public ImageTransform createImageTransform() {
     return ImageTransform.builder().orderings(dateComponentOrdering).create();
