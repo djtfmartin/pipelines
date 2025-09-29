@@ -214,14 +214,28 @@ public class InterpretationRDD implements Serializable {
                     return Tuple2.<String, String>apply(row.getAs("id"), row.getAs("json"));
                   }
                 });
+
+    spark.sparkContext().setJobGroup("initialise-occurrence", "Loading preprepared parquet", true);
+
     JavaPairRDD<String, String> basicRDD = loadRecordTypeAsJDD(spark, outputPath, "basic");
+    System.out.println("JSON count: " + basicRDD.count());
     JavaPairRDD<String, String> temporalRDD = loadRecordTypeAsJDD(spark, outputPath, "temporal");
+    System.out.println("JSON count: " + temporalRDD.count());
     JavaPairRDD<String, String> taxonomyRDD = loadRecordTypeAsJDD(spark, outputPath, "taxonomy");
+    System.out.println("JSON count: " + taxonomyRDD.count());
     JavaPairRDD<String, String> grscicollRDD = loadRecordTypeAsJDD(spark, outputPath, "grscicoll");
+    System.out.println("JSON count: " + grscicollRDD.count());
     JavaPairRDD<String, String> locationRDD = loadRecordTypeAsJDD(spark, outputPath, "location");
+    System.out.println("JSON count: " + locationRDD.count());
+
+    spark.sparkContext().setJobGroup("initialise-occurrence", "cogroup 1", true);
 
     JavaPairRDD<String, Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>> cg1 =
         occurrenceRecords.cogroup(identifiersRDD, basicRDD);
+
+    System.out.println("Cogroup 1 count: " + cg1.count());
+
+    spark.sparkContext().setJobGroup("initialise-occurrence", "cogroup 2", true);
 
     // Step 2: Cogroup the next 3 with the result
     JavaPairRDD<
@@ -232,6 +246,10 @@ public class InterpretationRDD implements Serializable {
                 Iterable<String>,
                 Iterable<String>>>
         cg2 = cg1.cogroup(temporalRDD, taxonomyRDD, grscicollRDD);
+
+    System.out.println("Cogroup 2 count: " + cg2.count());
+
+    spark.sparkContext().setJobGroup("initialise-occurrence", "cogroup 3", true);
 
     // Step 3: Cogroup the last one
     JavaPairRDD<
@@ -246,57 +264,78 @@ public class InterpretationRDD implements Serializable {
                 Iterable<String>>>
         finalCg = cg2.cogroup(locationRDD);
 
-      JavaRDD<OccurrenceJsonRecord> json = finalCg.map(
-              data -> {
-                  String key = data._1;
-                  Tuple2<
-                          Iterable<
-                                  Tuple4<
-                                          Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
-                                          Iterable<String>,
-                                          Iterable<String>,
-                                          Iterable<String>>>,
-                          Iterable<String>>
-                          obj = data._2;
+    System.out.println("Cogroup 3 count: " + finalCg.count());
 
-                  Tuple4<Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>, Iterable<String>, Iterable<String>, Iterable<String>> t = obj._1().iterator().next();
-                  System.out.println("Key: " + key);
-                  Tuple3<Iterable<String>, Iterable<String>, Iterable<String>> t3 = t._1().iterator().next();
-//                  System.out.println("  Extended: " + t3._1());
-//                  System.out.println("  Identifier: " + t3._2());
-//                  System.out.println("  Basic: " + t3._3());
-//                  System.out.println("  Temporal: " + t._2());
-//                  System.out.println("  Taxonomy: " + t._3());
-//                  System.out.println("  Griscoll: " + t._4());
-//                  System.out.println("  Location: " + obj._2());
-//
-                  ExtendedRecord verbatim = MAPPER.readValue(t3._1().iterator().next(), ExtendedRecord.class);
-                  IdentifierRecord identifierRecord = MAPPER.readValue(t3._2().iterator().next(), IdentifierRecord.class);
-                  BasicRecord basic = MAPPER.readValue(t3._3().iterator().next(), BasicRecord.class);
-                  LocationRecord location = MAPPER.readValue(obj._2().iterator().next(), LocationRecord.class);
-                  TemporalRecord temporalRecord = MAPPER.readValue(t._2().iterator().next(), TemporalRecord.class);
-                  MultiTaxonRecord multiTaxonRecord = MAPPER.readValue(t._3().iterator().next(), MultiTaxonRecord.class);
-                  GrscicollRecord grscicollRecord = MAPPER.readValue(t._4().iterator().next(), GrscicollRecord.class);
+    spark.sparkContext().setJobGroup("json", "map to json", true);
 
-                  return OccurrenceJsonConverter.builder()
-                          .verbatim(verbatim)
-                          .basic(basic)
-                          .location(location)
-                          .temporal(temporalRecord)
-                          .multiTaxon(multiTaxonRecord)
-                          .grscicoll(grscicollRecord)
-                          .identifier(identifierRecord)
-                          .metadata(metadata)
-                          .clustering(ClusteringRecord.newBuilder().setId(key).build()) // placeholder
-                          .multimedia(MultimediaRecord.newBuilder().setId(key).build()) // placeholder
-                          .build()
-                          .convert();
-              });
+    JavaRDD<OccurrenceJsonRecord> json =
+        finalCg.map(
+            data -> {
+              String key = data._1;
+              Tuple2<
+                      Iterable<
+                          Tuple4<
+                              Iterable<
+                                  Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
+                              Iterable<String>,
+                              Iterable<String>,
+                              Iterable<String>>>,
+                      Iterable<String>>
+                  obj = data._2;
 
-      //output the json RDD to parquet
-        Dataset<Row> jsonDF = spark.createDataFrame(json, OccurrenceJsonRecord.class);
-        jsonDF.write().mode("overwrite").parquet(outputPath + "/json-cogroup");
+              Tuple4<
+                      Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
+                      Iterable<String>,
+                      Iterable<String>,
+                      Iterable<String>>
+                  t = obj._1().iterator().next();
+              System.out.println("Key: " + key);
+              Tuple3<Iterable<String>, Iterable<String>, Iterable<String>> t3 =
+                  t._1().iterator().next();
+              //                  System.out.println("  Extended: " + t3._1());
+              //                  System.out.println("  Identifier: " + t3._2());
+              //                  System.out.println("  Basic: " + t3._3());
+              //                  System.out.println("  Temporal: " + t._2());
+              //                  System.out.println("  Taxonomy: " + t._3());
+              //                  System.out.println("  Griscoll: " + t._4());
+              //                  System.out.println("  Location: " + obj._2());
+              //
+              ExtendedRecord verbatim =
+                  MAPPER.readValue(t3._1().iterator().next(), ExtendedRecord.class);
+              IdentifierRecord identifierRecord =
+                  MAPPER.readValue(t3._2().iterator().next(), IdentifierRecord.class);
+              BasicRecord basic = MAPPER.readValue(t3._3().iterator().next(), BasicRecord.class);
+              LocationRecord location =
+                  MAPPER.readValue(obj._2().iterator().next(), LocationRecord.class);
+              TemporalRecord temporalRecord =
+                  MAPPER.readValue(t._2().iterator().next(), TemporalRecord.class);
+              MultiTaxonRecord multiTaxonRecord =
+                  MAPPER.readValue(t._3().iterator().next(), MultiTaxonRecord.class);
+              GrscicollRecord grscicollRecord =
+                  MAPPER.readValue(t._4().iterator().next(), GrscicollRecord.class);
 
+              return OccurrenceJsonConverter.builder()
+                  .verbatim(verbatim)
+                  .basic(basic)
+                  .location(location)
+                  .temporal(temporalRecord)
+                  .multiTaxon(multiTaxonRecord)
+                  .grscicoll(grscicollRecord)
+                  .identifier(identifierRecord)
+                  .metadata(metadata)
+                  .clustering(ClusteringRecord.newBuilder().setId(key).build()) // placeholder
+                  .multimedia(MultimediaRecord.newBuilder().setId(key).build()) // placeholder
+                  .build()
+                  .convert();
+            });
+
+    // output the json RDD to parquet
+    System.out.println("JSON count: " + json.count());
+
+    spark.sparkContext().setJobGroup("json", "write json to parquet", true);
+    Dataset<OccurrenceJsonRecord> jsonDF =
+        spark.createDataset(json.rdd(), Encoders.bean(OccurrenceJsonRecord.class));
+    jsonDF.write().mode("overwrite").parquet(outputPath + "/json-cogroup");
 
     //      JavaPairRDD<String, Tuple2<Iterable<String>, Tuple2<Iterable<String>,
     // Iterable<String>>>> cogrouped =
