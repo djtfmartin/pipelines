@@ -23,6 +23,7 @@ import java.io.Serializable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.rdd.RDD;
@@ -275,8 +276,10 @@ public class InterpretationRDD implements Serializable {
         convertJavaRDD(
             finalCg,
             metadata,
-            occurrenceRecord ->
-                OccurrenceHdfsRecordConverter.builder()
+            new Function<OccurrenceRecord, OccurrenceHdfsRecord>() {
+              @Override
+              public OccurrenceHdfsRecord call(OccurrenceRecord occurrenceRecord) throws Exception {
+                return OccurrenceHdfsRecordConverter.builder()
                     .metadataRecord(occurrenceRecord.getMetadata())
                     .extendedRecord(occurrenceRecord.getVerbatim())
                     .basicRecord(occurrenceRecord.getBasic())
@@ -288,7 +291,25 @@ public class InterpretationRDD implements Serializable {
                     .clusteringRecord(occurrenceRecord.getClustering()) // placeholder
                     .multimediaRecord(occurrenceRecord.getMultimedia()) // placeholder
                     .build()
-                    .convert());
+                    .convert();
+              }
+            }
+            //            occurrenceRecord ->
+            //                OccurrenceHdfsRecordConverter.builder()
+            //                    .metadataRecord(occurrenceRecord.getMetadata())
+            //                    .extendedRecord(occurrenceRecord.getVerbatim())
+            //                    .basicRecord(occurrenceRecord.getBasic())
+            //                    .locationRecord(occurrenceRecord.getLocation())
+            //                    .temporalRecord(occurrenceRecord.getTemporal())
+            //                    .multiTaxonRecord(occurrenceRecord.getMultiTaxon())
+            //                    .grscicollRecord(occurrenceRecord.getGrscicoll())
+            //                    .identifierRecord(occurrenceRecord.getIdentifier())
+            //                    .clusteringRecord(occurrenceRecord.getClustering()) // placeholder
+            //                    .multimediaRecord(occurrenceRecord.getMultimedia()) // placeholder
+            //                    .build()
+            //                    .convert()
+            //
+            );
 
     // output the json RDD to parquet
     System.out.println("HDFS count: " + hdfs.count());
@@ -306,8 +327,11 @@ public class InterpretationRDD implements Serializable {
         convertJavaRDD(
             finalCg,
             metadata,
-            occurrenceRecord ->
-                OccurrenceJsonConverter.builder()
+            new org.apache.spark.api.java.function.Function<
+                OccurrenceRecord, OccurrenceJsonRecord>() {
+              @Override
+              public OccurrenceJsonRecord call(OccurrenceRecord occurrenceRecord) {
+                return OccurrenceJsonConverter.builder()
                     .metadata(occurrenceRecord.getMetadata())
                     .verbatim(occurrenceRecord.getVerbatim())
                     .basic(occurrenceRecord.getBasic())
@@ -316,10 +340,12 @@ public class InterpretationRDD implements Serializable {
                     .multiTaxon(occurrenceRecord.getMultiTaxon())
                     .grscicoll(occurrenceRecord.getGrscicoll())
                     .identifier(occurrenceRecord.getIdentifier())
-                    .clustering(occurrenceRecord.getClustering()) // placeholder
-                    .multimedia(occurrenceRecord.getMultimedia()) // placeholder
+                    .clustering(occurrenceRecord.getClustering())
+                    .multimedia(occurrenceRecord.getMultimedia())
                     .build()
-                    .convert());
+                    .convert();
+              }
+            });
 
     // output the json RDD to parquet
     System.out.println("JSON count: " + json.count());
@@ -458,7 +484,7 @@ public class InterpretationRDD implements Serializable {
                   Iterable<String>>>
           finalCg,
       MetadataRecord metadata,
-      java.util.function.Function<OccurrenceRecord, T> converter) {
+      org.apache.spark.api.java.function.Function<OccurrenceRecord, T> converter) {
 
     final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -481,7 +507,6 @@ public class InterpretationRDD implements Serializable {
                   Iterable<String>,
                   Iterable<String>>
               t = obj._1().iterator().next();
-          System.out.println("Key: " + key);
           Tuple3<Iterable<String>, Iterable<String>, Iterable<String>> t3 =
               t._1().iterator().next();
           ExtendedRecord verbatim =
@@ -498,7 +523,7 @@ public class InterpretationRDD implements Serializable {
           GrscicollRecord grscicollRecord =
               MAPPER.readValue(t._4().iterator().next(), GrscicollRecord.class);
 
-          return converter.apply(
+          return converter.call(
               OccurrenceRecord.builder()
                   .metadata(metadata)
                   .verbatim(verbatim)
