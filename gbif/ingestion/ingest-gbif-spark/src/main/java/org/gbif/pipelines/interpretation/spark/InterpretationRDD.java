@@ -25,8 +25,10 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.converters.OccurrenceHdfsRecordConverter;
 import org.gbif.pipelines.core.converters.OccurrenceJsonConverter;
 import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
@@ -215,7 +217,7 @@ public class InterpretationRDD implements Serializable {
                   }
                 });
 
-    spark.sparkContext().setJobGroup("initialise-occurrence", "Loading preprepared parquet", true);
+    spark.sparkContext().setJobGroup("initialise-occurrence", "Loading pre-prepared parquet", true);
 
     JavaPairRDD<String, String> basicRDD = loadRecordTypeAsJDD(spark, outputPath, "basic");
     System.out.println("JSON count: " + basicRDD.count());
@@ -266,75 +268,67 @@ public class InterpretationRDD implements Serializable {
 
     System.out.println("Cogroup 3 count: " + finalCg.count());
 
+    // -------------------write out hdfs-------------------
+
+    spark.sparkContext().setJobGroup("hdfs", "map to hdfs", true);
+    JavaRDD<OccurrenceHdfsRecord> hdfs =
+        convertJavaRDD(
+            finalCg,
+            metadata,
+            occurrenceRecord ->
+                OccurrenceHdfsRecordConverter.builder()
+                    .metadataRecord(occurrenceRecord.getMetadata())
+                    .extendedRecord(occurrenceRecord.getVerbatim())
+                    .basicRecord(occurrenceRecord.getBasic())
+                    .locationRecord(occurrenceRecord.getLocation())
+                    .temporalRecord(occurrenceRecord.getTemporal())
+                    .multiTaxonRecord(occurrenceRecord.getMultiTaxon())
+                    .grscicollRecord(occurrenceRecord.getGrscicoll())
+                    .identifierRecord(occurrenceRecord.getIdentifier())
+                    .clusteringRecord(occurrenceRecord.getClustering()) // placeholder
+                    .multimediaRecord(occurrenceRecord.getMultimedia()) // placeholder
+                    .build()
+                    .convert());
+
+    // output the json RDD to parquet
+    System.out.println("HDFS count: " + hdfs.count());
+
+    spark.sparkContext().setJobGroup("hdfs", "write hdfs to parquet", true);
+
+    Dataset<OccurrenceHdfsRecord> hdfsDF =
+        spark.createDataset(hdfs.rdd(), Encoders.bean(OccurrenceHdfsRecord.class));
+    hdfsDF.write().mode("overwrite").parquet(outputPath + "/hdfs-cogroup");
+
+    // -------------------write out json-------------------
+
     spark.sparkContext().setJobGroup("json", "map to json", true);
-
     JavaRDD<OccurrenceJsonRecord> json =
-        finalCg.map(
-            data -> {
-              String key = data._1;
-              Tuple2<
-                      Iterable<
-                          Tuple4<
-                              Iterable<
-                                  Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
-                              Iterable<String>,
-                              Iterable<String>,
-                              Iterable<String>>>,
-                      Iterable<String>>
-                  obj = data._2;
-
-              Tuple4<
-                      Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
-                      Iterable<String>,
-                      Iterable<String>,
-                      Iterable<String>>
-                  t = obj._1().iterator().next();
-              System.out.println("Key: " + key);
-              Tuple3<Iterable<String>, Iterable<String>, Iterable<String>> t3 =
-                  t._1().iterator().next();
-              //                  System.out.println("  Extended: " + t3._1());
-              //                  System.out.println("  Identifier: " + t3._2());
-              //                  System.out.println("  Basic: " + t3._3());
-              //                  System.out.println("  Temporal: " + t._2());
-              //                  System.out.println("  Taxonomy: " + t._3());
-              //                  System.out.println("  Griscoll: " + t._4());
-              //                  System.out.println("  Location: " + obj._2());
-              //
-              ExtendedRecord verbatim =
-                  MAPPER.readValue(t3._1().iterator().next(), ExtendedRecord.class);
-              IdentifierRecord identifierRecord =
-                  MAPPER.readValue(t3._2().iterator().next(), IdentifierRecord.class);
-              BasicRecord basic = MAPPER.readValue(t3._3().iterator().next(), BasicRecord.class);
-              LocationRecord location =
-                  MAPPER.readValue(obj._2().iterator().next(), LocationRecord.class);
-              TemporalRecord temporalRecord =
-                  MAPPER.readValue(t._2().iterator().next(), TemporalRecord.class);
-              MultiTaxonRecord multiTaxonRecord =
-                  MAPPER.readValue(t._3().iterator().next(), MultiTaxonRecord.class);
-              GrscicollRecord grscicollRecord =
-                  MAPPER.readValue(t._4().iterator().next(), GrscicollRecord.class);
-
-              return OccurrenceJsonConverter.builder()
-                  .verbatim(verbatim)
-                  .basic(basic)
-                  .location(location)
-                  .temporal(temporalRecord)
-                  .multiTaxon(multiTaxonRecord)
-                  .grscicoll(grscicollRecord)
-                  .identifier(identifierRecord)
-                  .metadata(metadata)
-                  .clustering(ClusteringRecord.newBuilder().setId(key).build()) // placeholder
-                  .multimedia(MultimediaRecord.newBuilder().setId(key).build()) // placeholder
-                  .build()
-                  .convert();
-            });
+        convertJavaRDD(
+            finalCg,
+            metadata,
+            occurrenceRecord ->
+                OccurrenceJsonConverter.builder()
+                    .metadata(occurrenceRecord.getMetadata())
+                    .verbatim(occurrenceRecord.getVerbatim())
+                    .basic(occurrenceRecord.getBasic())
+                    .location(occurrenceRecord.getLocation())
+                    .temporal(occurrenceRecord.getTemporal())
+                    .multiTaxon(occurrenceRecord.getMultiTaxon())
+                    .grscicoll(occurrenceRecord.getGrscicoll())
+                    .identifier(occurrenceRecord.getIdentifier())
+                    .clustering(occurrenceRecord.getClustering()) // placeholder
+                    .multimedia(occurrenceRecord.getMultimedia()) // placeholder
+                    .build()
+                    .convert());
 
     // output the json RDD to parquet
     System.out.println("JSON count: " + json.count());
 
     spark.sparkContext().setJobGroup("json", "write json to parquet", true);
+
+    RDD<OccurrenceJsonRecord> rdd = json.rdd();
     Dataset<OccurrenceJsonRecord> jsonDF =
-        spark.createDataset(json.rdd(), Encoders.bean(OccurrenceJsonRecord.class));
+        spark.createDataset(rdd, Encoders.bean(OccurrenceJsonRecord.class));
     jsonDF.write().mode("overwrite").parquet(outputPath + "/json-cogroup");
 
     //      JavaPairRDD<String, Tuple2<Iterable<String>, Tuple2<Iterable<String>,
@@ -449,6 +443,90 @@ public class InterpretationRDD implements Serializable {
     ;
     spark.close();
     System.exit(0);
+  }
+
+  private static <T> JavaRDD<T> convertJavaRDD(
+      JavaPairRDD<
+              String,
+              Tuple2<
+                  Iterable<
+                      Tuple4<
+                          Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
+                          Iterable<String>,
+                          Iterable<String>,
+                          Iterable<String>>>,
+                  Iterable<String>>>
+          finalCg,
+      MetadataRecord metadata,
+      java.util.function.Function<OccurrenceRecord, T> converter) {
+
+    final ObjectMapper MAPPER = new ObjectMapper();
+
+    return finalCg.map(
+        data -> {
+          String key = data._1;
+          Tuple2<
+                  Iterable<
+                      Tuple4<
+                          Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
+                          Iterable<String>,
+                          Iterable<String>,
+                          Iterable<String>>>,
+                  Iterable<String>>
+              obj = data._2;
+
+          Tuple4<
+                  Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
+                  Iterable<String>,
+                  Iterable<String>,
+                  Iterable<String>>
+              t = obj._1().iterator().next();
+          System.out.println("Key: " + key);
+          Tuple3<Iterable<String>, Iterable<String>, Iterable<String>> t3 =
+              t._1().iterator().next();
+          ExtendedRecord verbatim =
+              MAPPER.readValue(t3._1().iterator().next(), ExtendedRecord.class);
+          IdentifierRecord identifierRecord =
+              MAPPER.readValue(t3._2().iterator().next(), IdentifierRecord.class);
+          BasicRecord basic = MAPPER.readValue(t3._3().iterator().next(), BasicRecord.class);
+          LocationRecord location =
+              MAPPER.readValue(obj._2().iterator().next(), LocationRecord.class);
+          TemporalRecord temporalRecord =
+              MAPPER.readValue(t._2().iterator().next(), TemporalRecord.class);
+          MultiTaxonRecord multiTaxonRecord =
+              MAPPER.readValue(t._3().iterator().next(), MultiTaxonRecord.class);
+          GrscicollRecord grscicollRecord =
+              MAPPER.readValue(t._4().iterator().next(), GrscicollRecord.class);
+
+          return converter.apply(
+              OccurrenceRecord.builder()
+                  .metadata(metadata)
+                  .verbatim(verbatim)
+                  .basic(basic)
+                  .location(location)
+                  .temporal(temporalRecord)
+                  .multiTaxon(multiTaxonRecord)
+                  .grscicoll(grscicollRecord)
+                  .identifier(identifierRecord)
+                  .clustering(ClusteringRecord.newBuilder().setId(key).build()) // placeholder
+                  .multimedia(MultimediaRecord.newBuilder().setId(key).build()) // placeholder
+                  .build());
+          //              return OccurrenceJsonConverter.builder()
+          //                  .verbatim(verbatim)
+          //                  .basic(basic)
+          //                  .location(location)
+          //                  .temporal(temporalRecord)
+          //                  .multiTaxon(multiTaxonRecord)
+          //                  .grscicoll(grscicollRecord)
+          //                  .identifier(identifierRecord)
+          //                  .metadata(metadata)
+          //                  .clustering(ClusteringRecord.newBuilder().setId(key).build()) //
+          // placeholder
+          //                  .multimedia(MultimediaRecord.newBuilder().setId(key).build()) //
+          // placeholder
+          //                  .build()
+          //                  .convert();
+        });
   }
   // ----------------- Helper Methods -----------------
 
