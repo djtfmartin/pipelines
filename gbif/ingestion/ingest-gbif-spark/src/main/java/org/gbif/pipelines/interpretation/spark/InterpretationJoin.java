@@ -135,6 +135,7 @@ public class InterpretationJoin implements Serializable {
 
     ObjectMapper MAPPER = new ObjectMapper();
 
+    spark.sql("DROP TABLE IF EXISTS verbatim");
     extendedRecords
         .map(
             (MapFunction<ExtendedRecord, Tuple2<String, String>>)
@@ -153,6 +154,7 @@ public class InterpretationJoin implements Serializable {
 
     log.info("Identifiers count {}", occurrenceRecords.count());
 
+    spark.sql("DROP TABLE IF EXISTS identifier");
     loadIdentifiers(spark, outputPath)
         .map(
             (MapFunction<IdentifierRecord, Tuple2<String, String>>)
@@ -168,8 +170,7 @@ public class InterpretationJoin implements Serializable {
         .saveAsTable("identifier");
 
     Dataset<Row> identifiersRDD = spark.table("identifier");
-
-    // bucket the identifiers
+    System.out.println("JSON count: " + identifiersRDD.count());
 
     spark.sparkContext().setJobGroup("initialise-occurrence", "Loading pre-prepared parquet", true);
 
@@ -361,6 +362,7 @@ public class InterpretationJoin implements Serializable {
             .toDF("id", recordType);
 
     // write sorted and bucketed table
+    spark.sql("DROP TABLE IF EXISTS " + recordType);
     loadedFromFiles
         .write()
         .format("parquet")
