@@ -112,6 +112,10 @@ public class InterpretationJoin implements Serializable {
     if (args.master != null && !args.master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(args.master);
     }
+
+    sparkBuilder.config(
+        "spark.sql.warehouse.dir",
+        "hdfs://gbif-hdfs/data/ingest_spark/" + datasetId + "/" + attempt + "/warehouse");
     SparkSession spark = sparkBuilder.getOrCreate();
 
     spark
@@ -135,6 +139,8 @@ public class InterpretationJoin implements Serializable {
 
     ObjectMapper MAPPER = new ObjectMapper();
 
+    int BUCKETS = 20;
+
     spark.sql("DROP TABLE IF EXISTS verbatim");
     extendedRecords
         .map(
@@ -145,7 +151,7 @@ public class InterpretationJoin implements Serializable {
         .toDF("id", "verbatim")
         .write()
         .format("parquet")
-        .bucketBy(args.numberOfShards, "id")
+        .bucketBy(BUCKETS, "id")
         .sortBy("id")
         .mode("overwrite")
         .saveAsTable("verbatim");
@@ -164,7 +170,7 @@ public class InterpretationJoin implements Serializable {
         .toDF("id", "identifier")
         .write()
         .format("parquet")
-        .bucketBy(args.numberOfShards, "id")
+        .bucketBy(BUCKETS, "id")
         .sortBy("id")
         .mode("overwrite")
         .saveAsTable("identifier");
@@ -175,27 +181,23 @@ public class InterpretationJoin implements Serializable {
     spark.sparkContext().setJobGroup("initialise-occurrence", "Loading pre-prepared parquet", true);
 
     spark.sparkContext().setJobGroup("load", "Loading basic", true);
-    Dataset<Row> basicRDD = loadRecordTypeAsRow(spark, outputPath, "basic", args.numberOfShards);
+    Dataset<Row> basicRDD = loadRecordTypeAsRow(spark, outputPath, "basic", BUCKETS);
     System.out.println("JSON count: " + basicRDD.count());
 
     spark.sparkContext().setJobGroup("load", "Loading temporal", true);
-    Dataset<Row> temporalRDD =
-        loadRecordTypeAsRow(spark, outputPath, "temporal", args.numberOfShards);
+    Dataset<Row> temporalRDD = loadRecordTypeAsRow(spark, outputPath, "temporal", BUCKETS);
     System.out.println("JSON count: " + temporalRDD.count());
 
     spark.sparkContext().setJobGroup("load", "Loading taxonomy", true);
-    Dataset<Row> taxonomyRDD =
-        loadRecordTypeAsRow(spark, outputPath, "taxonomy", args.numberOfShards);
+    Dataset<Row> taxonomyRDD = loadRecordTypeAsRow(spark, outputPath, "taxonomy", BUCKETS);
     System.out.println("JSON count: " + taxonomyRDD.count());
 
     spark.sparkContext().setJobGroup("load", "Loading grscicoll", true);
-    Dataset<Row> grscicollRDD =
-        loadRecordTypeAsRow(spark, outputPath, "grscicoll", args.numberOfShards);
+    Dataset<Row> grscicollRDD = loadRecordTypeAsRow(spark, outputPath, "grscicoll", BUCKETS);
     System.out.println("JSON count: " + grscicollRDD.count());
 
     spark.sparkContext().setJobGroup("load", "Loading location", true);
-    Dataset<Row> locationRDD =
-        loadRecordTypeAsRow(spark, outputPath, "location", args.numberOfShards);
+    Dataset<Row> locationRDD = loadRecordTypeAsRow(spark, outputPath, "location", BUCKETS);
     System.out.println("JSON count: " + locationRDD.count());
 
     //    spark.sparkContext().setJobGroup("create-views", "Creating verbatim view", true);
