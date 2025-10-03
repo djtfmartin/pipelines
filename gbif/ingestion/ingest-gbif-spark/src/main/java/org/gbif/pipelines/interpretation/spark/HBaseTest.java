@@ -24,23 +24,14 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.Metadata;
-import org.apache.spark.sql.types.StructField;
-import org.apache.spark.sql.types.StructType;
 import org.gbif.kvs.SaltedKeyGenerator;
+import org.gbif.kvs.geocode.GeocodeRequest;
 
 /** A test harness for loading up HBase reads. Reads a CSV containing lat/lng pairs, */
 public class HBaseTest implements Serializable {
-  static final StructType INPUT_SCHEMA =
-      new StructType(
-          new StructField[] {
-            new StructField("lat", DataTypes.DoubleType, false, Metadata.empty()),
-            new StructField("lng", DataTypes.DoubleType, false, Metadata.empty()),
-            new StructField("uncertainty", DataTypes.DoubleType, true, Metadata.empty())
-          });
 
   public static void main(String[] args) {
     SparkSession spark = SparkSession.builder().appName("HBase performance test").getOrCreate();
@@ -67,7 +58,7 @@ public class HBaseTest implements Serializable {
                       "zookeeper.znode.parent",
                       "/znode-93f9cdb5-d146-46da-9f80-e8546468b0fe/hbase");
                   Connection connection = ConnectionFactory.createConnection(hbaseConfig);
-                  SaltedKeyGenerator saltedKeyGenerator = new SaltedKeyGenerator(10);
+                  SaltedKeyGenerator saltedKeyGenerator = new SaltedKeyGenerator(25);
 
                   while (iterator.hasNext()) {
                     String line = iterator.next();
@@ -103,8 +94,7 @@ public class HBaseTest implements Serializable {
     Dataset<String> countries = spark.createDataset(processed.rdd(), Encoders.STRING());
 
     // lookup in HBase and add a country using GBIF Code
-    /*
-    Dataset<String> countries =
+    Dataset<String> countries2 =
         records.map(
             (MapFunction<Row, String>)
                 row -> {
@@ -128,7 +118,6 @@ public class HBaseTest implements Serializable {
                   return lat + "," + lng + "," + uncertainty + "," + country;
                 },
             Encoders.STRING());
-       */
 
     // write the output
     countries.write().mode(SaveMode.Overwrite).csv(args[1]);

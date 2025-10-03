@@ -14,12 +14,7 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.spark.GrscicollInterpretation.grscicollTransform;
-import static org.gbif.pipelines.interpretation.spark.HdfsView.transformJsonToHdfsView;
-import static org.gbif.pipelines.interpretation.spark.JsonView.transformToJsonView;
 import static org.gbif.pipelines.interpretation.spark.LocationInterpretation.locationTransform;
-import static org.gbif.pipelines.interpretation.spark.TaxonomyInterpretation.taxonomyTransform;
-import static org.gbif.pipelines.interpretation.spark.TemporalInterpretation.temporalTransform;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -27,14 +22,15 @@ import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
+import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import scala.Tuple2;
 
 @Slf4j
@@ -79,6 +75,9 @@ public class Interpretation implements Serializable {
     @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
     private int numberOfShards = 10;
 
+    @Parameter(names = "--prefix", description = "Prefix to filter", required = false)
+    private String prefix;
+
     @Parameter(
         names = {"--help", "-h"},
         help = true,
@@ -87,7 +86,6 @@ public class Interpretation implements Serializable {
   }
 
   public static void main(String[] argsv) {
-
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
     jCommander.parse(argsv);
@@ -113,10 +111,21 @@ public class Interpretation implements Serializable {
     spark
         .sparkContext()
         .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
+
+    final String p = args.prefix;
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, inputPath, args.numberOfShards);
+    if (p != null && !p.isEmpty()) {
+      extendedRecords =
+          extendedRecords.filter(
+              (FilterFunction<ExtendedRecord>)
+                  er -> {
+                    String name = er.getCoreTerms().get(DwcTerm.scientificName.qualifiedName());
+                    return name != null && name.startsWith(p);
+                  });
+    }
 
-    log.info("=== Step 1: Initialise occurrence records {}", extendedRecords.count());
+    // log.info("=== Step 1: Initialise occurrence records {}", extendedRecords.count());
 
     spark
         .sparkContext()
@@ -132,10 +141,16 @@ public class Interpretation implements Serializable {
     log.info("=== Step 5: Interpret location");
     spark.sparkContext().setJobGroup("location-transform", "Run location transform", true);
     Dataset<Tuple2<String, String>> location =
-        locationTransform(
-            config, spark, extendedRecords, metadata, args.numberOfShards, outputPath);
+        locationTransform(config, spark, extendedRecords, metadata, outputPath);
+    location
+        .write()
+        .mode("overwrite")
+        .parquet(String.format("%s/location-keyedLocation", outputPath));
 
-    log.info("Count of looked up locations {}", location.count());
+    // This forces spark to reprocess the data, for reasons I don't understand
+    // log.info("Count of looked up locations {}", location.count());
+
+    /*
 
     log.info("=== Step 4: Interpret basic terms");
     spark.sparkContext().setJobGroup("basic-transform", "Run basic transform", true);
@@ -213,7 +228,7 @@ public class Interpretation implements Serializable {
       Dataset<OccurrenceJsonRecord> jsonView = transformToJsonView(occurrenceRecords, metadata);
       jsonView.write().mode("overwrite").parquet(outputPath + "/json");
     }
-
+    */
     log.info(
         "=== Interpretation pipeline finished successfully in {} seconds ===",
         (System.currentTimeMillis() - spark.sparkContext().startTime()) / 1000);

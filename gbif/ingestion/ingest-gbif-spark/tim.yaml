@@ -32,7 +32,7 @@ spec:
     - "--coreSiteConfig=/etc/hadoop/conf/core-site.xml"
     - "--hdfsSiteConfig=/etc/hadoop/conf/hdfs-site.xml"
     - "--properties=/tmp/pipelines-spark.yaml"
-    - "--numberOfShards=520"
+    - "--numberOfShards=600"
     - "--debugOutput=true"
   sparkConf:
 #    "spark.jars.packages": "org.apache.celeborn:celeborn-client-spark-3-shaded_2.12:0.5.4,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0,org.apache.spark:spark-avro_2.12:3.5.1"
@@ -50,15 +50,15 @@ spec:
 #    "spark.celeborn.client.spark.shuffle.writer": "hash"
 #    "spark.celeborn.client.push.replicate.enabled": "true"
     "spark.sql.adaptive.localShuffleReader.enabled": "false"
-    "spark.sql.shuffle.partitions": "520"
+    "spark.sql.shuffle.partitions": "500"
     "spark.sql.adaptive.enabled": "true"
     "spark.sql.adaptive.skewJoin.enabled": "true"
 #    "spark.shuffle.sort.io.plugin.class": "org.apache.spark.shuffle.celeborn.CelebornShuffleDataIO"
 #    "spark.celeborn.master.endpoints": "gbif-shuffle-service-celeborn-master-0.gbif-shuffle-service-celeborn-master-svc.test:9097,gbif-shuffle-service-celeborn-master-1.gbif-shuffle-service-celeborn-master-svc.test:9097,gbif-shuffle-service-celeborn-master-2.gbif-shuffle-service-celeborn-master-svc.test:9097"
     "spark.files.fetchTimeout": "300s"
 
-    "spark.executor.instances": "20"
-    "spark.executor.cores": "5"
+    "spark.executor.instances": "25"
+    "spark.executor.cores": "20"
 
     "spark.dynamicAllocation.minExecutors": "5"
 
@@ -67,7 +67,7 @@ spec:
 
     "spark.dynamicAllocation.executorIdleTimeout": "120s"
     "spark.dynamicAllocation.schedulerBacklogTimeout": "60s"
-    "spark.default.parallelism": "520"
+    "spark.default.parallelism": "500"
     "spark.jars.ivy": "/tmp"
     "spark.jars.ivySettings": "/tmp/ivy-settings.xml"
     "spark.broadcast.compress": "true"
@@ -81,13 +81,13 @@ spec:
     "spark.shuffle.io.retryWait": "300s"
     "spark.driver.extraClassPath": "/etc/hadoop/conf/:/etc/gbif/:/stackable/spark/extra-jars/*:/stackable/spark/jobs/"
     "spark.executor.extraClassPath": "/etc/hadoop/conf/:/etc/gbif/:/stackable/spark/extra-jars/*:/stackable/spark/jobs/"
-    "spark.kubernetes.allocation.batch.size": "2"
+    "spark.kubernetes.allocation.batch.size": "10"
     "spark.kubernetes.scheduler.name": "yunikorn"
     "spark.kubernetes.executor.label.queue": "root.test.pipelines"
     "spark.kubernetes.submit.label.queue": "root.test.pipelines"
-    "spark.kubernetes.memoryOverheadFactor": "0.25"
+    "spark.kubernetes.memoryOverheadFactor": "0.15"
 
-    "spark.executor.memoryOverheadFactor": "0.25"
+    "spark.executor.memoryOverheadFactor": "0.15"
     "spark.driver.cores": "3"
     "spark.driver.memoryOverheadFactor": "0.10"
     "spark.kubernetes.driver.ownPersistentVolumeClaim": "true"
@@ -104,7 +104,7 @@ spec:
     "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpoint.mount.path": "/data"
     "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpoint.options.sizeLimit": "6Gi"
     "spark.local.dir": "/data/spark-1/executor"
-    "spark.kubernetes.executor.podNamePrefix": "interpretation-inat-celeborn"
+    "spark.kubernetes.executor.podNamePrefix": "tim-hbase"
     "spark.kubernetes.authenticate.driver.serviceAccountName": "cli-account"
   volumes:
     - name: ivy-settings
@@ -153,16 +153,6 @@ spec:
     podOverrides:
       metadata:
         annotations:
-          yunikorn.apache.org/task-group-name: "spark-driver"
-          yunikorn.apache.org/task-groups: |-
-            [{
-              "name": "spark-driver",
-              "minMember": 1,
-              "minResource": {
-                "cpu": "2250m",
-                "memory": "4Gi"
-              }
-            }]
         labels:
           queue: "root.test.pipelines"
       spec:
@@ -220,16 +210,6 @@ spec:
     podOverrides:
       metadata:
         annotations:
-          yunikorn.apache.org/task-group-name: "spark-executor"
-          yunikorn.apache.org/task-groups: |-
-            [{
-              "name": "spark-executor",
-              "minMember": 13,
-              "minResource": {
-                "cpu": "4250m",
-                "memory": "34Gi"
-              }
-            }]
         labels:
           queue: "root.test.pipelines"
       spec:
@@ -247,9 +227,9 @@ spec:
       resources:
         cpu:
           min: "4000m"
-          max: "8000m"
+          max: "10000m"
         memory:
-          limit: "28Gi"
+          limit: "20Gi"
       logging:
         enableVectorAgent: true
         containers:

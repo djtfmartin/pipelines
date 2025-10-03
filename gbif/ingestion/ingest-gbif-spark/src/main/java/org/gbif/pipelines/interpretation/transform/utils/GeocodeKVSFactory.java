@@ -75,7 +75,7 @@ public class GeocodeKVSFactory {
                           .withHBaseZk(zk)
                           .withHBaseZnode(geocodeConfig.getHbaseZnode())
                           .build())
-                  .withCacheCapacity(25_000L)
+                  .withCacheCapacity(1_000L)
                   .withCacheExpiryTimeInSeconds(geocodeConfig.getCacheExpiryTimeInSeconds());
 
           KvConfig.LoaderRetryConfig retryConfig = geocodeConfig.getLoaderRetryConfig();

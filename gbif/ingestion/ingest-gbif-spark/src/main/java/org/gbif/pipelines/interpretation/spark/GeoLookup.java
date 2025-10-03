@@ -24,13 +24,11 @@ public class GeoLookup {
                 HBaseKVStoreConfiguration.builder()
                     .withTableName("tim_geo_kv")
                     .withColumnFamily("v") // Column in which qualifiers are stored
-                    .withNumOfKeyBuckets(10)
+                    .withNumOfKeyBuckets(25)
                     .withHBaseZk(
                         "c5n7.gbif-test.org:31706,c5n9.gbif-test.org:31706,c6n8.gbif-test.org:31706")
                     .withHBaseZnode("/znode-93f9cdb5-d146-46da-9f80-e8546468b0fe/hbase")
-                    .build())
-            .withCacheCapacity(100L)
-            .withCacheExpiryTimeInSeconds(120L);
+                    .build());
 
     try {
       CACHE = GeocodeKVStoreFactory.simpleGeocodeKVStore(configBuilder.build(), clientConfig);
