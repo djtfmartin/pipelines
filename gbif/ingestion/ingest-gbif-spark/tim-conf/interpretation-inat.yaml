@@ -12,7 +12,7 @@ spec:
   mode: cluster
 #  mainApplicationFile: local:///stackable/spark/jobs/ingest-gbif-spark.jar
   mainApplicationFile: hdfs://gbif-hdfs/user/tim/ingest-gbif-spark-3.2.7-SNAPSHOT-3.5.6.jar
-  mainClass: org.gbif.pipelines.interpretation.spark.Interpretation
+  mainClass: org.gbif.pipelines.interpretation.spark.InterpretationSimple
   vectorAggregatorConfigMapName: gbif-vector-aggregator-discovery
   s3connection:
     inline:

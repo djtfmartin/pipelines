@@ -27,15 +27,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.Row;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
-import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.interpretation.transform.LocationTransform;
 import org.gbif.pipelines.interpretation.transform.MultiTaxonomyTransform;
 import org.gbif.pipelines.io.avro.*;
-import scala.Tuple2;
 import scala.Tuple3;
 
 @Slf4j
@@ -89,7 +86,16 @@ public class InterpretationSimple implements Serializable {
     private boolean help;
   }
 
-  public static void main(String[] argsv) {
+  public static void main(String[] argsv) throws InterruptedException {
+    for (int i = 0; i < 100; i++) {
+      System.out.println("Starting a new loop: " + i);
+      main2(argsv, i);
+      Thread.sleep(60000);
+    }
+    System.exit(0);
+  }
+
+  public static void main2(String[] argsv, int loop) {
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
     jCommander.parse(argsv);
@@ -137,7 +143,6 @@ public class InterpretationSimple implements Serializable {
                 er -> {
                   Optional<MultiTaxonRecord> tr = taxonomyTransform.convert(er);
                   Optional<LocationRecord> lr = locationTransform.convert(er, metadata);
-
                   return Tuple3.apply(
                       OBJECT_MAPPER.writeValueAsString(er),
                       OBJECT_MAPPER.writeValueAsString(tr.orElse(null)),
@@ -145,14 +150,16 @@ public class InterpretationSimple implements Serializable {
                 },
             Encoders.tuple(Encoders.STRING(), Encoders.STRING(), Encoders.STRING()));
 
-    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-interp.parquet");
+    interpreted
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/simple-interp-" + loop + ".parquet");
 
     // Convert the interpreted and write the JSON file
 
     // Convert the interpreted and write the Parquet file for HDFS view
 
     spark.close();
-    System.exit(0);
   }
 
   // ----------------- Helper Methods -----------------
@@ -165,67 +172,5 @@ public class InterpretationSimple implements Serializable {
         .load(inputPath + "/verbatim.avro")
         .as(Encoders.bean(ExtendedRecord.class))
         .repartition(numberOfShards);
-  }
-
-  private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
-    return spark
-        .read()
-        .parquet(outputPath + "/identifiers")
-        .as(Encoders.bean(IdentifierRecord.class));
-  }
-
-  private static void writeDebug(
-      SparkSession spark,
-      Dataset<Tuple2<String, String>> records,
-      String outputPath,
-      String name,
-      boolean debug) {
-
-    if (debug) {
-      log.info("Writing debug {}", name);
-      spark
-          .sparkContext()
-          .setJobGroup(
-              String.format("write-%s", name), String.format("Write %s to Parquet", name), true);
-      records.write().mode("overwrite").parquet(outputPath + "/" + name);
-    }
-  }
-
-  static final ObjectMapper objectMapper = new ObjectMapper();
-
-  private static Dataset<Tuple2<String, String>> basicTransform(
-      PipelinesConfig config, Dataset<ExtendedRecord> source) {
-    return source.map(
-        (MapFunction<ExtendedRecord, Tuple2<String, String>>)
-            er -> {
-              return Tuple2.apply(
-                  er.getId(),
-                  objectMapper.writeValueAsString(
-                      BasicTransform.builder()
-                          .useDynamicPropertiesInterpretation(true)
-                          .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
-                          .build()
-                          .convert(er)
-                          .get()));
-            },
-        Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
-  }
-
-  private static Dataset<Row> joinAsRowTo(
-      Dataset<Row> source,
-      Dataset<Tuple2<String, String>> records,
-      String targetColumn,
-      String outputPath) {
-
-    // Perform join and add the joined value into a new column
-    Dataset<Row> joinedDataset =
-        source
-            .join(records, source.col("id").equalTo(records.col("_1")), "inner")
-            .drop(records.col("_1"))
-            .withColumnRenamed(records.col("_2").toString(), targetColumn);
-
-    joinedDataset.write().mode("overwrite").parquet(outputPath + "/joined-" + targetColumn);
-
-    return joinedDataset;
   }
 }
