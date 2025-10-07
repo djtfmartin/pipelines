@@ -17,6 +17,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.Optional;
 import lombok.Builder;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.*;
 import org.gbif.pipelines.interpretation.transform.utils.VocabularyServiceFactory;
@@ -26,8 +27,7 @@ import org.gbif.pipelines.io.avro.*;
 @Builder
 public class BasicTransform implements Serializable {
 
-  private boolean useDynamicPropertiesInterpretation;
-  private String vocabularyApiUrl;
+  private PipelinesConfig config;
 
   public Optional<BasicRecord> convert(ExtendedRecord source) {
 
@@ -43,10 +43,10 @@ public class BasicTransform implements Serializable {
             .via(BasicInterpreter::interpretTypifiedName)
             .via(
                 VocabularyInterpreter.interpretSex(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via(
                 VocabularyInterpreter.interpretTypeStatus(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via(BasicInterpreter::interpretIndividualCount)
             .via((e, r) -> CoreInterpreter.interpretReferences(e, r, r::setReferences))
             .via(BasicInterpreter::interpretOrganismQuantity)
@@ -59,19 +59,19 @@ public class BasicTransform implements Serializable {
             .via(BasicInterpreter::interpretRecordedByIds)
             .via(
                 VocabularyInterpreter.interpretOccurrenceStatus(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via(
                 VocabularyInterpreter.interpretEstablishmentMeans(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via(
                 VocabularyInterpreter.interpretLifeStage(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via(
                 VocabularyInterpreter.interpretPathway(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via(
                 VocabularyInterpreter.interpretDegreeOfEstablishment(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via((e, r) -> CoreInterpreter.interpretDatasetID(e, r::setDatasetID))
             .via((e, r) -> CoreInterpreter.interpretDatasetName(e, r::setDatasetName))
             .via(BasicInterpreter::interpretOtherCatalogNumbers)
@@ -85,7 +85,7 @@ public class BasicTransform implements Serializable {
             // Geological context
             .via(
                 GeologicalContextInterpreter.interpretChronostratigraphy(
-                    VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
+                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
             .via(GeologicalContextInterpreter::interpretLowestBiostratigraphicZone)
             .via(GeologicalContextInterpreter::interpretHighestBiostratigraphicZone)
             .via(GeologicalContextInterpreter::interpretGroup)
@@ -93,15 +93,13 @@ public class BasicTransform implements Serializable {
             .via(GeologicalContextInterpreter::interpretMember)
             .via(GeologicalContextInterpreter::interpretBed);
 
-    if (useDynamicPropertiesInterpretation) {
-      handler
-          .via(
-              DynamicPropertiesInterpreter.interpretSex(
-                  VocabularyServiceFactory.getInstance(vocabularyApiUrl)))
-          .via(
-              DynamicPropertiesInterpreter.interpretLifeStage(
-                  VocabularyServiceFactory.getInstance(vocabularyApiUrl)));
-    }
+    handler
+        .via(
+            DynamicPropertiesInterpreter.interpretSex(
+                VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
+        .via(
+            DynamicPropertiesInterpreter.interpretLifeStage(
+                VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())));
 
     return handler.getOfNullable();
   }

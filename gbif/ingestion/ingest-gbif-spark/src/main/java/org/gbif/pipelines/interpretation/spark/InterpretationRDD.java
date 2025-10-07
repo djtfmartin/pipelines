@@ -624,12 +624,7 @@ public class InterpretationRDD implements Serializable {
               return Tuple2.apply(
                   er.getId(),
                   objectMapper.writeValueAsString(
-                      BasicTransform.builder()
-                          .useDynamicPropertiesInterpretation(true)
-                          .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
-                          .build()
-                          .convert(er)
-                          .get()));
+                      BasicTransform.builder().config(config).build().convert(er).get()));
             },
         Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }

@@ -14,8 +14,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.spark.HdfsView.transformJsonToHdfsView;
-import static org.gbif.pipelines.interpretation.spark.JsonView.transformToJsonView;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -23,9 +21,6 @@ import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -36,10 +31,7 @@ import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.BasicTransform;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import scala.Tuple2;
-import scala.Tuple3;
-import scala.Tuple4;
 
 @Slf4j
 public class InterpretationJoin implements Serializable {
@@ -113,18 +105,20 @@ public class InterpretationJoin implements Serializable {
       sparkBuilder = sparkBuilder.master(args.master);
     }
 
-    sparkBuilder.config(
-        "spark.sql.warehouse.dir",
-        "hdfs://gbif-hdfs/data/ingest_spark/" + datasetId + "/" + attempt + "/warehouse");
+    String warehouseDirectory =
+        "hdfs://gbif-hdfs/data/ingest_spark/" + datasetId + "/" + attempt + "/dave-swarehouse2";
+
+    sparkBuilder.config("spark.sql.warehouse.dir", warehouseDirectory);
     SparkSession spark = sparkBuilder.getOrCreate();
 
-    spark
-        .sparkContext()
-        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
-    Dataset<ExtendedRecord> extendedRecords =
-        loadExtendedRecords(spark, inputPath, args.numberOfShards);
+    //    spark
+    //        .sparkContext()
+    //        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath),
+    // true);
+    //    Dataset<ExtendedRecord> extendedRecords =
+    //        loadExtendedRecords(spark, inputPath, args.numberOfShards);
 
-    log.info("=== Step 1: Initialise occurrence records {}", extendedRecords.count());
+    //    log.info("=== Step 1: Initialise occurrence records {}", extendedRecords.count());
 
     spark
         .sparkContext()
@@ -132,35 +126,84 @@ public class InterpretationJoin implements Serializable {
 
     log.info("=== Step 2: Load metadata from registry and ES");
     spark.sparkContext().setJobGroup("load-metadata", "Load metadata from registry and ES", true);
-    MetadataServiceClient metadataServiceClient =
-        MetadataServiceClient.create(config.getGbifApi(), config.getContent());
-    MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
-    MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
-
-    ObjectMapper MAPPER = new ObjectMapper();
-
-    int BUCKETS = 20;
-
-    spark.sql("DROP TABLE IF EXISTS verbatim");
-    extendedRecords
-        .map(
-            (MapFunction<ExtendedRecord, Tuple2<String, String>>)
-                record ->
-                    Tuple2.<String, String>apply(record.getId(), MAPPER.writeValueAsString(record)),
-            Encoders.tuple(Encoders.STRING(), Encoders.STRING()))
-        .toDF("id", "verbatim")
-        .write()
-        .format("parquet")
-        .bucketBy(BUCKETS, "id")
-        .sortBy("id")
-        .mode("overwrite")
-        .saveAsTable("verbatim");
-
-    Dataset<Row> occurrenceRecords = spark.table("verbatim");
-
-    log.info("Identifiers count {}", occurrenceRecords.count());
 
     spark.sql("DROP TABLE IF EXISTS identifier");
+    spark.sparkContext().setJobGroup("load", "Loading identifiers into warehouse", true);
+    loadIdentifersIntoWarehouse(spark, outputPath);
+
+    spark.sparkContext().setJobGroup("load", "Loading verbatim into warehouse", true);
+    loadRecordTypeAsRow(spark, outputPath, "verbatim", args.numberOfShards);
+
+    spark.sparkContext().setJobGroup("load", "Loading basic into warehouse", true);
+    loadRecordTypeAsRow(spark, outputPath, "basic", args.numberOfShards);
+
+    spark.sparkContext().setJobGroup("load", "Loading temporalinto warehouse", true);
+    loadRecordTypeAsRow(spark, outputPath, "temporal", args.numberOfShards);
+
+    spark.sparkContext().setJobGroup("load", "Loading taxonomy into warehouse", true);
+    loadRecordTypeAsRow(spark, outputPath, "taxonomy", args.numberOfShards);
+
+    spark.sparkContext().setJobGroup("load", "Loading grscicoll into warehouse", true);
+    loadRecordTypeAsRow(spark, outputPath, "grscicoll", args.numberOfShards);
+
+    spark.sparkContext().setJobGroup("load", "Loading location into warehouse", true);
+    loadRecordTypeAsRow(spark, outputPath, "location", args.numberOfShards);
+
+    // --- The JOIN -- //
+
+    // reload from disk....
+    spark.read().parquet(warehouseDirectory + "/basic").createOrReplaceTempView("basic");
+    spark.read().parquet(warehouseDirectory + "/grscicoll").createOrReplaceTempView("grscicoll");
+    spark.read().parquet(warehouseDirectory + "/location").createOrReplaceTempView("location");
+    spark.read().parquet(warehouseDirectory + "/taxonomy").createOrReplaceTempView("taxonomy");
+    spark.read().parquet(warehouseDirectory + "/temporal").createOrReplaceTempView("temporal");
+    spark.read().parquet(warehouseDirectory + "/verbatim").createOrReplaceTempView("verbatim");
+
+    spark.sparkContext().setJobGroup("join", "Joining all together", true);
+    spark
+        .sql(
+            "SELECT v.id, v.verbatim as verbatim, i.identifier as identifier, b.basic as basic, t.temporal as temporal, ta.taxonomy as taxonomy, g.grscicoll as grscicoll, l.location as location "
+                + "FROM verbatim v "
+                + "LEFT JOIN identifier i  ON v.id = i.id "
+                + "LEFT JOIN basic       b  ON v.id = b.id "
+                + "LEFT JOIN temporal    t  ON v.id = t.id "
+                + "LEFT JOIN taxonomy    ta ON v.id = ta.id "
+                + "LEFT JOIN grscicoll   g  ON v.id = g.id "
+                + "LEFT JOIN location    l  ON v.id = l.id ")
+        .write()
+        .format("parquet")
+        .mode("overwrite")
+        .saveAsTable("joined");
+
+    // --- HDFS VIEW -- //
+    //
+    //    // re-read the joined table
+    //    MetadataRecord metadata = getMetadataRecord(config, args);
+    //
+    //    // output hdfs
+    //    spark.sparkContext().setJobGroup("join", "Output hdfs", true);
+    //    transformJsonToHdfsView(joined, metadata)
+    //        .write()
+    //        .mode("overwrite")
+    //        .parquet(outputPath + "/hdfs-join");
+    //    System.out.println("Wrote to: " + outputPath + "/hdfs-join");
+    //
+    //
+    //      //--- JSON VIEW -- //
+    //
+    //
+    //    // output json
+    //    spark.sparkContext().setJobGroup("join", "Output json", true);
+    //    transformToJsonView(joined, metadata).write().mode("overwrite").parquet(outputPath +
+    // "/json");
+    //    System.out.println("Wrote to: " + outputPath + "/json-join");
+
+    spark.close();
+    System.exit(0);
+  }
+
+  private static void loadIdentifersIntoWarehouse(SparkSession spark, String outputPath) {
+    ObjectMapper MAPPER = new ObjectMapper();
     loadIdentifiers(spark, outputPath)
         .map(
             (MapFunction<IdentifierRecord, Tuple2<String, String>>)
@@ -170,169 +213,16 @@ public class InterpretationJoin implements Serializable {
         .toDF("id", "identifier")
         .write()
         .format("parquet")
-        .bucketBy(BUCKETS, "id")
-        .sortBy("id")
         .mode("overwrite")
         .saveAsTable("identifier");
-
-    Dataset<Row> identifiersRDD = spark.table("identifier");
-    System.out.println("JSON count: " + identifiersRDD.count());
-
-    spark.sparkContext().setJobGroup("initialise-occurrence", "Loading pre-prepared parquet", true);
-
-    spark.sparkContext().setJobGroup("load", "Loading basic", true);
-    Dataset<Row> basicRDD = loadRecordTypeAsRow(spark, outputPath, "basic", BUCKETS);
-    System.out.println("JSON count: " + basicRDD.count());
-
-    spark.sparkContext().setJobGroup("load", "Loading temporal", true);
-    Dataset<Row> temporalRDD = loadRecordTypeAsRow(spark, outputPath, "temporal", BUCKETS);
-    System.out.println("JSON count: " + temporalRDD.count());
-
-    spark.sparkContext().setJobGroup("load", "Loading taxonomy", true);
-    Dataset<Row> taxonomyRDD = loadRecordTypeAsRow(spark, outputPath, "taxonomy", BUCKETS);
-    System.out.println("JSON count: " + taxonomyRDD.count());
-
-    spark.sparkContext().setJobGroup("load", "Loading grscicoll", true);
-    Dataset<Row> grscicollRDD = loadRecordTypeAsRow(spark, outputPath, "grscicoll", BUCKETS);
-    System.out.println("JSON count: " + grscicollRDD.count());
-
-    spark.sparkContext().setJobGroup("load", "Loading location", true);
-    Dataset<Row> locationRDD = loadRecordTypeAsRow(spark, outputPath, "location", BUCKETS);
-    System.out.println("JSON count: " + locationRDD.count());
-
-    //    spark.sparkContext().setJobGroup("create-views", "Creating verbatim view", true);
-    //    occurrenceRecords.createTempView("verbatim");
-    //
-    //    spark.sparkContext().setJobGroup("create-views", "Creating identifiers view", true);
-    //    identifiersRDD.createTempView("identifier");
-    //
-    //    spark.sparkContext().setJobGroup("create-views", "Creating basic view", true);
-    //    basicRDD.createTempView("basic");
-    //
-    //    spark.sparkContext().setJobGroup("create-views", "Creating temporal view", true);
-    //    temporalRDD.createTempView("temporal");
-    //
-    //    spark.sparkContext().setJobGroup("create-views", "Creating taxonomy view", true);
-    //    taxonomyRDD.createTempView("taxonomy");
-    //
-    //    spark.sparkContext().setJobGroup("create-views", "Creating grscicoll view", true);
-    //    grscicollRDD.createTempView("grscicoll");
-    //
-    //    spark.sparkContext().setJobGroup("create-views", "Creating location view", true);
-    //    locationRDD.createTempView("location");
-
-    spark.sparkContext().setJobGroup("join", "Joining all together", true);
-    Dataset<Row> joined =
-        spark.sql(
-            "SELECT v.id, v.verbatim as verbatim, i.identifier as identifier, b.basic as basic, t.temporal as temporal, ta.taxonomy as taxonomy, g.grscicoll as grscicoll, l.location as location "
-                + "FROM verbatim v "
-                + "LEFT JOIN identifier i  ON v.id = i.id "
-                + "LEFT JOIN basic       b  ON v.id = b.id "
-                + "LEFT JOIN temporal    t  ON v.id = t.id "
-                + "LEFT JOIN taxonomy    ta ON v.id = ta.id "
-                + "LEFT JOIN grscicoll   g  ON v.id = g.id "
-                + "LEFT JOIN location    l  ON v.id = l.id ");
-
-    System.out.println("Joined count: " + joined.count());
-
-    // output hdfs
-    spark.sparkContext().setJobGroup("join", "Output hdfs", true);
-    transformJsonToHdfsView(joined, metadata)
-        .write()
-        .mode("overwrite")
-        .parquet(outputPath + "/hdfs-join");
-    System.out.println("Wrote to: " + outputPath + "/hdfs-join");
-
-    // output json
-    spark.sparkContext().setJobGroup("join", "Output json", true);
-    transformToJsonView(joined, metadata).write().mode("overwrite").parquet(outputPath + "/json");
-    System.out.println("Wrote to: " + outputPath + "/json-join");
-
-    spark.close();
-    System.exit(0);
   }
 
-  private static <T> JavaRDD<T> convertJavaRDD(
-      JavaPairRDD<
-              String,
-              Tuple2<
-                  Iterable<
-                      Tuple4<
-                          Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
-                          Iterable<String>,
-                          Iterable<String>,
-                          Iterable<String>>>,
-                  Iterable<String>>>
-          finalCg,
-      MetadataRecord metadata,
-      Function<OccurrenceRecord, T> converter) {
-
-    final ObjectMapper MAPPER = new ObjectMapper();
-
-    return finalCg.map(
-        data -> {
-          String key = data._1;
-          Tuple2<
-                  Iterable<
-                      Tuple4<
-                          Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
-                          Iterable<String>,
-                          Iterable<String>,
-                          Iterable<String>>>,
-                  Iterable<String>>
-              obj = data._2;
-
-          Tuple4<
-                  Iterable<Tuple3<Iterable<String>, Iterable<String>, Iterable<String>>>,
-                  Iterable<String>,
-                  Iterable<String>,
-                  Iterable<String>>
-              t = obj._1().iterator().next();
-          Tuple3<Iterable<String>, Iterable<String>, Iterable<String>> t3 =
-              t._1().iterator().next();
-          ExtendedRecord verbatim =
-              MAPPER.readValue(t3._1().iterator().next(), ExtendedRecord.class);
-          IdentifierRecord identifierRecord =
-              MAPPER.readValue(t3._2().iterator().next(), IdentifierRecord.class);
-          BasicRecord basic = MAPPER.readValue(t3._3().iterator().next(), BasicRecord.class);
-          LocationRecord location =
-              MAPPER.readValue(obj._2().iterator().next(), LocationRecord.class);
-          TemporalRecord temporalRecord =
-              MAPPER.readValue(t._2().iterator().next(), TemporalRecord.class);
-          MultiTaxonRecord multiTaxonRecord =
-              MAPPER.readValue(t._3().iterator().next(), MultiTaxonRecord.class);
-          GrscicollRecord grscicollRecord =
-              MAPPER.readValue(t._4().iterator().next(), GrscicollRecord.class);
-
-          return converter.call(
-              OccurrenceRecord.builder()
-                  .metadata(metadata)
-                  .verbatim(verbatim)
-                  .basic(basic)
-                  .location(location)
-                  .temporal(temporalRecord)
-                  .multiTaxon(multiTaxonRecord)
-                  .grscicoll(grscicollRecord)
-                  .identifier(identifierRecord)
-                  .clustering(ClusteringRecord.newBuilder().setId(key).build()) // placeholder
-                  .multimedia(MultimediaRecord.newBuilder().setId(key).build()) // placeholder
-                  .build());
-          //              return OccurrenceJsonConverter.builder()
-          //                  .verbatim(verbatim)
-          //                  .basic(basic)
-          //                  .location(location)
-          //                  .temporal(temporalRecord)
-          //                  .multiTaxon(multiTaxonRecord)
-          //                  .grscicoll(grscicollRecord)
-          //                  .identifier(identifierRecord)
-          //                  .metadata(metadata)
-          //                  .clustering(ClusteringRecord.newBuilder().setId(key).build()) //
-          // placeholder
-          //                  .multimedia(MultimediaRecord.newBuilder().setId(key).build()) //
-          // placeholder
-          //                  .build()
-          //                  .convert();
-        });
+  private static MetadataRecord getMetadataRecord(PipelinesConfig config, Args args) {
+    MetadataServiceClient metadataServiceClient =
+        MetadataServiceClient.create(config.getGbifApi(), config.getContent());
+    MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
+    MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
+    return metadata;
   }
   // ----------------- Helper Methods -----------------
 
@@ -354,8 +244,9 @@ public class InterpretationJoin implements Serializable {
         .as(Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
 
-  private static Dataset<Row> loadRecordTypeAsRow(
+  private static void loadRecordTypeAsRow(
       SparkSession spark, String outputPath, String recordType, int numberOfShards) {
+
     Dataset<Row> loadedFromFiles =
         spark
             .read()
@@ -366,15 +257,11 @@ public class InterpretationJoin implements Serializable {
     // write sorted and bucketed table
     spark.sql("DROP TABLE IF EXISTS " + recordType);
     loadedFromFiles
+        .repartition(numberOfShards)
         .write()
         .format("parquet")
-        .bucketBy(numberOfShards, "id")
-        .sortBy("id")
         .mode("overwrite")
         .saveAsTable(recordType);
-
-    // load table
-    return spark.table(recordType);
   }
 
   private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
@@ -411,12 +298,7 @@ public class InterpretationJoin implements Serializable {
               return Tuple2.apply(
                   er.getId(),
                   objectMapper.writeValueAsString(
-                      BasicTransform.builder()
-                          .useDynamicPropertiesInterpretation(true)
-                          .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
-                          .build()
-                          .convert(er)
-                          .get()));
+                      BasicTransform.builder().config(config).build().convert(er).get()));
             },
         Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }

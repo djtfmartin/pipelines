@@ -116,6 +116,8 @@ public class Interpretation implements Serializable {
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, inputPath, args.numberOfShards);
 
+    extendedRecords.write().mode("overwrite").parquet(outputPath + "/verbatim");
+
     log.info("=== Step 1: Initialise occurrence records {}", extendedRecords.count());
 
     spark
@@ -134,6 +136,7 @@ public class Interpretation implements Serializable {
     Dataset<Tuple2<String, String>> location =
         locationTransform(
             config, spark, extendedRecords, metadata, args.numberOfShards, outputPath);
+    writeDebug(spark, location, outputPath, "location", args.debug);
 
     log.info("Count of looked up locations {}", location.count());
 
@@ -157,6 +160,7 @@ public class Interpretation implements Serializable {
     spark.sparkContext().setJobGroup("grscicoll-transform", "Run grscicoll transform", true);
     Dataset<Tuple2<String, String>> grscicoll =
         grscicollTransform(config, spark, extendedRecords, metadata, args.numberOfShards);
+    writeDebug(spark, grscicoll, outputPath, "grscicoll", args.debug);
 
     log.info("=== Step 3: Load identifiers from {}", outputPath);
     spark
@@ -268,12 +272,7 @@ public class Interpretation implements Serializable {
               return Tuple2.apply(
                   er.getId(),
                   objectMapper.writeValueAsString(
-                      BasicTransform.builder()
-                          .useDynamicPropertiesInterpretation(true)
-                          .vocabularyApiUrl(config.getVocabularyService().getWsUrl())
-                          .build()
-                          .convert(er)
-                          .get()));
+                      BasicTransform.builder().config(config).build().convert(er).get()));
             },
         Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
   }
