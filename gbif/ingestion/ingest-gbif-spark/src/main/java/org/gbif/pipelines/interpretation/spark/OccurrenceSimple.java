@@ -11,8 +11,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OccurrenceSimple {
   String id;
-  String basic;
   String verbatim;
+  String identifier;
+  String basic;
   String location;
   String taxon;
   String temporal;
