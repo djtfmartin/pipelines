@@ -26,11 +26,14 @@ import org.apache.hadoop.hbase.client.*;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.converters.OccurrenceJsonConverter;
 import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.*;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
+import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
+import scala.Tuple2;
 
 @Slf4j
 public class InterpretationSimple implements Serializable {
@@ -110,13 +113,38 @@ public class InterpretationSimple implements Serializable {
         .sparkContext()
         .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
 
+    // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, inputPath, args.numberOfShards);
 
-    // A single call to the registry to get th dataset metadata
+    // Load identifiers
+    Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
+
+    // join and write to disk
+    extendedRecords
+        .as("extendedRecord")
+        .joinWith(identifiers, extendedRecords.col("id").equalTo(identifiers.col("id")))
+        .map(
+            (MapFunction<Tuple2<ExtendedRecord, IdentifierRecord>, OccurrenceSimple>)
+                row -> {
+                  ExtendedRecord er = row._1;
+                  IdentifierRecord ir = row._2;
+                  return OccurrenceSimple.builder()
+                      .id(er.getId())
+                      .verbatim(OBJECT_MAPPER.writeValueAsString(er))
+                      .identifier(OBJECT_MAPPER.writeValueAsString(ir))
+                      .build();
+                },
+            Encoders.bean(OccurrenceSimple.class))
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/extended-identifiers");
+
+    // A single call to the registry to get the dataset metadata
     MetadataServiceClient metadataServiceClient =
         MetadataServiceClient.create(config.getGbifApi(), config.getContent());
-    MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
+    final MetadataRecord metadata =
+        MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
     MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
 
     // Set up our transforms
@@ -127,11 +155,19 @@ public class InterpretationSimple implements Serializable {
     TemporalTransform temporalTransform = TemporalTransform.builder().build();
     BasicTransform basicTransform = BasicTransform.builder().config(config).build();
 
+    Dataset<OccurrenceSimple> simpleRecords =
+        spark
+            .read()
+            .parquet(outputPath + "/extended-identifiers")
+            .as(Encoders.bean(OccurrenceSimple.class));
+
     // Loop over all records and interpret them
     Dataset<OccurrenceSimple> interpreted =
-        extendedRecords.map(
-            (MapFunction<ExtendedRecord, OccurrenceSimple>)
-                er -> {
+        simpleRecords.map(
+            (MapFunction<OccurrenceSimple, OccurrenceSimple>)
+                simpleRecord -> {
+                  ExtendedRecord er =
+                      OBJECT_MAPPER.readValue(simpleRecord.getVerbatim(), ExtendedRecord.class);
                   // Apply all transforms
                   Optional<MultiTaxonRecord> tr = taxonomyTransform.convert(er);
                   Optional<LocationRecord> lr = locationTransform.convert(er, metadata);
@@ -140,8 +176,9 @@ public class InterpretationSimple implements Serializable {
                   Optional<BasicRecord> br = basicTransform.convert(er);
                   return OccurrenceSimple.builder()
                       .id(er.getId())
-                      .verbatim(OBJECT_MAPPER.writeValueAsString(er))
-                      .basic(OBJECT_MAPPER.writeValueAsString(br))
+                      .identifier(simpleRecord.getIdentifier())
+                      .verbatim(simpleRecord.getVerbatim())
+                      .basic(OBJECT_MAPPER.writeValueAsString(br.orElse(null)))
                       .taxon(OBJECT_MAPPER.writeValueAsString(tr.orElse(null)))
                       .location(OBJECT_MAPPER.writeValueAsString(lr.orElse(null)))
                       .grscicoll(OBJECT_MAPPER.writeValueAsString(gr.orElse(null)))
@@ -150,11 +187,16 @@ public class InterpretationSimple implements Serializable {
                 },
             Encoders.bean(OccurrenceSimple.class));
 
-    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence-json.parquet");
+    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence");
 
-    // Convert the interpreted and write the JSON file
+    // re-read
+    Dataset<OccurrenceSimple> simpleRecordsReloaded =
+        spark
+            .read()
+            .parquet(outputPath + "/simple-occurrence")
+            .as(Encoders.bean(OccurrenceSimple.class));
 
-    // Convert the interpreted and write the Parquet file for HDFS view
+    toJson(simpleRecordsReloaded, metadata).write().mode("overwrite").json(outputPath + "/json");
 
     spark.close();
     System.exit(0);
@@ -170,5 +212,54 @@ public class InterpretationSimple implements Serializable {
         .load(inputPath + "/verbatim.avro")
         .as(Encoders.bean(ExtendedRecord.class))
         .repartition(numberOfShards);
+  }
+
+  private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
+    return spark
+        .read()
+        .parquet(outputPath + "/identifiers")
+        .as(Encoders.bean(IdentifierRecord.class));
+  }
+
+  public static Dataset<OccurrenceJsonRecord> toJson(
+      Dataset<OccurrenceSimple> records, MetadataRecord metadataRecord) {
+    return records.map(
+        (MapFunction<OccurrenceSimple, OccurrenceJsonRecord>)
+            record -> {
+              OccurrenceJsonConverter c =
+                  OccurrenceJsonConverter.builder()
+                      .metadata(metadataRecord)
+                      .verbatim(
+                          OBJECT_MAPPER.readValue(
+                              (String) record.getVerbatim(), ExtendedRecord.class))
+                      .basic(OBJECT_MAPPER.readValue((String) record.getBasic(), BasicRecord.class))
+                      .location(
+                          OBJECT_MAPPER.readValue(
+                              (String) record.getLocation(), LocationRecord.class))
+                      .temporal(
+                          OBJECT_MAPPER.readValue(
+                              (String) record.getTemporal(), TemporalRecord.class))
+                      .multiTaxon(
+                          OBJECT_MAPPER.readValue(
+                              (String) record.getTaxon(), MultiTaxonRecord.class))
+                      .grscicoll(
+                          OBJECT_MAPPER.readValue(
+                              (String) record.getGrscicoll(), GrscicollRecord.class))
+                      .identifier(
+                          OBJECT_MAPPER.readValue(
+                              (String) record.getIdentifier(), IdentifierRecord.class))
+                      .clustering(
+                          ClusteringRecord.newBuilder()
+                              .setId(record.getId())
+                              .build()) // placeholder
+                      .multimedia(
+                          MultimediaRecord.newBuilder()
+                              .setId(record.getId())
+                              .build()) // placeholder
+                      .build();
+
+              return c.convert();
+            },
+        Encoders.bean(OccurrenceJsonRecord.class));
   }
 }
