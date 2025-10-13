@@ -16,6 +16,11 @@ import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.EsIndexUtils;
 
+/**
+ * Main class for indexing occurrence data to Elasticsearch. It reads Parquet files from HDFS,
+ * creates an Elasticsearch index if it doesn't exist, deletes existing records for a specific
+ * dataset ID, and writes new records to the index.
+ */
 public class Elastic {
 
   @Parameters(separators = "=")

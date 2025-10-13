@@ -30,9 +30,10 @@ content:
     - http://cms-search.gbif-dev.org:9200/
 amplification:
   wsUrl: http://blast.gbif-dev.org
+
 keygen:
-  occurrenceTable: dev_occurrence
-  counterTable: dev_occurrence_counter
-  lookupTable: dev_occurrence_lookup
-  zkConnectionString:
-  hbaseZnode:
+  occurrenceTable: dave_occurrence
+  counterTable: dave_occurrence_counter
+  lookupTable: dave_occurrence_lookup
+  zkConnectionString: c5n7.gbif-test.org:31706,c5n9.gbif-test.org:31706,c6n8.gbif-test.org:31706
+  hbaseZnode: /znode-93f9cdb5-d146-46da-9f80-e8546468b0fe/hbase

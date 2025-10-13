@@ -4,6 +4,7 @@ import static org.gbif.pipelines.common.PipelinesVariables.Metrics.DUPLICATE_IDS
 import static org.gbif.pipelines.common.PipelinesVariables.Metrics.UNIQUE_IDS_COUNT;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.spark.sql.Dataset;
@@ -33,6 +34,8 @@ public class ValidateIdentifiersTest {
   @Test
   public void testAllUnique() {
 
+    Map<String, Long> metrics = new HashMap<>();
+
     // Example input dataset
     List<ExtendedRecord> records =
         Arrays.asList(
@@ -44,14 +47,15 @@ public class ValidateIdentifiersTest {
     Dataset<ExtendedRecord> dataset =
         spark.createDataset(records, Encoders.bean(ExtendedRecord.class));
 
-    Map<String, Long> result = ValidateIdentifiers.validateIdentifiers(dataset);
+    ValidateIdentifiers.validateIdentifiers(dataset, metrics);
 
-    assert result.get(UNIQUE_IDS_COUNT) == 3;
+    assert metrics.get(UNIQUE_IDS_COUNT) == 3;
   }
 
   @Test
   public void testDuplicates() {
 
+    Map<String, Long> metrics = new HashMap<>();
     // Example input dataset
     List<ExtendedRecord> records =
         Arrays.asList(
@@ -66,9 +70,9 @@ public class ValidateIdentifiersTest {
     Dataset<ExtendedRecord> dataset =
         spark.createDataset(records, Encoders.bean(ExtendedRecord.class));
 
-    Map<String, Long> result = ValidateIdentifiers.validateIdentifiers(dataset);
+    ValidateIdentifiers.validateIdentifiers(dataset, metrics);
 
-    assert result.get(UNIQUE_IDS_COUNT) == 3;
-    assert result.get(DUPLICATE_IDS_COUNT) == 3;
+    assert metrics.get(UNIQUE_IDS_COUNT) == 3;
+    assert metrics.get(DUPLICATE_IDS_COUNT) == 3;
   }
 }

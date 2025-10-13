@@ -3,12 +3,13 @@ package org.gbif.pipelines.interpretation.spark;
 import static org.apache.spark.sql.functions.sum;
 import static org.gbif.pipelines.common.PipelinesVariables.Metrics.*;
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_ABSENT;
+import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_INVALID;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import java.io.Serializable;
+import java.io.*;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +32,19 @@ import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.IdentifierRecord;
 import org.gbif.pipelines.keygen.HBaseLockingKey;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
+/**
+ * Validates the identifiers in a dataset of ExtendedRecords and generates IdentifierRecords. This
+ * is the VERBATIM_TO_IDENTIFIER step in the data pipelines.
+ *
+ * <p>This pipeline performs the following steps: 1. Reads ExtendedRecords from an Avro file. 2.
+ * Checks for occurrence extensions and converts them to individual ExtendedRecords if necessary. 3.
+ * Validates the identifiers by checking for duplicate IDs and counting unique IDs. 4. Transforms
+ * ExtendedRecords to IdentifierRecords using the GbifIdTransform. 5. Writes the IdentifierRecords
+ * to a Parquet file.
+ */
 @Slf4j
 public class ValidateIdentifiers implements Serializable {
 
@@ -66,7 +79,7 @@ public class ValidateIdentifiers implements Serializable {
         description = "Skips gbif id generation and copies ids from ExtendedRecord ids",
         required = false,
         arity = 1)
-    private boolean useExtendedRecordId = true;
+    private boolean useExtendedRecordId = false;
 
     @Parameter(names = "--coreSiteConfig", description = "Path to core-site.xml", required = false)
     private String coreSiteConfig;
@@ -79,6 +92,12 @@ public class ValidateIdentifiers implements Serializable {
 
     @Parameter(names = "--properties", description = "Path to properties file", required = true)
     private String properties;
+
+    @Parameter(
+        names = "--metaFileName",
+        description = "The yaml metrics file to output",
+        required = false)
+    private String metaFileName = "verbatim-to-identifier.yml";
 
     @Parameter(
         names = "--master",
@@ -130,10 +149,12 @@ public class ValidateIdentifiers implements Serializable {
     // read the extended records and check for occurrences in the extensions
     Dataset<ExtendedRecord> recordsExpanded = checkExtensionsForOccurrence(records);
 
-    // validate the identifiers
-    Map<String, Long> validationResult = validateIdentifiers(recordsExpanded);
+    Map<String, Long> metrics = new HashMap<>();
 
-    // run the identifier transform
+    // validate the identifiers from the extended records
+    validateIdentifiers(recordsExpanded, metrics);
+
+    // run the identifier transform - note: this does not generate new gbifIds
     Dataset<IdentifierRecord> identifiers =
         identifierTransform(
             spark,
@@ -144,18 +165,48 @@ public class ValidateIdentifiers implements Serializable {
             args.useExtendedRecordId,
             recordsExpanded);
 
-    // Write the identifiers to parquet
+    // get the absent records - i.e. records not assigned a gbifId and not stored in hbase
+    Dataset<IdentifierRecord> absentIdentifiers = absentAndFilteredCount(identifiers, metrics);
+
+    // get the invalid records - i.e. records with an invalid gbifId
+    Dataset<IdentifierRecord> invalidIdentifiers = invalid(absentIdentifiers, metrics);
+
+    // 1. write unique ids
     identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
 
-    // get the absent & filtered count
-    Map<String, Long> idCounts = absentAndFilteredCount(identifiers);
+    // 2. write invalid ids
+    invalidIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_invalid");
 
-    // output the metrics
-    validationResult.putAll(idCounts);
+    // 3. write absent ids
+    absentIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_absent");
+
+    // 4. write metrics to yaml
+    writeMetricsYaml(metrics, outputPath + "/" + args.metaFileName);
 
     log.info("ValidateIdentifiers finished");
     spark.close();
     System.exit(0);
+  }
+
+  private static void writeMetricsYaml(Map<String, Long> allMetrics, String fileName) {
+    // Configure YAML output (optional)
+    DumperOptions options = new DumperOptions();
+    options.setIndent(2);
+    options.setPrettyFlow(true);
+    options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+
+    // Create YAML instance
+    Yaml yaml = new Yaml(options);
+
+    // Write to a YAML file
+    try (StringWriter writer = new StringWriter()) {
+      yaml.dump(allMetrics, writer);
+
+      System.out.println("Metrics YAML:\n" + writer.toString());
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   /**
@@ -165,9 +216,8 @@ public class ValidateIdentifiers implements Serializable {
    * @param identifiers Dataset of IdentifierRecord to analyze
    * @return Map with counts of absent and filtered GBIF IDs
    */
-  public static Map<String, Long> absentAndFilteredCount(Dataset<IdentifierRecord> identifiers) {
-
-    Map<String, Long> result = new java.util.HashMap<>();
+  public static Dataset<IdentifierRecord> absentAndFilteredCount(
+      Dataset<IdentifierRecord> identifiers, Map<String, Long> metrics) {
 
     Dataset<IdentifierRecord> absentRecords =
         identifiers.filter(
@@ -182,10 +232,26 @@ public class ValidateIdentifiers implements Serializable {
     Long absentCount = absentRecords.count();
     Long identifiersCount = identifiers.count();
 
-    result.put(ABSENT_GBIF_ID_COUNT, absentRecords.count());
-    result.put(FILTERED_GBIF_IDS_COUNT, identifiersCount - absentCount);
+    metrics.put(ABSENT_GBIF_ID_COUNT, absentRecords.count());
+    metrics.put(FILTERED_GBIF_IDS_COUNT, identifiersCount - absentCount);
 
-    return result;
+    return absentRecords;
+  }
+
+  public static Dataset<IdentifierRecord> invalid(
+      Dataset<IdentifierRecord> identifiers, Map<String, Long> metrics) {
+
+    Dataset<IdentifierRecord> invalidRecords =
+        identifiers.filter(
+            new FilterFunction<IdentifierRecord>() {
+              @Override
+              public boolean call(IdentifierRecord ir) throws Exception {
+                return ir.getInternalId() == null
+                    && ir.getIssues().getIssueList().contains(GBIF_ID_INVALID);
+              }
+            });
+    metrics.put(INVALID_GBIF_ID_COUNT, invalidRecords.count());
+    return invalidRecords;
   }
 
   /**
@@ -196,8 +262,8 @@ public class ValidateIdentifiers implements Serializable {
    * @param records Dataset of ExtendedRecord to validate
    * @return Map with counts of duplicate and unique IDs
    */
-  public static Map<String, Long> validateIdentifiers(Dataset<ExtendedRecord> records) {
-    Map<String, Long> result = new HashMap<>();
+  public static void validateIdentifiers(
+      Dataset<ExtendedRecord> records, Map<String, Long> metrics) {
 
     // Find duplicate ID counts
     Dataset<Row> duplicates = records.groupBy("id").count().filter("count > 1");
@@ -205,13 +271,11 @@ public class ValidateIdentifiers implements Serializable {
     long duplicateCount =
         duplicates.isEmpty() ? 0L : duplicates.agg(sum("count")).first().getLong(0);
 
-    result.put(DUPLICATE_IDS_COUNT, duplicateCount);
+    metrics.put(DUPLICATE_IDS_COUNT, duplicateCount);
 
     // Compute unique (non-duplicate) IDs
     long totalCount = records.count();
-    result.put(UNIQUE_IDS_COUNT, totalCount - duplicateCount);
-
-    return result;
+    metrics.put(UNIQUE_IDS_COUNT, totalCount - duplicateCount);
   }
 
   /**
@@ -261,17 +325,18 @@ public class ValidateIdentifiers implements Serializable {
         Encoders.bean(ExtendedRecord.class));
   }
 
-    /**
-     * Transforms ExtendedRecord dataset to IdentifierRecord dataset.
-     * @param spark
-     * @param config
-     * @param datasetId
-     * @param isTripletValid
-     * @param isOccurrenceIdValid
-     * @param isUseExtendedRecordId
-     * @param records
-     * @return
-     */
+  /**
+   * Transforms ExtendedRecord dataset to IdentifierRecord dataset.
+   *
+   * @param spark Spark session
+   * @param config Pipelines configuration
+   * @param datasetId Dataset identifier
+   * @param isTripletValid
+   * @param isOccurrenceIdValid
+   * @param isUseExtendedRecordId
+   * @param records Dataset of ExtendedRecord to transform
+   * @return Dataset of IdentifierRecord
+   */
   public static Dataset<IdentifierRecord> identifierTransform(
       final SparkSession spark,
       final PipelinesConfig config,
