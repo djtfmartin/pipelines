@@ -14,6 +14,7 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.spark.PersistIdentifiers.processIdentifiers;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -109,15 +110,12 @@ public class Interpretation implements Serializable {
     }
     SparkSession spark = sparkBuilder.getOrCreate();
 
-    spark
-        .sparkContext()
-        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
-
     // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, inputPath, args.numberOfShards);
 
-    // Load identifiers
+    // Process and then reload identifiers
+    processIdentifiers(spark, config, outputPath, datasetId);
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
 
     // join and write to disk
@@ -147,6 +145,35 @@ public class Interpretation implements Serializable {
         MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
     MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
 
+    Dataset<OccurrenceSimple> simpleRecords =
+        spark
+            .read()
+            .parquet(outputPath + "/extended-identifiers")
+            .as(Encoders.bean(OccurrenceSimple.class));
+
+    Dataset<OccurrenceSimple> interpreted = runTransforms(config, simpleRecords, metadata);
+
+    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence");
+
+    // re-load
+    Dataset<OccurrenceSimple> simpleRecordsReloaded =
+        spark
+            .read()
+            .parquet(outputPath + "/simple-occurrence")
+            .as(Encoders.bean(OccurrenceSimple.class));
+
+    // write parquet for elastic
+    toJson(simpleRecordsReloaded, metadata).write().mode("overwrite").parquet(outputPath + "/json");
+
+    // write parquet for hdfs view
+    toHdfs(simpleRecordsReloaded, metadata).write().mode("overwrite").parquet(outputPath + "/hdfs");
+
+    spark.close();
+    System.exit(0);
+  }
+
+  private static Dataset<OccurrenceSimple> runTransforms(
+      PipelinesConfig config, Dataset<OccurrenceSimple> simpleRecords, MetadataRecord metadata) {
     // Set up our transforms
     MultiTaxonomyTransform taxonomyTransform =
         MultiTaxonomyTransform.builder().config(config).build();
@@ -154,12 +181,6 @@ public class Interpretation implements Serializable {
     GrscicollTransform grscicollTransform = GrscicollTransform.builder().config(config).build();
     TemporalTransform temporalTransform = TemporalTransform.builder().build();
     BasicTransform basicTransform = BasicTransform.builder().config(config).build();
-
-    Dataset<OccurrenceSimple> simpleRecords =
-        spark
-            .read()
-            .parquet(outputPath + "/extended-identifiers")
-            .as(Encoders.bean(OccurrenceSimple.class));
 
     // Loop over all records and interpret them
     Dataset<OccurrenceSimple> interpreted =
@@ -186,26 +207,16 @@ public class Interpretation implements Serializable {
                       .build();
                 },
             Encoders.bean(OccurrenceSimple.class));
-
-    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence");
-
-    // re-read
-    Dataset<OccurrenceSimple> simpleRecordsReloaded =
-        spark
-            .read()
-            .parquet(outputPath + "/simple-occurrence")
-            .as(Encoders.bean(OccurrenceSimple.class));
-
-    toJson(simpleRecordsReloaded, metadata).write().mode("overwrite").json(outputPath + "/json");
-
-    spark.close();
-    System.exit(0);
+    return interpreted;
   }
 
   // ----------------- Helper Methods -----------------
 
   private static Dataset<ExtendedRecord> loadExtendedRecords(
       SparkSession spark, String inputPath, int numberOfShards) {
+    spark
+        .sparkContext()
+        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
     return spark
         .read()
         .format("avro")
@@ -215,6 +226,7 @@ public class Interpretation implements Serializable {
   }
 
   private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
+
     return spark
         .read()
         .parquet(outputPath + "/identifiers")

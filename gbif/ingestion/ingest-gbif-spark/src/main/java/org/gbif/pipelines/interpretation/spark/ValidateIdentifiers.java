@@ -39,11 +39,16 @@ import org.yaml.snakeyaml.Yaml;
  * Validates the identifiers in a dataset of ExtendedRecords and generates IdentifierRecords. This
  * is the VERBATIM_TO_IDENTIFIER step in the data pipelines.
  *
- * <p>This pipeline performs the following steps: 1. Reads ExtendedRecords from an Avro file. 2.
- * Checks for occurrence extensions and converts them to individual ExtendedRecords if necessary. 3.
- * Validates the identifiers by checking for duplicate IDs and counting unique IDs. 4. Transforms
- * ExtendedRecords to IdentifierRecords using the GbifIdTransform. 5. Writes the IdentifierRecords
- * to a Parquet file.
+ * <p>This pipeline performs the following steps:
+ *
+ * <ol>
+ *   <li>Reads ExtendedRecords from an Avro file.
+ *   <li>Checks for occurrence extensions and converts them to individual ExtendedRecords if
+ *       necessary.
+ *   <li>Validates the identifiers by checking for duplicate IDs and counting unique IDs.
+ *   <li>Transforms ExtendedRecords to IdentifierRecords using the GbifIdTransform.
+ *   <li>Writes the IdentifierRecords to a Parquet file.
+ * </ol>
  */
 @Slf4j
 public class ValidateIdentifiers implements Serializable {
@@ -172,7 +177,7 @@ public class ValidateIdentifiers implements Serializable {
     Dataset<IdentifierRecord> invalidIdentifiers = invalid(absentIdentifiers, metrics);
 
     // 1. write unique ids
-    identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
+    identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_valid");
 
     // 2. write invalid ids
     invalidIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_invalid");

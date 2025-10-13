@@ -97,7 +97,6 @@ public class PersistIdentifiers implements Serializable {
 
     String datasetId = args.datasetId;
     int attempt = args.attempt;
-    String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
@@ -106,24 +105,29 @@ public class PersistIdentifiers implements Serializable {
     }
     SparkSession spark = sparkBuilder.getOrCreate();
 
-    spark
-        .sparkContext()
-        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
+    // Load validated identifiers
+    processIdentifiers(spark, config, outputPath, datasetId);
 
-    // Load identifiers
-    Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
+    spark.close();
+    System.exit(0);
+  }
 
-    // load the absent identifiers - records that need to be assigned an identifier (added to hbase)
-    Dataset<IdentifierRecord> newlyAdded = persistAbsentIdentifiers(spark, outputPath, config, datasetId);
+  public static void processIdentifiers(
+      SparkSession spark, PipelinesConfig config, String outputPath, String datasetId) {
+
+    // load the valid identifiers - identifiers already present in hbase
+    Dataset<IdentifierRecord> identifiers = loadValidIdentifiers(spark, outputPath);
+
+    // persist the absent identifiers - records that need to be assigned an identifier (added to
+    // hbase)
+    Dataset<IdentifierRecord> newlyAdded =
+        persistAbsentIdentifiers(spark, outputPath, config, datasetId);
 
     // merge the two datasets
     Dataset<IdentifierRecord> allIdentifiers = identifiers.union(newlyAdded);
 
     // write out the final identifiers
-    allIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_persisted");
-
-    spark.close();
-    System.exit(0);
+    allIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
   }
 
   private static Dataset<IdentifierRecord> persistAbsentIdentifiers(
@@ -154,12 +158,11 @@ public class PersistIdentifiers implements Serializable {
         Encoders.bean(IdentifierRecord.class));
   }
 
-  // ----------------- Helper Methods -----------------
-
-  private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
+  private static Dataset<IdentifierRecord> loadValidIdentifiers(
+      SparkSession spark, String outputPath) {
     return spark
         .read()
-        .parquet(outputPath + "/identifiers")
+        .parquet(outputPath + "/identifiers_valid")
         .as(Encoders.bean(IdentifierRecord.class));
   }
 }
