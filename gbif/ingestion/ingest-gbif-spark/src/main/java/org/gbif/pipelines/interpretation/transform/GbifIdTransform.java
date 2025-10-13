@@ -40,11 +40,17 @@ public class GbifIdTransform implements Serializable {
       keygenService = keygenServiceSupplier.get();
     }
 
-    log.info("Interpreting GBIF ID for occurrenceId: {}", source.getId());
     return Interpretation.from(source)
         .to(ir)
         .when(er -> !er.getCoreTerms().isEmpty())
-        .via(GbifIdInterpreter.interpretGbifId(keygenService, false, true, false, true, null))
+        .via(
+            GbifIdInterpreter.interpretGbifId(
+                keygenService,
+                isTripletValid,
+                isOccurrenceIdValid,
+                useExtendedRecordId,
+                generateIdIfAbsent,
+                gbifIdFn))
         .getOfNullable();
   }
 }

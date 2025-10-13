@@ -1,0 +1,305 @@
+package org.gbif.pipelines.interpretation.spark;
+
+import static org.apache.spark.sql.functions.sum;
+import static org.gbif.pipelines.common.PipelinesVariables.Metrics.*;
+import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_ABSENT;
+import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.spark.api.java.function.FilterFunction;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.util.LongAccumulator;
+import org.gbif.dwc.terms.DwcTerm;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.converters.OccurrenceExtensionConverter;
+import org.gbif.pipelines.core.functions.SerializableSupplier;
+import org.gbif.pipelines.interpretation.transform.GbifIdTransform;
+import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
+import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.gbif.pipelines.io.avro.IdentifierRecord;
+import org.gbif.pipelines.keygen.HBaseLockingKey;
+
+@Slf4j
+public class ValidateIdentifiers implements Serializable {
+
+  @Parameters(separators = "=")
+  private static class Args {
+
+    @Parameter(names = "--appName", description = "Application name", required = true)
+    private String appName;
+
+    @Parameter(names = "--datasetId", description = "Dataset ID", required = true)
+    private String datasetId;
+
+    @Parameter(names = "--attempt", description = "Attempt number", required = true)
+    private int attempt;
+
+    @Parameter(
+        names = "--tripletValid",
+        description = "DWCA validation from crawler, all triplets are unique",
+        required = false,
+        arity = 1)
+    private boolean tripletValid = false;
+
+    @Parameter(
+        names = "--occurrenceIdValid",
+        description = "DWCA validation from crawler, all occurrenceIds are unique",
+        required = false,
+        arity = 1)
+    private boolean occurrenceIdValid = true;
+
+    @Parameter(
+        names = "--useExtendedRecordId",
+        description = "Skips gbif id generation and copies ids from ExtendedRecord ids",
+        required = false,
+        arity = 1)
+    private boolean useExtendedRecordId = true;
+
+    @Parameter(names = "--coreSiteConfig", description = "Path to core-site.xml", required = false)
+    private String coreSiteConfig;
+
+    @Parameter(names = "--hdfsSiteConfig", description = "Path to hdfs-site.xml", required = false)
+    private String hdfsSiteConfig;
+
+    @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
+    private int numberOfShards;
+
+    @Parameter(names = "--properties", description = "Path to properties file", required = true)
+    private String properties;
+
+    @Parameter(
+        names = "--master",
+        description = "Spark master - there for local dev only",
+        required = false)
+    private String master;
+
+    @Parameter(
+        names = {"--help", "-h"},
+        help = true,
+        description = "Show usage")
+    boolean help;
+  }
+
+  public static void main(String[] argsv) {
+
+    Args args = new Args();
+    JCommander jCommander = new JCommander(args);
+    jCommander.parse(argsv);
+
+    if (args.help) {
+      jCommander.usage();
+      return;
+    }
+
+    PipelinesConfig config = loadConfig(args.properties);
+    String datasetID = args.datasetId;
+    int attempt = args.attempt;
+    String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
+    String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
+
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+
+    if (args.master != null && !args.master.isEmpty()) {
+      sparkBuilder = sparkBuilder.master(args.master);
+    }
+
+    SparkSession spark = sparkBuilder.getOrCreate();
+
+    // Read the verbatim input
+    Dataset<ExtendedRecord> records =
+        spark
+            .read()
+            .format("avro")
+            .load(inputPath + "/verbatim.avro")
+            .repartition(args.numberOfShards)
+            .as(Encoders.bean(ExtendedRecord.class));
+
+    // read the extended records and check for occurrences in the extensions
+    Dataset<ExtendedRecord> recordsExpanded = checkExtensionsForOccurrence(records);
+
+    // validate the identifiers
+    Map<String, Long> validationResult = validateIdentifiers(recordsExpanded);
+
+    // run the identifier transform
+    Dataset<IdentifierRecord> identifiers =
+        identifierTransform(
+            spark,
+            config,
+            datasetID,
+            args.tripletValid,
+            args.occurrenceIdValid,
+            args.useExtendedRecordId,
+            recordsExpanded);
+
+    // Write the identifiers to parquet
+    identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
+
+    // get the absent & filtered count
+    Map<String, Long> idCounts = absentAndFilteredCount(identifiers);
+
+    // output the metrics
+    validationResult.putAll(idCounts);
+
+    log.info("ValidateIdentifiers finished");
+    spark.close();
+    System.exit(0);
+  }
+
+  /**
+   * Computes the count of records with absent GBIF IDs and the count of records with filtered GBIF
+   * IDs.
+   *
+   * @param identifiers Dataset of IdentifierRecord to analyze
+   * @return Map with counts of absent and filtered GBIF IDs
+   */
+  public static Map<String, Long> absentAndFilteredCount(Dataset<IdentifierRecord> identifiers) {
+
+    Map<String, Long> result = new java.util.HashMap<>();
+
+    Dataset<IdentifierRecord> absentRecords =
+        identifiers.filter(
+            new FilterFunction<IdentifierRecord>() {
+              @Override
+              public boolean call(IdentifierRecord ir) throws Exception {
+                return ir.getInternalId() == null
+                    && ir.getIssues().getIssueList().contains(GBIF_ID_ABSENT);
+              }
+            });
+
+    Long absentCount = absentRecords.count();
+    Long identifiersCount = identifiers.count();
+
+    result.put(ABSENT_GBIF_ID_COUNT, absentRecords.count());
+    result.put(FILTERED_GBIF_IDS_COUNT, identifiersCount - absentCount);
+
+    return result;
+  }
+
+  /**
+   * Validates the identifiers in the given ExtendedRecord dataset.
+   *
+   * <p>It checks for duplicate IDs and computes the count of unique (non-duplicate) IDs.
+   *
+   * @param records Dataset of ExtendedRecord to validate
+   * @return Map with counts of duplicate and unique IDs
+   */
+  public static Map<String, Long> validateIdentifiers(Dataset<ExtendedRecord> records) {
+    Map<String, Long> result = new HashMap<>();
+
+    // Find duplicate ID counts
+    Dataset<Row> duplicates = records.groupBy("id").count().filter("count > 1");
+
+    long duplicateCount =
+        duplicates.isEmpty() ? 0L : duplicates.agg(sum("count")).first().getLong(0);
+
+    result.put(DUPLICATE_IDS_COUNT, duplicateCount);
+
+    // Compute unique (non-duplicate) IDs
+    long totalCount = records.count();
+    result.put(UNIQUE_IDS_COUNT, totalCount - duplicateCount);
+
+    return result;
+  }
+
+  /**
+   * This method checks if the ExtendedRecord dataset contains occurrence extensions. If so, it
+   * converts them to individual ExtendedRecords. If the core type is Occurrence, it returns the
+   * records as they are. If neither condition is met, it logs a warning and returns an empty
+   * dataset.
+   *
+   * @param records Dataset of ExtendedRecord to check and convert
+   * @return Dataset of ExtendedRecord containing only occurrence records
+   */
+  public static Dataset<ExtendedRecord> checkExtensionsForOccurrence(
+      Dataset<ExtendedRecord> records) {
+
+    return records.flatMap(
+        (FlatMapFunction<ExtendedRecord, ExtendedRecord>)
+            er -> {
+              String occurrenceQName = DwcTerm.Occurrence.qualifiedName();
+              Map<String, List<Map<String, String>>> extensions = er.getExtensions();
+              List<Map<String, String>> occurrenceExts =
+                  extensions != null ? extensions.get(occurrenceQName) : null;
+
+              // Case 1: Event/Taxon record with occurrence extensions
+              if (occurrenceExts != null) {
+                if (occurrenceExts.isEmpty()) {
+                  // Empty extensions — expected for some archives (see issue #471)
+                  log.debug(
+                      "Event/Taxon core archive with empty occurrence extensions for record [{}]",
+                      er.getId());
+                  return Collections.<ExtendedRecord>emptyIterator();
+                }
+                // Convert and return occurrence extension records
+                return OccurrenceExtensionConverter.convert(er).iterator();
+              }
+
+              // Case 2: Core type is Occurrence
+              if (occurrenceQName.equals(er.getCoreRowType())) {
+                return Collections.singletonList(er).iterator();
+              }
+
+              // Case 3: Unexpected — no occurrence extensions, not an occurrence core
+              log.warn(
+                  "Record [{}] has no occurrence extensions and is not an Occurrence core. Possible data inconsistency.",
+                  er.getId());
+              return Collections.<ExtendedRecord>emptyIterator();
+            },
+        Encoders.bean(ExtendedRecord.class));
+  }
+
+    /**
+     * Transforms ExtendedRecord dataset to IdentifierRecord dataset.
+     * @param spark
+     * @param config
+     * @param datasetId
+     * @param isTripletValid
+     * @param isOccurrenceIdValid
+     * @param isUseExtendedRecordId
+     * @param records
+     * @return
+     */
+  public static Dataset<IdentifierRecord> identifierTransform(
+      final SparkSession spark,
+      final PipelinesConfig config,
+      final String datasetId,
+      boolean isTripletValid,
+      boolean isOccurrenceIdValid,
+      boolean isUseExtendedRecordId,
+      Dataset<ExtendedRecord> records) {
+
+    LongAccumulator processedRecord = spark.sparkContext().longAccumulator("Processed-records");
+
+    GbifIdTransform transform =
+        GbifIdTransform.builder()
+            .generateIdIfAbsent(false)
+            .isTripletValid(isTripletValid)
+            .isOccurrenceIdValid(isOccurrenceIdValid)
+            .useExtendedRecordId(isUseExtendedRecordId)
+            .keygenServiceSupplier(
+                (SerializableSupplier<HBaseLockingKey>)
+                    () -> KeygenServiceFactory.create(config, datasetId))
+            .build();
+
+    return records.map(
+        (MapFunction<ExtendedRecord, IdentifierRecord>)
+            er -> {
+              processedRecord.add(1L);
+              return transform.convert(er).get();
+            },
+        Encoders.bean(IdentifierRecord.class));
+  }
+}

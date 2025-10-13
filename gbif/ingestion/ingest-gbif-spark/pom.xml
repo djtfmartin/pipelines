@@ -36,6 +36,7 @@
     <jackson.version>2.18.4</jackson.version>
     <geotools.version>20.5</geotools.version>
     <java.version>17</java.version>
+    <junit4.version>4.13.2</junit4.version>
   </properties>
 
     <repositories>
@@ -406,6 +407,13 @@
           <groupId>org.codehaus.jackson</groupId>
           <artifactId>jackson-core-asl</artifactId>
           <version>1.9.13</version>
+      </dependency>
+
+      <dependency>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+          <version>${junit4.version}</version>
+          <scope>test</scope>
       </dependency>
 
   </dependencies>
