@@ -22,7 +22,6 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.util.LongAccumulator;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.OccurrenceExtensionConverter;
@@ -152,23 +151,34 @@ public class ValidateIdentifiers implements Serializable {
             .as(Encoders.bean(ExtendedRecord.class));
 
     // read the extended records and check for occurrences in the extensions
-    Dataset<ExtendedRecord> recordsExpanded = checkExtensionsForOccurrence(records);
+    Dataset<ExtendedRecord> recordsExpanded =
+        checkExtensionsForOccurrence(spark, records, outputPath);
 
+    // collect metrics
     Map<String, Long> metrics = new HashMap<>();
 
     // validate the identifiers from the extended records
     validateIdentifiers(recordsExpanded, metrics);
 
     // run the identifier transform - note: this does not generate new gbifIds
-    Dataset<IdentifierRecord> identifiers =
-        identifierTransform(
-            spark,
+    identifierTransform(
             config,
             datasetID,
             args.tripletValid,
             args.occurrenceIdValid,
             args.useExtendedRecordId,
-            recordsExpanded);
+            recordsExpanded)
+        .repartition(args.numberOfShards)
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/identifiers_transformed");
+
+    Dataset<IdentifierRecord> identifiers =
+        spark
+            .read()
+            .format("parquet")
+            .load(outputPath + "/identifiers_transformed")
+            .as(Encoders.bean(IdentifierRecord.class));
 
     // get the absent records - i.e. records not assigned a gbifId and not stored in hbase
     Dataset<IdentifierRecord> absentIdentifiers = absentAndFilteredCount(identifiers, metrics);
@@ -293,47 +303,57 @@ public class ValidateIdentifiers implements Serializable {
    * @return Dataset of ExtendedRecord containing only occurrence records
    */
   public static Dataset<ExtendedRecord> checkExtensionsForOccurrence(
-      Dataset<ExtendedRecord> records) {
+      SparkSession spark, Dataset<ExtendedRecord> records, String outputPath) {
 
-    return records.flatMap(
-        (FlatMapFunction<ExtendedRecord, ExtendedRecord>)
-            er -> {
-              String occurrenceQName = DwcTerm.Occurrence.qualifiedName();
-              Map<String, List<Map<String, String>>> extensions = er.getExtensions();
-              List<Map<String, String>> occurrenceExts =
-                  extensions != null ? extensions.get(occurrenceQName) : null;
+    Dataset<ExtendedRecord> expanded =
+        records.flatMap(
+            (FlatMapFunction<ExtendedRecord, ExtendedRecord>)
+                er -> {
+                  String occurrenceQName = DwcTerm.Occurrence.qualifiedName();
+                  Map<String, List<Map<String, String>>> extensions = er.getExtensions();
+                  List<Map<String, String>> occurrenceExts =
+                      extensions != null ? extensions.get(occurrenceQName) : null;
 
-              // Case 1: Event/Taxon record with occurrence extensions
-              if (occurrenceExts != null) {
-                if (occurrenceExts.isEmpty()) {
-                  // Empty extensions — expected for some archives (see issue #471)
-                  log.debug(
-                      "Event/Taxon core archive with empty occurrence extensions for record [{}]",
+                  // Case 1: Event/Taxon record with occurrence extensions
+                  if (occurrenceExts != null) {
+                    if (occurrenceExts.isEmpty()) {
+                      // Empty extensions — expected for some archives (see issue #471)
+                      log.debug(
+                          "Event/Taxon core archive with empty occurrence extensions for record [{}]",
+                          er.getId());
+                      return Collections.<ExtendedRecord>emptyIterator();
+                    }
+                    // Convert and return occurrence extension records
+                    return OccurrenceExtensionConverter.convert(er).iterator();
+                  }
+
+                  // Case 2: Core type is Occurrence
+                  if (occurrenceQName.equals(er.getCoreRowType())) {
+                    return Collections.singletonList(er).iterator();
+                  }
+
+                  // Case 3: Unexpected — no occurrence extensions, not an occurrence core
+                  log.warn(
+                      "Record [{}] has no occurrence extensions and is not an Occurrence core. Possible data inconsistency.",
                       er.getId());
                   return Collections.<ExtendedRecord>emptyIterator();
-                }
-                // Convert and return occurrence extension records
-                return OccurrenceExtensionConverter.convert(er).iterator();
-              }
+                },
+            Encoders.bean(ExtendedRecord.class));
 
-              // Case 2: Core type is Occurrence
-              if (occurrenceQName.equals(er.getCoreRowType())) {
-                return Collections.singletonList(er).iterator();
-              }
+    // write out the expanded records for debugging/inspection
+    expanded.write().mode("overwrite").parquet(outputPath + "/extended_records_expanded");
 
-              // Case 3: Unexpected — no occurrence extensions, not an occurrence core
-              log.warn(
-                  "Record [{}] has no occurrence extensions and is not an Occurrence core. Possible data inconsistency.",
-                  er.getId());
-              return Collections.<ExtendedRecord>emptyIterator();
-            },
-        Encoders.bean(ExtendedRecord.class));
+    // reload
+    return spark
+        .read()
+        .format("parquet")
+        .load(outputPath + "/extended_records_expanded")
+        .as(Encoders.bean(ExtendedRecord.class));
   }
 
   /**
    * Transforms ExtendedRecord dataset to IdentifierRecord dataset.
    *
-   * @param spark Spark session
    * @param config Pipelines configuration
    * @param datasetId Dataset identifier
    * @param isTripletValid
@@ -343,15 +363,12 @@ public class ValidateIdentifiers implements Serializable {
    * @return Dataset of IdentifierRecord
    */
   public static Dataset<IdentifierRecord> identifierTransform(
-      final SparkSession spark,
       final PipelinesConfig config,
       final String datasetId,
       boolean isTripletValid,
       boolean isOccurrenceIdValid,
       boolean isUseExtendedRecordId,
       Dataset<ExtendedRecord> records) {
-
-    LongAccumulator processedRecord = spark.sparkContext().longAccumulator("Processed-records");
 
     GbifIdTransform transform =
         GbifIdTransform.builder()
@@ -367,7 +384,6 @@ public class ValidateIdentifiers implements Serializable {
     return records.map(
         (MapFunction<ExtendedRecord, IdentifierRecord>)
             er -> {
-              processedRecord.add(1L);
               return transform.convert(er).get();
             },
         Encoders.bean(IdentifierRecord.class));

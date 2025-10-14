@@ -202,7 +202,9 @@ public class Interpretation implements Serializable {
                       .basic(MAPPER.writeValueAsString(br.orElse(null)))
                       .taxon(MAPPER.writeValueAsString(tr.orElse(null)))
                       .location(MAPPER.writeValueAsString(lr.orElse(null)))
-                      .grscicoll(MAPPER.writeValueAsString(gr.orElse(null)))
+                      .grscicoll(
+                          MAPPER.writeValueAsString(
+                              gr.orElse(GrscicollRecord.newBuilder().setId(er.getId()).build())))
                       .temporal(MAPPER.writeValueAsString(ter.orElse(null)))
                       .build();
                 },

@@ -19,8 +19,7 @@ public class GrscicollTransform implements java.io.Serializable {
 
   private PipelinesConfig config;
 
-  public Optional<GrscicollRecord> convert(ExtendedRecord source, MetadataRecord mdr)
-      throws Exception {
+  public Optional<GrscicollRecord> convert(ExtendedRecord source, MetadataRecord mdr) {
 
     KeyValueStore<GrscicollLookupRequest, GrscicollLookupResponse> kvStore =
         GrscicollLookupKvStoreFactory.getKvStore(config);
