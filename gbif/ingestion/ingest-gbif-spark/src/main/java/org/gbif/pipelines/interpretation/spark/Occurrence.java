@@ -10,12 +10,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Occurrence {
-    String id;
-    String verbatim;
-    String identifier;
-    String basic;
-    String location;
-    String taxon;
-    String temporal;
-    String grscicoll;
+  String id;
+  String verbatim;
+  String identifier;
+  String basic;
+  String location;
+  String taxon;
+  String temporal;
+  String grscicoll;
 }
