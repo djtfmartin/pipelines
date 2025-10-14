@@ -212,9 +212,9 @@ public class ValidateIdentifiers implements Serializable {
     System.exit(0);
   }
 
-  private static void writeMetricsYaml(FileSystem fs, Map<String, Long> allMetrics,
+  private static void writeMetricsYaml(
+      FileSystem fs, Map<String, Long> allMetrics, String fileName) {
 
-                                       String fileName) {
     // Configure YAML output (optional)
     DumperOptions options = new DumperOptions();
     options.setIndent(2);

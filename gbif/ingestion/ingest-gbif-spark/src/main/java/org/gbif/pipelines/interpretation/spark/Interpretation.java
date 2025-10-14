@@ -21,7 +21,6 @@ import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import java.util.Optional;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
@@ -162,10 +161,7 @@ public class Interpretation implements Serializable {
 
     // re-load
     Dataset<Occurrence> simpleRecordsReloaded =
-        spark
-            .read()
-            .parquet(outputPath + "/simple-occurrence")
-            .as(Encoders.bean(Occurrence.class));
+        spark.read().parquet(outputPath + "/simple-occurrence").as(Encoders.bean(Occurrence.class));
 
     // write parquet for elastic
     toJson(simpleRecordsReloaded, metadata).write().mode("overwrite").parquet(outputPath + "/json");
@@ -183,7 +179,7 @@ public class Interpretation implements Serializable {
   }
 
   private static Dataset<Occurrence> runTransforms(
-          PipelinesConfig config, Dataset<Occurrence> simpleRecords, MetadataRecord metadata) {
+      PipelinesConfig config, Dataset<Occurrence> simpleRecords, MetadataRecord metadata) {
     // Set up our transforms
     MultiTaxonomyTransform taxonomyTransform =
         MultiTaxonomyTransform.builder().config(config).build();
@@ -245,63 +241,62 @@ public class Interpretation implements Serializable {
         .as(Encoders.bean(IdentifierRecord.class));
   }
 
+  public static void processIdentifiers(
+      SparkSession spark, PipelinesConfig config, String outputPath, String datasetId) {
 
-    public static void processIdentifiers(
-            SparkSession spark, PipelinesConfig config, String outputPath, String datasetId) {
+    // load the valid identifiers - identifiers already present in hbase
+    Dataset<IdentifierRecord> identifiers = loadValidIdentifiers(spark, outputPath);
 
-        // load the valid identifiers - identifiers already present in hbase
-        Dataset<IdentifierRecord> identifiers = loadValidIdentifiers(spark, outputPath);
+    // persist the absent identifiers - records that need to be assigned an identifier (added to
+    // hbase)
+    Dataset<IdentifierRecord> newlyAdded =
+        persistAbsentIdentifiers(spark, outputPath, config, datasetId);
 
-        // persist the absent identifiers - records that need to be assigned an identifier (added to
-        // hbase)
-        Dataset<IdentifierRecord> newlyAdded =
-                persistAbsentIdentifiers(spark, outputPath, config, datasetId);
+    // merge the two datasets
+    Dataset<IdentifierRecord> allIdentifiers = identifiers.union(newlyAdded);
 
-        // merge the two datasets
-        Dataset<IdentifierRecord> allIdentifiers = identifiers.union(newlyAdded);
+    // write out the final identifiers
+    allIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
+  }
 
-        // write out the final identifiers
-        allIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
-    }
+  private static Dataset<IdentifierRecord> persistAbsentIdentifiers(
+      SparkSession spark, String outputPath, PipelinesConfig config, String datasetId) {
 
-    private static Dataset<IdentifierRecord> persistAbsentIdentifiers(
-            SparkSession spark, String outputPath, PipelinesConfig config, String datasetId) {
+    Dataset<IdentifierRecord> absentIdentifiers =
+        spark
+            .read()
+            .parquet(outputPath + "/identifiers_absent")
+            .as(Encoders.bean(IdentifierRecord.class));
 
-        Dataset<IdentifierRecord> absentIdentifiers =
-                spark
-                        .read()
-                        .parquet(outputPath + "/identifiers_absent")
-                        .as(Encoders.bean(IdentifierRecord.class));
+    GbifAbsentIdTransform absentIdTransform =
+        GbifAbsentIdTransform.builder()
+            .isTripletValid(true) // set according to your validation logic
+            .isOccurrenceIdValid(true) // set according to your validation logic
+            .useExtendedRecordId(false) // set according to your use case
+            .generateIdIfAbsent(true)
+            .keygenServiceSupplier(
+                (SerializableSupplier<HBaseLockingKey>)
+                    () ->
+                        KeygenServiceFactory.create(
+                            config, datasetId)) // replace with actual config and dataset ID
+            .build();
 
-        GbifAbsentIdTransform absentIdTransform =
-                GbifAbsentIdTransform.builder()
-                        .isTripletValid(true) // set according to your validation logic
-                        .isOccurrenceIdValid(true) // set according to your validation logic
-                        .useExtendedRecordId(false) // set according to your use case
-                        .generateIdIfAbsent(true)
-                        .keygenServiceSupplier(
-                                (SerializableSupplier<HBaseLockingKey>)
-                                        () ->
-                                                KeygenServiceFactory.create(
-                                                        config, datasetId)) // replace with actual config and dataset ID
-                        .build();
+    // Persist to HBase or any other storage
+    return absentIdentifiers.map(
+        (MapFunction<IdentifierRecord, IdentifierRecord>) absentIdTransform::persist,
+        Encoders.bean(IdentifierRecord.class));
+  }
 
-        // Persist to HBase or any other storage
-        return absentIdentifiers.map(
-                (MapFunction<IdentifierRecord, IdentifierRecord>) absentIdTransform::persist,
-                Encoders.bean(IdentifierRecord.class));
-    }
-
-    private static Dataset<IdentifierRecord> loadValidIdentifiers(
-            SparkSession spark, String outputPath) {
-        return spark
-                .read()
-                .parquet(outputPath + "/identifiers_valid")
-                .as(Encoders.bean(IdentifierRecord.class));
-    }
+  private static Dataset<IdentifierRecord> loadValidIdentifiers(
+      SparkSession spark, String outputPath) {
+    return spark
+        .read()
+        .parquet(outputPath + "/identifiers_valid")
+        .as(Encoders.bean(IdentifierRecord.class));
+  }
 
   public static Dataset<OccurrenceJsonRecord> toJson(
-          Dataset<Occurrence> records, MetadataRecord metadataRecord) {
+      Dataset<Occurrence> records, MetadataRecord metadataRecord) {
     return records.map(
         (MapFunction<Occurrence, OccurrenceJsonRecord>)
             record -> {
@@ -337,7 +332,7 @@ public class Interpretation implements Serializable {
   }
 
   public static Dataset<OccurrenceHdfsRecord> toHdfs(
-          Dataset<Occurrence> records, MetadataRecord metadataRecord) {
+      Dataset<Occurrence> records, MetadataRecord metadataRecord) {
     return records.map(
         (MapFunction<Occurrence, OccurrenceHdfsRecord>)
             record -> {
@@ -372,4 +367,3 @@ public class Interpretation implements Serializable {
         Encoders.bean(OccurrenceHdfsRecord.class));
   }
 }
-
