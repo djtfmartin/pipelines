@@ -14,7 +14,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.spark.PersistIdentifiers.processIdentifiers;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -22,18 +21,24 @@ import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import java.util.Optional;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.OccurrenceHdfsRecordConverter;
 import org.gbif.pipelines.core.converters.OccurrenceJsonConverter;
+import org.gbif.pipelines.core.functions.SerializableSupplier;
 import org.gbif.pipelines.core.interpreters.metadata.MetadataInterpreter;
+import org.gbif.pipelines.core.pojo.HdfsConfigs;
+import org.gbif.pipelines.core.utils.FsUtils;
 import org.gbif.pipelines.core.ws.metadata.MetadataServiceClient;
 import org.gbif.pipelines.interpretation.transform.*;
+import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
+import org.gbif.pipelines.keygen.HBaseLockingKey;
 import scala.Tuple2;
 
 @Slf4j
@@ -123,17 +128,17 @@ public class Interpretation implements Serializable {
         .as("extendedRecord")
         .joinWith(identifiers, extendedRecords.col("id").equalTo(identifiers.col("id")))
         .map(
-            (MapFunction<Tuple2<ExtendedRecord, IdentifierRecord>, OccurrenceSimple>)
+            (MapFunction<Tuple2<ExtendedRecord, IdentifierRecord>, Occurrence>)
                 row -> {
                   ExtendedRecord er = row._1;
                   IdentifierRecord ir = row._2;
-                  return OccurrenceSimple.builder()
+                  return Occurrence.builder()
                       .id(er.getId())
                       .verbatim(MAPPER.writeValueAsString(er))
                       .identifier(MAPPER.writeValueAsString(ir))
                       .build();
                 },
-            Encoders.bean(OccurrenceSimple.class))
+            Encoders.bean(Occurrence.class))
         .write()
         .mode("overwrite")
         .parquet(outputPath + "/extended-identifiers");
@@ -145,22 +150,22 @@ public class Interpretation implements Serializable {
         MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
     MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
 
-    Dataset<OccurrenceSimple> simpleRecords =
+    Dataset<Occurrence> simpleRecords =
         spark
             .read()
             .parquet(outputPath + "/extended-identifiers")
-            .as(Encoders.bean(OccurrenceSimple.class));
+            .as(Encoders.bean(Occurrence.class));
 
-    Dataset<OccurrenceSimple> interpreted = runTransforms(config, simpleRecords, metadata);
+    Dataset<Occurrence> interpreted = runTransforms(config, simpleRecords, metadata);
 
     interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence");
 
     // re-load
-    Dataset<OccurrenceSimple> simpleRecordsReloaded =
+    Dataset<Occurrence> simpleRecordsReloaded =
         spark
             .read()
             .parquet(outputPath + "/simple-occurrence")
-            .as(Encoders.bean(OccurrenceSimple.class));
+            .as(Encoders.bean(Occurrence.class));
 
     // write parquet for elastic
     toJson(simpleRecordsReloaded, metadata).write().mode("overwrite").parquet(outputPath + "/json");
@@ -168,12 +173,17 @@ public class Interpretation implements Serializable {
     // write parquet for hdfs view
     toHdfs(simpleRecordsReloaded, metadata).write().mode("overwrite").parquet(outputPath + "/hdfs");
 
+    // cleanup
+    HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/simple-occurrence");
+
     spark.close();
     System.exit(0);
   }
 
-  private static Dataset<OccurrenceSimple> runTransforms(
-      PipelinesConfig config, Dataset<OccurrenceSimple> simpleRecords, MetadataRecord metadata) {
+  private static Dataset<Occurrence> runTransforms(
+          PipelinesConfig config, Dataset<Occurrence> simpleRecords, MetadataRecord metadata) {
     // Set up our transforms
     MultiTaxonomyTransform taxonomyTransform =
         MultiTaxonomyTransform.builder().config(config).build();
@@ -183,9 +193,9 @@ public class Interpretation implements Serializable {
     BasicTransform basicTransform = BasicTransform.builder().config(config).build();
 
     // Loop over all records and interpret them
-    Dataset<OccurrenceSimple> interpreted =
+    Dataset<Occurrence> interpreted =
         simpleRecords.map(
-            (MapFunction<OccurrenceSimple, OccurrenceSimple>)
+            (MapFunction<Occurrence, Occurrence>)
                 simpleRecord -> {
                   ExtendedRecord er =
                       MAPPER.readValue(simpleRecord.getVerbatim(), ExtendedRecord.class);
@@ -195,7 +205,7 @@ public class Interpretation implements Serializable {
                   Optional<GrscicollRecord> gr = grscicollTransform.convert(er, metadata);
                   Optional<TemporalRecord> ter = temporalTransform.convert(er);
                   Optional<BasicRecord> br = basicTransform.convert(er);
-                  return OccurrenceSimple.builder()
+                  return Occurrence.builder()
                       .id(er.getId())
                       .identifier(simpleRecord.getIdentifier())
                       .verbatim(simpleRecord.getVerbatim())
@@ -208,7 +218,7 @@ public class Interpretation implements Serializable {
                       .temporal(MAPPER.writeValueAsString(ter.orElse(null)))
                       .build();
                 },
-            Encoders.bean(OccurrenceSimple.class));
+            Encoders.bean(Occurrence.class));
     return interpreted;
   }
 
@@ -235,10 +245,65 @@ public class Interpretation implements Serializable {
         .as(Encoders.bean(IdentifierRecord.class));
   }
 
+
+    public static void processIdentifiers(
+            SparkSession spark, PipelinesConfig config, String outputPath, String datasetId) {
+
+        // load the valid identifiers - identifiers already present in hbase
+        Dataset<IdentifierRecord> identifiers = loadValidIdentifiers(spark, outputPath);
+
+        // persist the absent identifiers - records that need to be assigned an identifier (added to
+        // hbase)
+        Dataset<IdentifierRecord> newlyAdded =
+                persistAbsentIdentifiers(spark, outputPath, config, datasetId);
+
+        // merge the two datasets
+        Dataset<IdentifierRecord> allIdentifiers = identifiers.union(newlyAdded);
+
+        // write out the final identifiers
+        allIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
+    }
+
+    private static Dataset<IdentifierRecord> persistAbsentIdentifiers(
+            SparkSession spark, String outputPath, PipelinesConfig config, String datasetId) {
+
+        Dataset<IdentifierRecord> absentIdentifiers =
+                spark
+                        .read()
+                        .parquet(outputPath + "/identifiers_absent")
+                        .as(Encoders.bean(IdentifierRecord.class));
+
+        GbifAbsentIdTransform absentIdTransform =
+                GbifAbsentIdTransform.builder()
+                        .isTripletValid(true) // set according to your validation logic
+                        .isOccurrenceIdValid(true) // set according to your validation logic
+                        .useExtendedRecordId(false) // set according to your use case
+                        .generateIdIfAbsent(true)
+                        .keygenServiceSupplier(
+                                (SerializableSupplier<HBaseLockingKey>)
+                                        () ->
+                                                KeygenServiceFactory.create(
+                                                        config, datasetId)) // replace with actual config and dataset ID
+                        .build();
+
+        // Persist to HBase or any other storage
+        return absentIdentifiers.map(
+                (MapFunction<IdentifierRecord, IdentifierRecord>) absentIdTransform::persist,
+                Encoders.bean(IdentifierRecord.class));
+    }
+
+    private static Dataset<IdentifierRecord> loadValidIdentifiers(
+            SparkSession spark, String outputPath) {
+        return spark
+                .read()
+                .parquet(outputPath + "/identifiers_valid")
+                .as(Encoders.bean(IdentifierRecord.class));
+    }
+
   public static Dataset<OccurrenceJsonRecord> toJson(
-      Dataset<OccurrenceSimple> records, MetadataRecord metadataRecord) {
+          Dataset<Occurrence> records, MetadataRecord metadataRecord) {
     return records.map(
-        (MapFunction<OccurrenceSimple, OccurrenceJsonRecord>)
+        (MapFunction<Occurrence, OccurrenceJsonRecord>)
             record -> {
               OccurrenceJsonConverter c =
                   OccurrenceJsonConverter.builder()
@@ -272,9 +337,9 @@ public class Interpretation implements Serializable {
   }
 
   public static Dataset<OccurrenceHdfsRecord> toHdfs(
-      Dataset<OccurrenceSimple> records, MetadataRecord metadataRecord) {
+          Dataset<Occurrence> records, MetadataRecord metadataRecord) {
     return records.map(
-        (MapFunction<OccurrenceSimple, OccurrenceHdfsRecord>)
+        (MapFunction<Occurrence, OccurrenceHdfsRecord>)
             record -> {
               OccurrenceHdfsRecordConverter c =
                   OccurrenceHdfsRecordConverter.builder()
@@ -307,3 +372,4 @@ public class Interpretation implements Serializable {
         Encoders.bean(OccurrenceHdfsRecord.class));
   }
 }
+

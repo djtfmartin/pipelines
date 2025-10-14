@@ -9,13 +9,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OccurrenceSimple {
-  String id;
-  String verbatim;
-  String identifier;
-  String basic;
-  String location;
-  String taxon;
-  String temporal;
-  String grscicoll;
+public class Occurrence {
+    String id;
+    String verbatim;
+    String identifier;
+    String basic;
+    String location;
+    String taxon;
+    String temporal;
+    String grscicoll;
 }

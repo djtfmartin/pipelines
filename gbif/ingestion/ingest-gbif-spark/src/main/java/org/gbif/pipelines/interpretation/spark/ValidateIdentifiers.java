@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.MapFunction;
@@ -26,6 +27,8 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.OccurrenceExtensionConverter;
 import org.gbif.pipelines.core.functions.SerializableSupplier;
+import org.gbif.pipelines.core.pojo.HdfsConfigs;
+import org.gbif.pipelines.core.utils.FsUtils;
 import org.gbif.pipelines.interpretation.transform.GbifIdTransform;
 import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
@@ -196,14 +199,22 @@ public class ValidateIdentifiers implements Serializable {
     absentIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_absent");
 
     // 4. write metrics to yaml
-    writeMetricsYaml(metrics, outputPath + "/" + args.metaFileName);
+    HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
+    FileSystem fs = FsUtils.getFileSystem(hdfsConfigs, "/");
+    writeMetricsYaml(fs, metrics, outputPath + "/" + args.metaFileName);
+
+    // clean up
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended_records_expanded");
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/identifiers_transformed");
 
     log.info("ValidateIdentifiers finished");
     spark.close();
     System.exit(0);
   }
 
-  private static void writeMetricsYaml(Map<String, Long> allMetrics, String fileName) {
+  private static void writeMetricsYaml(FileSystem fs, Map<String, Long> allMetrics,
+
+                                       String fileName) {
     // Configure YAML output (optional)
     DumperOptions options = new DumperOptions();
     options.setIndent(2);
@@ -217,6 +228,7 @@ public class ValidateIdentifiers implements Serializable {
     try (StringWriter writer = new StringWriter()) {
       yaml.dump(allMetrics, writer);
 
+      FsUtils.createFile(fs, fileName, writer.toString());
       System.out.println("Metrics YAML:\n" + writer.toString());
 
     } catch (IOException e) {
