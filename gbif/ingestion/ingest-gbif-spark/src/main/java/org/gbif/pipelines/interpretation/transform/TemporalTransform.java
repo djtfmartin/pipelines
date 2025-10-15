@@ -15,12 +15,9 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-import org.gbif.common.parsers.date.DateComponentOrdering;
-import org.gbif.pipelines.core.functions.SerializableFunction;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.TemporalInterpreter;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
@@ -40,15 +37,13 @@ public class TemporalTransform implements Serializable {
 
   private final TemporalInterpreter temporalInterpreter;
 
-  @Builder
-  private TemporalTransform(
-      List<DateComponentOrdering> orderings,
-      SerializableFunction<String, String> preprocessDateFn) {
-    temporalInterpreter =
-        TemporalInterpreter.builder()
-            .orderings(orderings)
-            .preprocessDateFn(preprocessDateFn)
-            .create();
+  private TemporalTransform(TemporalInterpreter temporalInterpreter) {
+    this.temporalInterpreter = temporalInterpreter;
+  }
+
+  public static TemporalTransform create(PipelinesConfig config) {
+    return new TemporalTransform(
+        TemporalInterpreter.builder().orderings(config.getDefaultDateFormat()).create());
   }
 
   public Optional<TemporalRecord> convert(ExtendedRecord source) {

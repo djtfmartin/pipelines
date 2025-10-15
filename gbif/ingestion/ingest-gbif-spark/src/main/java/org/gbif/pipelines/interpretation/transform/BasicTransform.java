@@ -27,7 +27,15 @@ import org.gbif.pipelines.io.avro.*;
 @Builder
 public class BasicTransform implements Serializable {
 
-  private PipelinesConfig config;
+  private final PipelinesConfig config;
+
+  private BasicTransform(PipelinesConfig config) {
+    this.config = config;
+  }
+
+  public static BasicTransform create(PipelinesConfig config) {
+    return new BasicTransform(config);
+  }
 
   public Optional<BasicRecord> convert(ExtendedRecord source) {
 

@@ -68,6 +68,16 @@ public class Elastic {
     private Integer indexNumberReplicas = 1;
 
     @Parameter(
+        names = "--esMaxBatchSizeBytes",
+        description = "Number of replica shards per primary shard in the target index. Default = 1")
+    private Long esMaxBatchSizeBytes = 10_485_760L;
+
+    @Parameter(
+        names = "--esMaxBatchSize",
+        description = "Number of replica shards per primary shard in the target index. Default = 1")
+    private Long esMaxBatchSize = 1_700L;
+
+    @Parameter(
         names = "--searchQueryTimeoutSec",
         description = "Elasticsearch empty delete index query timeout in seconds")
     private Integer searchQueryTimeoutSec = 5;
@@ -122,6 +132,9 @@ public class Elastic {
     @Parameter(names = "--properties", description = "Path to YAML file", required = true)
     private String properties;
 
+    //    @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
+    //    private int numberOfShards = 10;
+
     @Parameter(
         names = "--master",
         description = "Spark master - there for local dev only",
@@ -173,6 +186,7 @@ public class Elastic {
 
     // Read parquet files
     Dataset<Row> df = spark.read().parquet(inputPath);
+    //    df.repartition(args.numberOfShards);
 
     // Write to Elasticsearch
     df.write()
@@ -180,6 +194,9 @@ public class Elastic {
         .option("es.resource", args.esIndexName)
         .option("es.mapping.id", "id")
         .option("es.nodes.wan.only", "true")
+        .option("es.batch.size.entries", args.esMaxBatchSize)
+        .option("es.batch.size.bytes", args.esMaxBatchSizeBytes)
+        .option("es.batch.write.refresh", "false")
         .mode("append")
         .save();
 

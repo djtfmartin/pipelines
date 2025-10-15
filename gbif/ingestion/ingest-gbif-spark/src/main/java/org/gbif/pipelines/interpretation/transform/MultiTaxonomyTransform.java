@@ -16,7 +16,6 @@ package org.gbif.pipelines.interpretation.transform;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Optional;
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.NameUsageMatchRequest;
@@ -29,10 +28,17 @@ import org.gbif.pipelines.io.avro.MultiTaxonRecord;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 @Slf4j
-@Builder
 public class MultiTaxonomyTransform implements Serializable {
 
-  private PipelinesConfig config;
+  private final PipelinesConfig config;
+
+  private MultiTaxonomyTransform(PipelinesConfig config) {
+    this.config = config;
+  }
+
+  public static MultiTaxonomyTransform create(PipelinesConfig config) {
+    return new MultiTaxonomyTransform(config);
+  }
 
   public Optional<MultiTaxonRecord> convert(ExtendedRecord source) {
 

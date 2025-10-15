@@ -18,4 +18,9 @@ public class Occurrence {
   String taxon;
   String temporal;
   String grscicoll;
+  String dnaDerivedData;
+  String multimedia;
+  String audubon;
+  String image;
+  String clustering;
 }

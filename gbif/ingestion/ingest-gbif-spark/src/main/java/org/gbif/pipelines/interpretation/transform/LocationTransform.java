@@ -16,7 +16,6 @@ package org.gbif.pipelines.interpretation.transform;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.*;
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.geocode.GeocodeRequest;
@@ -30,10 +29,17 @@ import org.gbif.pipelines.io.avro.MetadataRecord;
 import org.gbif.rest.client.geocode.GeocodeResponse;
 
 @Slf4j
-@Builder
 public class LocationTransform implements Serializable {
 
-  private PipelinesConfig config;
+  private final PipelinesConfig config;
+
+  private LocationTransform(PipelinesConfig config) {
+    this.config = config;
+  }
+
+  public static LocationTransform create(PipelinesConfig config) {
+    return new LocationTransform(config);
+  }
 
   public Optional<LocationRecord> convert(ExtendedRecord source, MetadataRecord mdr)
       throws Exception {

@@ -2,7 +2,6 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.time.Instant;
 import java.util.Optional;
-import lombok.Builder;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.grscicoll.GrscicollLookupRequest;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -14,10 +13,17 @@ import org.gbif.pipelines.io.avro.MetadataRecord;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.rest.client.grscicoll.GrscicollLookupResponse;
 
-@Builder
 public class GrscicollTransform implements java.io.Serializable {
 
-  private PipelinesConfig config;
+  private final PipelinesConfig config;
+
+  private GrscicollTransform(PipelinesConfig config) {
+    this.config = config;
+  }
+
+  public static GrscicollTransform create(PipelinesConfig config) {
+    return new GrscicollTransform(config);
+  }
 
   public Optional<GrscicollRecord> convert(ExtendedRecord source, MetadataRecord mdr) {
 
