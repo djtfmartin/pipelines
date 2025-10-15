@@ -20,7 +20,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
-import java.util.Optional;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
@@ -117,7 +117,7 @@ public class Interpretation implements Serializable {
 
     // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
-        loadExtendedRecords(spark, inputPath, args.numberOfShards);
+        loadExtendedRecords(spark, config, inputPath, outputPath, args.numberOfShards);
 
     // Process and then reload identifiers
     processIdentifiers(spark, config, outputPath, datasetId);
@@ -217,11 +217,11 @@ public class Interpretation implements Serializable {
               Optional<ClusteringRecord> cr = clusteringTransform.convert(idr);
 
               // merge the multimedia records
-              MultimediaRecord mmr = MultimediaConverter.merge(
+              MultimediaRecord mmr =
+                  MultimediaConverter.merge(
                       mr.orElse(MultimediaRecord.newBuilder().setId(er.getId()).build()),
                       ir.orElse(ImageRecord.newBuilder().setId(er.getId()).build()),
-                      ar.orElse(AudubonRecord.newBuilder().setId(er.getId()).build())
-              );
+                      ar.orElse(AudubonRecord.newBuilder().setId(er.getId()).build()));
 
               return Occurrence.builder()
                   .id(er.getId())
@@ -235,7 +235,7 @@ public class Interpretation implements Serializable {
                           gr.orElse(GrscicollRecord.newBuilder().setId(er.getId()).build())))
                   .temporal(MAPPER.writeValueAsString(ter.orElse(null)))
                   .dnaDerivedData(MAPPER.writeValueAsString(dr.orElse(null)))
-                                    .multimedia(MAPPER.writeValueAsString(mmr))
+                  .multimedia(MAPPER.writeValueAsString(mmr))
                   .clustering(MAPPER.writeValueAsString(cr.orElse(null)))
                   .build();
             },
@@ -245,16 +245,49 @@ public class Interpretation implements Serializable {
   // ----------------- Helper Methods -----------------
 
   private static Dataset<ExtendedRecord> loadExtendedRecords(
-      SparkSession spark, String inputPath, int numberOfShards) {
+      SparkSession spark,
+      PipelinesConfig config,
+      String inputPath,
+      String outputPath,
+      int numberOfShards) {
+
     spark
         .sparkContext()
         .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
+
+    final Set<String> allowExtensions = config.getExtensionsAllowedForVerbatimSet();
+
+    Dataset<ExtendedRecord> extended =
+        spark
+            .read()
+            .format("avro")
+            .load(inputPath + "/verbatim.avro")
+            .as(Encoders.bean(ExtendedRecord.class))
+            .map(
+                (MapFunction<ExtendedRecord, ExtendedRecord>)
+                    er -> {
+                      Map<String, List<Map<String, String>>> extensions = new HashMap<>();
+                      er.getExtensions().entrySet().stream()
+                          .filter(es -> allowExtensions.contains(es.getKey()))
+                          .filter(es -> !es.getValue().isEmpty())
+                          .forEach(es -> extensions.put(es.getKey(), es.getValue()));
+                      return ExtendedRecord.newBuilder()
+                          .setId(er.getId())
+                          .setCoreTerms(er.getCoreTerms())
+                          .setExtensions(extensions)
+                          .build();
+                    },
+                Encoders.bean(ExtendedRecord.class))
+            .repartition(numberOfShards);
+
+    // write to parquet for debug purposes
+    extended.write().mode("overwrite").parquet(outputPath + "/verbatim_ext_filtered");
+
+    // reload
     return spark
         .read()
-        .format("avro")
-        .load(inputPath + "/verbatim.avro")
-        .as(Encoders.bean(ExtendedRecord.class))
-        .repartition(numberOfShards);
+        .parquet(outputPath + "/verbatim_ext_filtered")
+        .as(Encoders.bean(ExtendedRecord.class));
   }
 
   private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
@@ -345,7 +378,8 @@ public class Interpretation implements Serializable {
                       .dnaDerivedData(
                           MAPPER.readValue(
                               (String) record.getDnaDerivedData(), DnaDerivedDataRecord.class))
-                      .clustering(MAPPER.readValue((String) record.getClustering(), ClusteringRecord.class))
+                      .clustering(
+                          MAPPER.readValue((String) record.getClustering(), ClusteringRecord.class))
                       .build();
 
               return c.convert();
@@ -383,7 +417,8 @@ public class Interpretation implements Serializable {
                       .dnaDerivedDataRecord(
                           MAPPER.readValue(
                               (String) record.getDnaDerivedData(), DnaDerivedDataRecord.class))
-                      .clusteringRecord(MAPPER.readValue((String) record.getClustering(), ClusteringRecord.class))
+                      .clusteringRecord(
+                          MAPPER.readValue((String) record.getClustering(), ClusteringRecord.class))
                       .build();
 
               return c.convert();
