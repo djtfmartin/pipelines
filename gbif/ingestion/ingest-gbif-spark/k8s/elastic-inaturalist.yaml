@@ -35,7 +35,7 @@ spec:
     - "--datasetId=50c9509d-22c7-4a22-a47d-8c48425ef4a7"
     - "--attempt=236"
     - "--indexNumberShards=32"
-    - "--indexNumberReplicas=1"
+    - "--indexNumberReplicas=0"
     - "--hdfsSiteConfig=/etc/hadoop/conf/hdfs-site.xml"
     - "--coreSiteConfig=/etc/hadoop/conf/core-site.xml"
     - "--properties=/tmp/pipelines-spark.yaml"

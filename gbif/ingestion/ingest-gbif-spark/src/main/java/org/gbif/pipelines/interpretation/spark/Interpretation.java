@@ -408,10 +408,6 @@ public class Interpretation implements Serializable {
                           MAPPER.readValue((String) record.getGrscicoll(), GrscicollRecord.class))
                       .identifierRecord(
                           MAPPER.readValue((String) record.getIdentifier(), IdentifierRecord.class))
-                      .clusteringRecord(
-                          ClusteringRecord.newBuilder()
-                              .setId(record.getId())
-                              .build()) // placeholder
                       .multimediaRecord(
                           MAPPER.readValue((String) record.getMultimedia(), MultimediaRecord.class))
                       .dnaDerivedDataRecord(
