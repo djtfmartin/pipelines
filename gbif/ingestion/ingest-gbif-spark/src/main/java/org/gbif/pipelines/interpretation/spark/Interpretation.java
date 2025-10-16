@@ -152,10 +152,10 @@ public class Interpretation implements Serializable {
         runTransforms(spark, config, simpleRecords, metadata, outputPath);
 
     // write parquet for elastic
-    toJson(interpreted, metadata).write().mode("overwrite").parquet(outputPath + "/json");
+    toJson(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath + "/json");
 
     // write parquet for hdfs view
-    toHdfs(interpreted, metadata).write().mode("overwrite").parquet(outputPath + "/hdfs");
+    toHdfs(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath + "/hdfs");
 
     // cleanup intermediate parquet outputs
     HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
@@ -198,7 +198,7 @@ public class Interpretation implements Serializable {
                 },
             Encoders.bean(Occurrence.class))
         .write()
-        .mode("overwrite")
+        .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/extended-identifiers");
 
     return spark
@@ -294,7 +294,7 @@ public class Interpretation implements Serializable {
             Encoders.bean(Occurrence.class));
 
     // write simple interpreted records to disk
-    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence");
+    interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/simple-occurrence");
 
     // re-load
     return spark
@@ -356,7 +356,7 @@ public class Interpretation implements Serializable {
             .repartition(numberOfShards);
 
     // write to parquet for debug purposes
-    extended.write().mode("overwrite").parquet(outputPath + "/verbatim_ext_filtered");
+    extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/verbatim_ext_filtered");
 
     // reload
     return spark
@@ -387,7 +387,7 @@ public class Interpretation implements Serializable {
     Dataset<IdentifierRecord> allIdentifiers = identifiers.union(newlyAdded);
 
     // write out the final identifiers
-    allIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers");
+    allIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/identifiers");
   }
 
   private static Dataset<IdentifierRecord> persistAbsentIdentifiers(
@@ -401,15 +401,13 @@ public class Interpretation implements Serializable {
 
     GbifAbsentIdTransform absentIdTransform =
         GbifAbsentIdTransform.builder()
-            .isTripletValid(true) // set according to your validation logic
-            .isOccurrenceIdValid(true) // set according to your validation logic
-            .useExtendedRecordId(false) // set according to your use case
+            .isTripletValid(true)
+            .isOccurrenceIdValid(true)
+            .useExtendedRecordId(false)
             .generateIdIfAbsent(true)
             .keygenServiceSupplier(
                 (SerializableSupplier<HBaseLockingKey>)
-                    () ->
-                        KeygenServiceFactory.create(
-                            config, datasetId)) // replace with actual config and dataset ID
+                    () -> KeygenServiceFactory.create(config, datasetId))
             .build();
 
     // Persist to HBase or any other storage
