@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -203,18 +204,19 @@ public class Interpretation implements Serializable {
                   MAPPER.readValue(simpleRecord.getVerbatim(), ExtendedRecord.class);
               IdentifierRecord idr =
                   MAPPER.readValue(simpleRecord.getIdentifier(), IdentifierRecord.class);
+
               // Apply all transforms
-              er = defaultValuesTransform.convert(er).get();
-              Optional<MultiTaxonRecord> tr = taxonomyTransform.convert(er);
-              Optional<LocationRecord> lr = locationTransform.convert(er, metadata);
-              Optional<GrscicollRecord> gr = grscicollTransform.convert(er, metadata);
-              Optional<TemporalRecord> ter = temporalTransform.convert(er);
-              Optional<BasicRecord> br = basicTransform.convert(er);
-              Optional<DnaDerivedDataRecord> dr = dnDerivedDataTransform.convert(er);
+              er = defaultValuesTransform.convert(er);
+              MultiTaxonRecord tr = taxonomyTransform.convert(er);
+              LocationRecord lr = locationTransform.convert(er, metadata);
+              GrscicollRecord gr = grscicollTransform.convert(er, metadata);
+              TemporalRecord ter = temporalTransform.convert(er);
+              BasicRecord br = basicTransform.convert(er);
+              DnaDerivedDataRecord dr = dnDerivedDataTransform.convert(er);
               Optional<MultimediaRecord> mr = multimediaTransform.convert(er);
               Optional<ImageRecord> ir = imageTransform.convert(er);
               Optional<AudubonRecord> ar = audubonTransform.convert(er);
-              Optional<ClusteringRecord> cr = clusteringTransform.convert(idr);
+              ClusteringRecord cr = clusteringTransform.convert(idr);
 
               // merge the multimedia records
               MultimediaRecord mmr =
@@ -227,16 +229,14 @@ public class Interpretation implements Serializable {
                   .id(er.getId())
                   .identifier(simpleRecord.getIdentifier())
                   .verbatim(simpleRecord.getVerbatim())
-                  .basic(MAPPER.writeValueAsString(br.orElse(null)))
-                  .taxon(MAPPER.writeValueAsString(tr.orElse(null)))
-                  .location(MAPPER.writeValueAsString(lr.orElse(null)))
-                  .grscicoll(
-                      MAPPER.writeValueAsString(
-                          gr.orElse(GrscicollRecord.newBuilder().setId(er.getId()).build())))
-                  .temporal(MAPPER.writeValueAsString(ter.orElse(null)))
-                  .dnaDerivedData(MAPPER.writeValueAsString(dr.orElse(null)))
+                  .basic(MAPPER.writeValueAsString(br))
+                  .taxon(MAPPER.writeValueAsString(tr))
+                  .location(MAPPER.writeValueAsString(lr))
+                  .grscicoll(MAPPER.writeValueAsString(gr))
+                  .temporal(MAPPER.writeValueAsString(ter))
+                  .dnaDerivedData(MAPPER.writeValueAsString(dr))
                   .multimedia(MAPPER.writeValueAsString(mmr))
-                  .clustering(MAPPER.writeValueAsString(cr.orElse(null)))
+                  .clustering(MAPPER.writeValueAsString(cr))
                   .build();
             },
         Encoders.bean(Occurrence.class));
@@ -255,7 +255,9 @@ public class Interpretation implements Serializable {
         .sparkContext()
         .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
 
-    final Set<String> allowExtensions = config.getExtensionsAllowedForVerbatimSet();
+    final Set<String> allowExtensions =
+        Optional.ofNullable(config.getExtensionsAllowedForVerbatimSet())
+            .orElse(Collections.emptySet());
 
     Dataset<ExtendedRecord> extended =
         spark
@@ -263,6 +265,8 @@ public class Interpretation implements Serializable {
             .format("avro")
             .load(inputPath + "/verbatim.avro")
             .as(Encoders.bean(ExtendedRecord.class))
+            .filter(
+                (FilterFunction<ExtendedRecord>) er -> er != null && !er.getCoreTerms().isEmpty())
             .map(
                 (MapFunction<ExtendedRecord, ExtendedRecord>)
                     er -> {

@@ -15,10 +15,8 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.TemporalInterpreter;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.TemporalRecord;
@@ -46,20 +44,25 @@ public class TemporalTransform implements Serializable {
         TemporalInterpreter.builder().orderings(config.getDefaultDateFormat()).create());
   }
 
-  public Optional<TemporalRecord> convert(ExtendedRecord source) {
-    return Interpretation.from(source)
-        .to(
-            er ->
-                TemporalRecord.newBuilder()
-                    .setId(er.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
-        .when(er -> !er.getCoreTerms().isEmpty())
-        .via(temporalInterpreter::interpretTemporal)
-        .via(temporalInterpreter::interpretModified)
-        .via(temporalInterpreter::interpretDateIdentified)
-        .via(TemporalInterpreter::setCoreId)
-        .via(TemporalInterpreter::setParentEventId)
-        .getOfNullable();
+  public TemporalRecord convert(ExtendedRecord source) {
+
+    if (source == null || source.getCoreTerms().isEmpty()) {
+      throw new IllegalArgumentException("ExtendedRecord is null or empty");
+    }
+
+    TemporalRecord record =
+        TemporalRecord.newBuilder()
+            .setId(source.getId())
+            .setCreated(Instant.now().toEpochMilli())
+            .build();
+
+    // Sequentially apply interpreters
+    temporalInterpreter.interpretTemporal(source, record);
+    temporalInterpreter.interpretModified(source, record);
+    temporalInterpreter.interpretDateIdentified(source, record);
+    TemporalInterpreter.setCoreId(source, record);
+    TemporalInterpreter.setParentEventId(source, record);
+
+    return record;
   }
 }

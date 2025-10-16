@@ -2,9 +2,7 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Optional;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.specific.ClusteredInterpreter;
 import org.gbif.pipelines.core.parsers.clustering.ClusteringService;
 import org.gbif.pipelines.interpretation.transform.utils.ClusteringServiceFactory;
@@ -24,21 +22,19 @@ public class ClusteringTransform implements Serializable {
     return new ClusteringTransform(config);
   }
 
-  public Optional<ClusteringRecord> convert(IdentifierRecord source) {
+  public ClusteringRecord convert(IdentifierRecord source) {
+
+    ClusteringRecord cr =
+        ClusteringRecord.newBuilder()
+            .setId(source.getId())
+            .setCreated(Instant.now().toEpochMilli())
+            .build();
 
     if (clusteringService == null) {
       this.clusteringService = ClusteringServiceFactory.createSupplier(config).get();
     }
 
-    return Interpretation.from(source)
-        .to(
-            ir ->
-                ClusteringRecord.newBuilder()
-                    .setId(ir.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
-        .when(ir -> ir.getInternalId() != null)
-        .via(ClusteredInterpreter.interpretIsClustered(clusteringService))
-        .getOfNullable();
+    ClusteredInterpreter.interpretIsClustered(clusteringService).accept(source, cr);
+    return cr;
   }
 }

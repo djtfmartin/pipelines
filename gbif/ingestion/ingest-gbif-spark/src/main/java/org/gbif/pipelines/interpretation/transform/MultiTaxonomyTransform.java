@@ -15,12 +15,10 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.species.NameUsageMatchRequest;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.MultiTaxonomyInterpreter;
 import org.gbif.pipelines.interpretation.transform.utils.MultiTaxonomyKVSFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
@@ -40,22 +38,21 @@ public class MultiTaxonomyTransform implements Serializable {
     return new MultiTaxonomyTransform(config);
   }
 
-  public Optional<MultiTaxonRecord> convert(ExtendedRecord source) {
+  public MultiTaxonRecord convert(ExtendedRecord source) {
 
     KeyValueStore<NameUsageMatchRequest, NameUsageMatchResponse> kvStore =
         MultiTaxonomyKVSFactory.getKvStore(config);
 
-    return Interpretation.from(source)
-        .to(
-            er ->
-                MultiTaxonRecord.newBuilder()
-                    .setId(er.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
-        .when(er -> !er.getCoreTerms().isEmpty())
-        .via(
-            MultiTaxonomyInterpreter.interpretMultiTaxonomy(
-                kvStore, config.getNameUsageMatchingService().getChecklistKeys()))
-        .getOfNullable();
+    MultiTaxonRecord mtr =
+        MultiTaxonRecord.newBuilder()
+            .setId(source.getId())
+            .setCreated(Instant.now().toEpochMilli())
+            .build();
+
+    MultiTaxonomyInterpreter.interpretMultiTaxonomy(
+            kvStore, config.getNameUsageMatchingService().getChecklistKeys())
+        .accept(source, mtr);
+
+    return mtr;
   }
 }

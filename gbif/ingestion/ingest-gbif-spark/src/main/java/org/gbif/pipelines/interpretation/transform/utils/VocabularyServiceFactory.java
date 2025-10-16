@@ -22,7 +22,7 @@ import org.gbif.vocabulary.lookup.InMemoryVocabularyLookup;
 /** Provides the {@link VocabularyService} as a singleton per JVM. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class VocabularyServiceFactory {
-  private static Object LOCK = new Object();
+  private static final Object LOCK = new Object();
   private static VocabularyService vocabularyService;
 
   public static VocabularyService getInstance(String url) {

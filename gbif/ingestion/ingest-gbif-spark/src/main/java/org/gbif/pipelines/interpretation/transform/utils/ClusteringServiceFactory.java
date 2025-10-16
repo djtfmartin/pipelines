@@ -11,7 +11,6 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.functions.SerializableSupplier;
 import org.gbif.pipelines.core.parsers.clustering.ClusteringService;
 import org.gbif.pipelines.keygen.common.HbaseConnection;
-import org.gbif.pipelines.keygen.common.HbaseConnectionFactory;
 
 public class ClusteringServiceFactory {
 
@@ -22,31 +21,6 @@ public class ClusteringServiceFactory {
   @SneakyThrows
   private ClusteringServiceFactory(Connection c, ClusteringRelationshipConfig config) {
     this.service = ClusteringService.create(c, config);
-  }
-
-  public static ClusteringService getInstance(Connection c, ClusteringRelationshipConfig config) {
-    if (instance == null) {
-      synchronized (MUTEX) {
-        if (instance == null) {
-          instance = new ClusteringServiceFactory(c, config);
-        }
-      }
-    }
-    return instance.service;
-  }
-
-  public static SerializableSupplier<ClusteringService> getInstanceSupplier(
-      PipelinesConfig config) {
-    return () -> {
-      if (config.getClusteringRelationshipConfig() == null
-          || config.getClusteringRelationshipConfig().getRelationshipTableName() == null) {
-        return null;
-      }
-
-      String zk = getZk(config);
-      Connection c = HbaseConnectionFactory.getInstance(zk, getHBaseZnode(config)).getConnection();
-      return getInstance(c, config.getClusteringRelationshipConfig());
-    };
   }
 
   public static SerializableSupplier<ClusteringService> createSupplier(PipelinesConfig config) {

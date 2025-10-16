@@ -2,7 +2,6 @@ package org.gbif.pipelines.interpretation.transform;
 
 import com.google.common.base.Strings;
 import java.io.Serializable;
-import java.util.Optional;
 import lombok.Builder;
 import org.gbif.dwc.terms.Term;
 import org.gbif.dwc.terms.TermFactory;
@@ -26,9 +25,9 @@ public class DefaultValuesTransform implements Serializable {
     return new DefaultValuesTransform(config, metadata);
   }
 
-  public Optional<ExtendedRecord> convert(ExtendedRecord source) {
+  public ExtendedRecord convert(ExtendedRecord source) {
     if (metadata.getMachineTags() == null || metadata.getMachineTags().isEmpty()) {
-      return Optional.of(source);
+      return source;
     }
 
     metadata
@@ -42,6 +41,6 @@ public class DefaultValuesTransform implements Serializable {
               }
             });
 
-    return Optional.of(source);
+    return source;
   }
 }

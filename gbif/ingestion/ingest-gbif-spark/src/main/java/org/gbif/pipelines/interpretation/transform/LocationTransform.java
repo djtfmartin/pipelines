@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.geocode.GeocodeRequest;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.LocationInterpreter;
 import org.gbif.pipelines.interpretation.transform.utils.GeocodeKVSFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
@@ -41,44 +40,46 @@ public class LocationTransform implements Serializable {
     return new LocationTransform(config);
   }
 
-  public Optional<LocationRecord> convert(ExtendedRecord source, MetadataRecord mdr)
-      throws Exception {
+  public LocationRecord convert(ExtendedRecord source, MetadataRecord mdr) throws Exception {
+    if (source == null || source.getCoreTerms().isEmpty()) {
+      throw new IllegalArgumentException("ExtendedRecord is null or empty");
+    }
 
     KeyValueStore<GeocodeRequest, GeocodeResponse> geocodeKvStore =
         GeocodeKVSFactory.getKvStore(config);
 
-    Interpretation<ExtendedRecord>.Handler<LocationRecord> handler =
-        Interpretation.from(source)
-            .to(
-                LocationRecord.newBuilder()
-                    .setId(source.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
-            .when(er -> !er.getCoreTerms().isEmpty())
-            .via(LocationInterpreter.interpretCountryAndCoordinates(geocodeKvStore, mdr))
-            .via(LocationInterpreter.interpretContinent(geocodeKvStore))
-            .via(LocationInterpreter.interpretGadm(geocodeKvStore))
-            .via(LocationInterpreter::interpretWaterBody)
-            .via(LocationInterpreter::interpretStateProvince)
-            .via(LocationInterpreter::interpretMinimumElevationInMeters)
-            .via(LocationInterpreter::interpretMaximumElevationInMeters)
-            .via(LocationInterpreter::interpretElevation)
-            .via(LocationInterpreter::interpretMinimumDepthInMeters)
-            .via(LocationInterpreter::interpretMaximumDepthInMeters)
-            .via(LocationInterpreter::interpretDepth)
-            .via(LocationInterpreter::interpretMinimumDistanceAboveSurfaceInMeters)
-            .via(LocationInterpreter::interpretMaximumDistanceAboveSurfaceInMeters)
-            .via(LocationInterpreter::interpretCoordinatePrecision)
-            .via(LocationInterpreter::interpretCoordinateUncertaintyInMeters)
-            .via(LocationInterpreter.calculateCentroidDistance(geocodeKvStore))
-            .via(LocationInterpreter::interpretLocality)
-            .via(LocationInterpreter::interpretFootprintWKT)
-            .via(LocationInterpreter::interpretHigherGeography)
-            .via(LocationInterpreter::interpretGeoreferencedBy)
-            .via(LocationInterpreter::interpretGbifRegion)
-            .via(LocationInterpreter::interpretPublishedByGbifRegion)
-            .via(LocationInterpreter::setCoreId)
-            .via(LocationInterpreter::setParentEventId);
-    return handler.getOfNullable();
+    LocationRecord record =
+        LocationRecord.newBuilder()
+            .setId(source.getId())
+            .setCreated(Instant.now().toEpochMilli())
+            .build();
+
+    // Sequentially apply interpreters
+    LocationInterpreter.interpretCountryAndCoordinates(geocodeKvStore, mdr).accept(source, record);
+    LocationInterpreter.interpretContinent(geocodeKvStore).accept(source, record);
+    LocationInterpreter.interpretGadm(geocodeKvStore).accept(source, record);
+    LocationInterpreter.interpretWaterBody(source, record);
+    LocationInterpreter.interpretStateProvince(source, record);
+    LocationInterpreter.interpretMinimumElevationInMeters(source, record);
+    LocationInterpreter.interpretMaximumElevationInMeters(source, record);
+    LocationInterpreter.interpretElevation(source, record);
+    LocationInterpreter.interpretMinimumDepthInMeters(source, record);
+    LocationInterpreter.interpretMaximumDepthInMeters(source, record);
+    LocationInterpreter.interpretDepth(source, record);
+    LocationInterpreter.interpretMinimumDistanceAboveSurfaceInMeters(source, record);
+    LocationInterpreter.interpretMaximumDistanceAboveSurfaceInMeters(source, record);
+    LocationInterpreter.interpretCoordinatePrecision(source, record);
+    LocationInterpreter.interpretCoordinateUncertaintyInMeters(source, record);
+    LocationInterpreter.calculateCentroidDistance(geocodeKvStore).accept(source, record);
+    LocationInterpreter.interpretLocality(source, record);
+    LocationInterpreter.interpretFootprintWKT(source, record);
+    LocationInterpreter.interpretHigherGeography(source, record);
+    LocationInterpreter.interpretGeoreferencedBy(source, record);
+    LocationInterpreter.interpretGbifRegion(record);
+    LocationInterpreter.interpretPublishedByGbifRegion(record);
+    LocationInterpreter.setCoreId(source, record);
+    LocationInterpreter.setParentEventId(source, record);
+
+    return record;
   }
 }

@@ -15,10 +15,8 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Optional;
 import lombok.Builder;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.core.*;
 import org.gbif.pipelines.interpretation.transform.utils.VocabularyServiceFactory;
 import org.gbif.pipelines.io.avro.*;
@@ -37,78 +35,64 @@ public class BasicTransform implements Serializable {
     return new BasicTransform(config);
   }
 
-  public Optional<BasicRecord> convert(ExtendedRecord source) {
+  public BasicRecord convert(ExtendedRecord source) {
+    if (source == null || source.getCoreTerms().isEmpty()) {
+      throw new IllegalArgumentException("ExtendedRecord is null or empty");
+    }
 
-    Interpretation<ExtendedRecord>.Handler<BasicRecord> handler =
-        Interpretation.from(source)
-            .to(
-                BasicRecord.newBuilder()
-                    .setId(source.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
-            .when(er -> !er.getCoreTerms().isEmpty())
-            .via(BasicInterpreter::interpretBasisOfRecord)
-            .via(BasicInterpreter::interpretTypifiedName)
-            .via(
-                VocabularyInterpreter.interpretSex(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via(
-                VocabularyInterpreter.interpretTypeStatus(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via(BasicInterpreter::interpretIndividualCount)
-            .via((e, r) -> CoreInterpreter.interpretReferences(e, r, r::setReferences))
-            .via(BasicInterpreter::interpretOrganismQuantity)
-            .via(BasicInterpreter::interpretOrganismQuantityType)
-            .via((e, r) -> CoreInterpreter.interpretSampleSizeUnit(e, r::setSampleSizeUnit))
-            .via((e, r) -> CoreInterpreter.interpretSampleSizeValue(e, r::setSampleSizeValue))
-            .via(BasicInterpreter::interpretRelativeOrganismQuantity)
-            .via((e, r) -> CoreInterpreter.interpretLicense(e, r::setLicense))
-            .via(BasicInterpreter::interpretIdentifiedByIds)
-            .via(BasicInterpreter::interpretRecordedByIds)
-            .via(
-                VocabularyInterpreter.interpretOccurrenceStatus(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via(
-                VocabularyInterpreter.interpretEstablishmentMeans(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via(
-                VocabularyInterpreter.interpretLifeStage(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via(
-                VocabularyInterpreter.interpretPathway(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via(
-                VocabularyInterpreter.interpretDegreeOfEstablishment(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via((e, r) -> CoreInterpreter.interpretDatasetID(e, r::setDatasetID))
-            .via((e, r) -> CoreInterpreter.interpretDatasetName(e, r::setDatasetName))
-            .via(BasicInterpreter::interpretOtherCatalogNumbers)
-            .via(BasicInterpreter::interpretRecordedBy)
-            .via(BasicInterpreter::interpretIdentifiedBy)
-            .via(BasicInterpreter::interpretPreparations)
-            .via((e, r) -> CoreInterpreter.interpretSamplingProtocol(e, r::setSamplingProtocol))
-            .via(BasicInterpreter::interpretProjectId)
-            .via(BasicInterpreter::interpretIsSequenced)
-            .via(BasicInterpreter::interpretAssociatedSequences)
-            // Geological context
-            .via(
-                GeologicalContextInterpreter.interpretChronostratigraphy(
-                    VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-            .via(GeologicalContextInterpreter::interpretLowestBiostratigraphicZone)
-            .via(GeologicalContextInterpreter::interpretHighestBiostratigraphicZone)
-            .via(GeologicalContextInterpreter::interpretGroup)
-            .via(GeologicalContextInterpreter::interpretFormation)
-            .via(GeologicalContextInterpreter::interpretMember)
-            .via(GeologicalContextInterpreter::interpretBed);
+    BasicRecord record =
+        BasicRecord.newBuilder()
+            .setId(source.getId())
+            .setCreated(Instant.now().toEpochMilli())
+            .build();
 
-    handler
-        .via(
-            DynamicPropertiesInterpreter.interpretSex(
-                VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())))
-        .via(
-            DynamicPropertiesInterpreter.interpretLifeStage(
-                VocabularyServiceFactory.getInstance(config.getVocabularyService().getWsUrl())));
+    var vocabServiceUrl = config.getVocabularyService().getWsUrl();
+    var vocabService = VocabularyServiceFactory.getInstance(vocabServiceUrl);
 
-    return handler.getOfNullable();
+    // Apply interpreters sequentially
+    BasicInterpreter.interpretBasisOfRecord(source, record);
+    BasicInterpreter.interpretTypifiedName(source, record);
+    VocabularyInterpreter.interpretSex(vocabService).accept(source, record);
+    VocabularyInterpreter.interpretTypeStatus(vocabService).accept(source, record);
+    BasicInterpreter.interpretIndividualCount(source, record);
+    CoreInterpreter.interpretReferences(source, record, record::setReferences);
+    BasicInterpreter.interpretOrganismQuantity(source, record);
+    BasicInterpreter.interpretOrganismQuantityType(source, record);
+    CoreInterpreter.interpretSampleSizeUnit(source, record::setSampleSizeUnit);
+    CoreInterpreter.interpretSampleSizeValue(source, record::setSampleSizeValue);
+    BasicInterpreter.interpretRelativeOrganismQuantity(record);
+    CoreInterpreter.interpretLicense(source, record::setLicense);
+    BasicInterpreter.interpretIdentifiedByIds(source, record);
+    BasicInterpreter.interpretRecordedByIds(source, record);
+    VocabularyInterpreter.interpretOccurrenceStatus(vocabService).accept(source, record);
+    VocabularyInterpreter.interpretEstablishmentMeans(vocabService).accept(source, record);
+    VocabularyInterpreter.interpretLifeStage(vocabService).accept(source, record);
+    VocabularyInterpreter.interpretPathway(vocabService).accept(source, record);
+    VocabularyInterpreter.interpretDegreeOfEstablishment(vocabService).accept(source, record);
+    CoreInterpreter.interpretDatasetID(source, record::setDatasetID);
+    CoreInterpreter.interpretDatasetName(source, record::setDatasetName);
+    BasicInterpreter.interpretOtherCatalogNumbers(source, record);
+    BasicInterpreter.interpretRecordedBy(source, record);
+    BasicInterpreter.interpretIdentifiedBy(source, record);
+    BasicInterpreter.interpretPreparations(source, record);
+    CoreInterpreter.interpretSamplingProtocol(source, record::setSamplingProtocol);
+    BasicInterpreter.interpretProjectId(source, record);
+    BasicInterpreter.interpretIsSequenced(source, record);
+    BasicInterpreter.interpretAssociatedSequences(source, record);
+
+    // Geological context
+    GeologicalContextInterpreter.interpretChronostratigraphy(vocabService).accept(source, record);
+    GeologicalContextInterpreter.interpretLowestBiostratigraphicZone(source, record);
+    GeologicalContextInterpreter.interpretHighestBiostratigraphicZone(source, record);
+    GeologicalContextInterpreter.interpretGroup(source, record);
+    GeologicalContextInterpreter.interpretFormation(source, record);
+    GeologicalContextInterpreter.interpretMember(source, record);
+    GeologicalContextInterpreter.interpretBed(source, record);
+
+    // Dynamic properties
+    DynamicPropertiesInterpreter.interpretSex(vocabService).accept(source, record);
+    DynamicPropertiesInterpreter.interpretLifeStage(vocabService).accept(source, record);
+
+    return record;
   }
 }
