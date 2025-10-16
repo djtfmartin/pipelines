@@ -42,6 +42,18 @@ import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import org.gbif.pipelines.keygen.HBaseLockingKey;
 import scala.Tuple2;
 
+/**
+ * Main class for the Spark pipeline that interprets occurrence records.
+ *
+ * <p>This pipeline reads extended records and identifiers from disk, processes them, and writes the
+ * interpreted occurrences to two outputs:
+ *
+ * <ol>
+ *   <li>A Parquet file containing the occurrences in a format suitable for indexing in
+ *       Elasticsearch
+ *   <li>A Parquet file containing the occurrences in a format suitable for HDFS view
+ * </ol>
+ */
 @Slf4j
 public class Interpretation implements Serializable {
 
@@ -74,15 +86,6 @@ public class Interpretation implements Serializable {
         required = false)
     private String master;
 
-    @Parameter(names = "--debugOutput", description = "Debug output", required = false, arity = 1)
-    private boolean debug = false;
-
-    @Parameter(names = "--hdfsView", description = "Debug output", required = false, arity = 1)
-    private boolean hdfsView = true;
-
-    @Parameter(names = "--jsonView", description = "Debug output", required = false, arity = 1)
-    private boolean jsonView = true;
-
     @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
     private int numberOfShards = 10;
 
@@ -114,6 +117,7 @@ public class Interpretation implements Serializable {
     if (args.master != null && !args.master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(args.master);
     }
+
     SparkSession spark = sparkBuilder.getOrCreate();
 
     // Load the extended records
@@ -121,10 +125,63 @@ public class Interpretation implements Serializable {
         loadExtendedRecords(spark, config, inputPath, outputPath, args.numberOfShards);
 
     // Process and then reload identifiers
-    processIdentifiers(spark, config, outputPath, datasetId);
+    // if the /identifiers directory exists, then
+    // we assume that the valid and absent identifiers are already present because of a previous
+    // interpretation run
+    if (!FsUtils.fileExists(
+        HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig),
+        outputPath + "/identifiers")) {
+      log.info("Processing identifiers - first interpretation run for this dataset and attempt");
+      processIdentifiers(spark, config, outputPath, datasetId);
+    } else {
+      log.info("Skipping processing identifiers - re-using existing identifiers");
+    }
+
+    // load identifiers
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
 
-    // join and write to disk
+    // join extended records and identifiers
+    Dataset<Occurrence> simpleRecords =
+        joinRecordsAndIdentifiers(extendedRecords, identifiers, outputPath, spark);
+
+    // A single call to the registry to get the dataset metadata
+    final MetadataRecord metadata = getMetadataRecord(config, args);
+
+    // run all transforms
+    Dataset<Occurrence> interpreted =
+        runTransforms(spark, config, simpleRecords, metadata, outputPath);
+
+    // write parquet for elastic
+    toJson(interpreted, metadata).write().mode("overwrite").parquet(outputPath + "/json");
+
+    // write parquet for hdfs view
+    toHdfs(interpreted, metadata).write().mode("overwrite").parquet(outputPath + "/hdfs");
+
+    // cleanup intermediate parquet outputs
+    HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/simple-occurrence");
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
+
+    spark.close();
+    System.exit(0);
+  }
+
+  /**
+   * Joins the extended records with their corresponding identifiers and creates a simple occurrence
+   * record containing only the id, verbatim and identifier fields.
+   *
+   * @param extendedRecords
+   * @param identifiers
+   * @param outputPath
+   * @param spark
+   * @return
+   */
+  private static Dataset<Occurrence> joinRecordsAndIdentifiers(
+      Dataset<ExtendedRecord> extendedRecords,
+      Dataset<IdentifierRecord> identifiers,
+      String outputPath,
+      SparkSession spark) {
     extendedRecords
         .as("extendedRecord")
         .joinWith(identifiers, extendedRecords.col("id").equalTo(identifiers.col("id")))
@@ -144,44 +201,42 @@ public class Interpretation implements Serializable {
         .mode("overwrite")
         .parquet(outputPath + "/extended-identifiers");
 
-    // A single call to the registry to get the dataset metadata
+    return spark
+        .read()
+        .parquet(outputPath + "/extended-identifiers")
+        .as(Encoders.bean(Occurrence.class));
+  }
+
+  /**
+   * Retrieves the metadata for the dataset from the metadata service.
+   *
+   * @param config The pipelines configuration.
+   * @param args The command line arguments containing the dataset ID.
+   * @return The metadata record for the dataset.
+   */
+  private static MetadataRecord getMetadataRecord(PipelinesConfig config, Args args) {
     MetadataServiceClient metadataServiceClient =
         MetadataServiceClient.create(config.getGbifApi(), config.getContent());
     final MetadataRecord metadata =
         MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
     MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
-
-    Dataset<Occurrence> simpleRecords =
-        spark
-            .read()
-            .parquet(outputPath + "/extended-identifiers")
-            .as(Encoders.bean(Occurrence.class));
-
-    Dataset<Occurrence> interpreted = runTransforms(config, simpleRecords, metadata);
-
-    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence");
-
-    // re-load
-    Dataset<Occurrence> simpleRecordsReloaded =
-        spark.read().parquet(outputPath + "/simple-occurrence").as(Encoders.bean(Occurrence.class));
-
-    // write parquet for elastic
-    toJson(simpleRecordsReloaded, metadata).write().mode("overwrite").parquet(outputPath + "/json");
-
-    // write parquet for hdfs view
-    toHdfs(simpleRecordsReloaded, metadata).write().mode("overwrite").parquet(outputPath + "/hdfs");
-
-    // cleanup
-    HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/simple-occurrence");
-
-    spark.close();
-    System.exit(0);
+    return metadata;
   }
 
+  /**
+   * Runs all the transforms on the simple records to produce fully interpreted occurrence records.
+   *
+   * @param config The pipelines configuration.
+   * @param simpleRecords The dataset of simple occurrence records.
+   * @param metadata The metadata record for the dataset.
+   * @return The dataset of fully interpreted occurrence records.
+   */
   private static Dataset<Occurrence> runTransforms(
-      PipelinesConfig config, Dataset<Occurrence> simpleRecords, MetadataRecord metadata) {
+      SparkSession spark,
+      PipelinesConfig config,
+      Dataset<Occurrence> simpleRecords,
+      MetadataRecord metadata,
+      String outputPath) {
 
     // Set up our transforms
     DefaultValuesTransform defaultValuesTransform = DefaultValuesTransform.create(config, metadata);
@@ -197,49 +252,69 @@ public class Interpretation implements Serializable {
     ClusteringTransform clusteringTransform = ClusteringTransform.create(config);
 
     // Loop over all records and interpret them
-    return simpleRecords.map(
-        (MapFunction<Occurrence, Occurrence>)
-            simpleRecord -> {
-              ExtendedRecord er =
-                  MAPPER.readValue(simpleRecord.getVerbatim(), ExtendedRecord.class);
-              IdentifierRecord idr =
-                  MAPPER.readValue(simpleRecord.getIdentifier(), IdentifierRecord.class);
+    Dataset<Occurrence> interpreted =
+        simpleRecords.map(
+            (MapFunction<Occurrence, Occurrence>)
+                simpleRecord -> {
+                  ExtendedRecord er =
+                      MAPPER.readValue(simpleRecord.getVerbatim(), ExtendedRecord.class);
+                  IdentifierRecord idr =
+                      MAPPER.readValue(simpleRecord.getIdentifier(), IdentifierRecord.class);
 
-              // Apply all transforms
-              er = defaultValuesTransform.convert(er);
-              MultiTaxonRecord tr = taxonomyTransform.convert(er);
-              LocationRecord lr = locationTransform.convert(er, metadata);
-              GrscicollRecord gr = grscicollTransform.convert(er, metadata);
-              TemporalRecord ter = temporalTransform.convert(er);
-              BasicRecord br = basicTransform.convert(er);
-              DnaDerivedDataRecord dr = dnDerivedDataTransform.convert(er);
-              MultimediaRecord mr = multimediaTransform.convert(er);
-              ImageRecord ir = imageTransform.convert(er);
-              AudubonRecord ar = audubonTransform.convert(er);
-              ClusteringRecord cr = clusteringTransform.convert(idr);
+                  // Apply all transforms
+                  er = defaultValuesTransform.convert(er);
+                  MultiTaxonRecord tr = taxonomyTransform.convert(er);
+                  LocationRecord lr = locationTransform.convert(er, metadata);
+                  GrscicollRecord gr = grscicollTransform.convert(er, metadata);
+                  TemporalRecord ter = temporalTransform.convert(er);
+                  BasicRecord br = basicTransform.convert(er);
+                  DnaDerivedDataRecord dr = dnDerivedDataTransform.convert(er);
+                  MultimediaRecord mr = multimediaTransform.convert(er);
+                  ImageRecord ir = imageTransform.convert(er);
+                  AudubonRecord ar = audubonTransform.convert(er);
+                  ClusteringRecord cr = clusteringTransform.convert(idr);
 
-              // merge the multimedia records
-              MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
+                  // merge the multimedia records
+                  MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
-              return Occurrence.builder()
-                  .id(er.getId())
-                  .identifier(simpleRecord.getIdentifier())
-                  .verbatim(simpleRecord.getVerbatim())
-                  .basic(MAPPER.writeValueAsString(br))
-                  .taxon(MAPPER.writeValueAsString(tr))
-                  .location(MAPPER.writeValueAsString(lr))
-                  .grscicoll(MAPPER.writeValueAsString(gr))
-                  .temporal(MAPPER.writeValueAsString(ter))
-                  .dnaDerivedData(MAPPER.writeValueAsString(dr))
-                  .multimedia(MAPPER.writeValueAsString(mmr))
-                  .clustering(MAPPER.writeValueAsString(cr))
-                  .build();
-            },
-        Encoders.bean(Occurrence.class));
+                  return Occurrence.builder()
+                      .id(er.getId())
+                      .identifier(simpleRecord.getIdentifier())
+                      .verbatim(simpleRecord.getVerbatim())
+                      .basic(MAPPER.writeValueAsString(br))
+                      .taxon(MAPPER.writeValueAsString(tr))
+                      .location(MAPPER.writeValueAsString(lr))
+                      .grscicoll(MAPPER.writeValueAsString(gr))
+                      .temporal(MAPPER.writeValueAsString(ter))
+                      .dnaDerivedData(MAPPER.writeValueAsString(dr))
+                      .multimedia(MAPPER.writeValueAsString(mmr))
+                      .clustering(MAPPER.writeValueAsString(cr))
+                      .build();
+                },
+            Encoders.bean(Occurrence.class));
+
+    // write simple interpreted records to disk
+    interpreted.write().mode("overwrite").parquet(outputPath + "/simple-occurrence");
+
+    // re-load
+    return spark
+        .read()
+        .parquet(outputPath + "/simple-occurrence")
+        .as(Encoders.bean(Occurrence.class));
   }
 
-  // ----------------- Helper Methods -----------------
-
+  /**
+   * Loads extended records from the AVRO. Filters out records without core terms and extensions not
+   * in the allowed list. Re-partitions the dataset to the specified number of shards. Writes the
+   * filtered extended records to Parquet.
+   *
+   * @param spark The Spark session
+   * @param config The pipelines configuration
+   * @param inputPath Path to the verbatim AVRO files
+   * @param outputPath Path to write the filtered Parquet files
+   * @param numberOfShards Number of shards to repartition the dataset
+   * @return The filtered and repartitioned dataset of extended records
+   */
   private static Dataset<ExtendedRecord> loadExtendedRecords(
       SparkSession spark,
       PipelinesConfig config,
@@ -291,7 +366,6 @@ public class Interpretation implements Serializable {
   }
 
   private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
-
     return spark
         .read()
         .parquet(outputPath + "/identifiers")
@@ -304,8 +378,8 @@ public class Interpretation implements Serializable {
     // load the valid identifiers - identifiers already present in hbase
     Dataset<IdentifierRecord> identifiers = loadValidIdentifiers(spark, outputPath);
 
-    // persist the absent identifiers - records that need to be assigned an identifier (added to
-    // hbase)
+    // persist the absent identifiers - records that need to be assigned an identifier
+    // (i.e. added to hbase)
     Dataset<IdentifierRecord> newlyAdded =
         persistAbsentIdentifiers(spark, outputPath, config, datasetId);
 
