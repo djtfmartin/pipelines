@@ -213,17 +213,13 @@ public class Interpretation implements Serializable {
               TemporalRecord ter = temporalTransform.convert(er);
               BasicRecord br = basicTransform.convert(er);
               DnaDerivedDataRecord dr = dnDerivedDataTransform.convert(er);
-              Optional<MultimediaRecord> mr = multimediaTransform.convert(er);
-              Optional<ImageRecord> ir = imageTransform.convert(er);
-              Optional<AudubonRecord> ar = audubonTransform.convert(er);
+              MultimediaRecord mr = multimediaTransform.convert(er);
+              ImageRecord ir = imageTransform.convert(er);
+              AudubonRecord ar = audubonTransform.convert(er);
               ClusteringRecord cr = clusteringTransform.convert(idr);
 
               // merge the multimedia records
-              MultimediaRecord mmr =
-                  MultimediaConverter.merge(
-                      mr.orElse(MultimediaRecord.newBuilder().setId(er.getId()).build()),
-                      ir.orElse(ImageRecord.newBuilder().setId(er.getId()).build()),
-                      ar.orElse(AudubonRecord.newBuilder().setId(er.getId()).build()));
+              MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
               return Occurrence.builder()
                   .id(er.getId())

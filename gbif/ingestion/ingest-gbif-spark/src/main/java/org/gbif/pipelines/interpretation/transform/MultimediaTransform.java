@@ -5,13 +5,11 @@ import static org.gbif.pipelines.core.utils.ModelUtils.hasValueNullAware;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.extension.MultimediaInterpreter;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MultimediaRecord;
@@ -31,24 +29,31 @@ public class MultimediaTransform implements Serializable {
     return new MultimediaTransform(config);
   }
 
-  public Optional<MultimediaRecord> convert(ExtendedRecord source) {
+  public MultimediaRecord convert(ExtendedRecord source) {
+    if (source == null) {
+      throw new IllegalArgumentException("Source ExtendedRecord cannot be null");
+    }
+
+    MultimediaRecord record =
+        MultimediaRecord.newBuilder()
+            .setId(source.getId())
+            .setCreated(Instant.now().toEpochMilli())
+            .build();
+
+    // Only proceed if the record has a multimedia extension or associated media
+    if (!hasExtension(source, Extension.MULTIMEDIA)
+        && !hasValueNullAware(source, DwcTerm.associatedMedia)) {
+      return record;
+    }
+
     if (multimediaInterpreter == null) {
       multimediaInterpreter =
           MultimediaInterpreter.builder().ordering(config.getDefaultDateFormat()).create();
     }
-    return Interpretation.from(source)
-        .to(
-            er ->
-                MultimediaRecord.newBuilder()
-                    .setId(er.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
-        .when(
-            er ->
-                hasExtension(er, Extension.MULTIMEDIA)
-                    || hasValueNullAware(er, DwcTerm.associatedMedia))
-        .via(multimediaInterpreter::interpret)
-        .via(MultimediaInterpreter::interpretAssociatedMedia)
-        .getOfNullable();
+
+    multimediaInterpreter.interpret(source, record);
+    MultimediaInterpreter.interpretAssociatedMedia(source, record);
+
+    return record;
   }
 }

@@ -4,12 +4,10 @@ import static org.gbif.pipelines.core.utils.ModelUtils.hasExtension;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.interpreters.Interpretation;
 import org.gbif.pipelines.core.interpreters.extension.ImageInterpreter;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.ImageRecord;
@@ -29,20 +27,29 @@ public class ImageTransform implements Serializable {
     return new ImageTransform(config);
   }
 
-  public Optional<ImageRecord> convert(ExtendedRecord source) {
+  public ImageRecord convert(ExtendedRecord source) {
+
+    if (source == null) {
+      throw new IllegalArgumentException("Source ExtendedRecord cannot be null");
+    }
+
+    ImageRecord record =
+        ImageRecord.newBuilder()
+            .setId(source.getId())
+            .setCreated(Instant.now().toEpochMilli())
+            .build();
+
+    if (!hasExtension(source, Extension.IMAGE)) {
+      return record;
+    }
+
     if (imageInterpreter == null) {
       imageInterpreter =
           ImageInterpreter.builder().orderings(config.getDefaultDateFormat()).create();
     }
-    return Interpretation.from(source)
-        .to(
-            er ->
-                ImageRecord.newBuilder()
-                    .setId(er.getId())
-                    .setCreated(Instant.now().toEpochMilli())
-                    .build())
-        .when(er -> hasExtension(er, Extension.IMAGE))
-        .via(imageInterpreter::interpret)
-        .getOfNullable();
+
+    imageInterpreter.interpret(source, record);
+
+    return record;
   }
 }
