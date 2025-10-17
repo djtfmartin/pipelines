@@ -5,11 +5,11 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.io.avro.OccurrenceHdfsRecord;
 
 public class TableBuild {
 
@@ -58,38 +58,62 @@ public class TableBuild {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
-
+    SparkConf sparkConf =
+        new SparkConf().set("hive.metastore.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
     sparkBuilder
         .enableHiveSupport()
-        .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
-        .config("spark.sql.catalog.local.type", "hadoop")
-        .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkSessionCatalog")
-        .config("spark.sql.defaultCatalog", "spark_catalog")
-        .config(
-            "spark.sql.extensions",
-            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions");
+        .config(sparkConf)
+        .config("spark.sql.catalog.iceberg.type", "hive")
+        .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog");
 
     SparkSession spark = sparkBuilder.getOrCreate();
 
     // load hdfs view
-    Dataset<OccurrenceHdfsRecord> hdfs =
-        spark.read().parquet(outputPath + "/hdfs").as(Encoders.bean(OccurrenceHdfsRecord.class));
+    Dataset<Row> hdfs = spark.read().parquet(outputPath + "/hdfs");
+    String[] columns = hdfs.columns();
+
+    StringBuilder selectBuffer = new StringBuilder();
+
+    for (int i = 0; i < columns.length; i++) {
+      if (columns[i].matches("^v[A-Z].*") || columns[i].matches("^V[A-Z].*")) {
+        String icebergCol = "v_" + columns[i].substring(1).toLowerCase().replaceAll("\\$", "");
+        selectBuffer.append("`" + columns[i] + "` AS " + icebergCol);
+      } else {
+        selectBuffer.append(
+            "`" + columns[i] + "` AS " + columns[i].toLowerCase().replaceAll("\\$", ""));
+      }
+      if (i < columns.length - 1) {
+        selectBuffer.append(", ");
+      }
+    }
 
     String table = "occurrence_" + datasetId.replace("-", "_") + "_" + attempt;
 
     spark.sql("use dave");
+
+    spark.sql("DROP TABLE IF EXISTS " + table);
+
     hdfs.writeTo(table).create();
 
     System.out.println("Created Iceberg table:");
     spark.sql("DESCRIBE TABLE " + table).show(false);
 
-    //    spark.sql(
-    //        "CREATE EXTERNAL TABLE naturalis "
-    //            + "USING iceberg  "
-    //            + "LOCATION '/data/ingest_spark/15f819bd-6612-4447-854b-14d12ee1022d/158/iceberg'
-    // "
-    //            + "AS SELECT * FROM
-    // parquet.`/data/ingest_spark/15f819bd-6612-4447-854b-14d12ee1022d/158/hdfs`");
+    spark.sql("select count(*) from " + table).show(false);
+
+    String insertQuery =
+        "INSERT OVERWRITE TABLE dave.occurrence PARTITION (dataset_key = '"
+            + datasetId
+            + "') "
+            + "SELECT "
+            + selectBuffer.toString()
+            + " FROM dave."
+            + table;
+
+    System.out.println("Inserting data into occurrence table: " + insertQuery);
+
+    spark.sql(insertQuery);
+
+    spark.sql("DROP TABLE " + table);
 
     spark.close();
   }
