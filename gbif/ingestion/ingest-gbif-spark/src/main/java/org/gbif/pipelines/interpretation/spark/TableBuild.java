@@ -125,14 +125,15 @@ public class TableBuild {
 
     String hiveDB = "dave";
 
-
     String insertQuery =
         "INSERT OVERWRITE TABLE dave.occurrence ("
             + String.join(", ", columnList)
             + ") "
             + "SELECT "
             + selectBuffer
-            + " FROM " + hiveDB + "."
+            + " FROM "
+            + hiveDB
+            + "."
             + table;
 
     System.out.println("Inserting data into occurrence table: " + insertQuery);
