@@ -1,0 +1,16 @@
+package org.gbif.pipelines.core.config.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class MessagingConfig {
+  String queueName;
+  String host;
+  String virtualHost;
+  String username;
+  String password;
+}

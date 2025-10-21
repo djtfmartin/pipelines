@@ -65,4 +65,6 @@ public class PipelinesConfig implements Serializable {
   private Set<String> extensionsAllowedForVerbatimSet;
 
   private String fragmentsTable;
+
+  private StandaloneConfig standalone;
 }

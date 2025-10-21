@@ -37,5 +37,10 @@ pipeline {
         sh 'build/spark-docker-build.sh false ${VERSION}'
       }
     }
+    stage('Build Standalone Spark Docker image') {
+      steps {
+        sh 'build/spark-docker-standalone-build.sh false ${VERSION}'
+      }
+    }
   }
 }

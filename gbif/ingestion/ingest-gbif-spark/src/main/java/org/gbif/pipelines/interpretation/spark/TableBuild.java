@@ -75,14 +75,7 @@ public class TableBuild {
             "spark.sql.extensions",
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
-        .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse")
-
-    // spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
-    /**
-     * --conf spark.sql.catalog.local=org.apache.iceberg.spark.SparkCatalog \ --conf
-     * spark.sql.catalog.local.type=hadoop \ --conf spark.sql.catalog.local.warehouse=$PWD/warehouse
-     */
-    ;
+        .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
 
     SparkSession spark = sparkBuilder.getOrCreate();
 
@@ -98,15 +91,15 @@ public class TableBuild {
 
       if (columns[i].equalsIgnoreCase("extMultimedia")) {
         String icebergCol = "ext_multimedia";
-        selectBuffer.append("`extMultimedia` AS `" + icebergCol + "`");
+        selectBuffer.append("`extMultimedia` AS `").append(icebergCol).append("`");
         columnList.add(icebergCol);
       } else if (columns[i].matches("^v[A-Z].*") || columns[i].matches("^V[A-Z].*")) {
         String icebergCol = "v_" + columns[i].substring(1).toLowerCase().replaceAll("\\$", "");
-        selectBuffer.append("`" + columns[i] + "` AS " + icebergCol);
+        selectBuffer.append("`").append(columns[i]).append("` AS ").append(icebergCol);
         columnList.add(icebergCol);
       } else {
         String icebergCol = columns[i].toLowerCase().replaceAll("\\$", "");
-        selectBuffer.append("`" + columns[i] + "` AS " + icebergCol);
+        selectBuffer.append("`").append(columns[i]).append("` AS ").append(icebergCol);
         columnList.add(icebergCol);
       }
       if (i < columns.length - 1) {
@@ -130,13 +123,16 @@ public class TableBuild {
 
     spark.sql(occurrenceTableSQL);
 
+    String hiveDB = "dave";
+
+
     String insertQuery =
         "INSERT OVERWRITE TABLE dave.occurrence ("
             + String.join(", ", columnList)
             + ") "
             + "SELECT "
             + selectBuffer
-            + " FROM dave."
+            + " FROM " + hiveDB + "."
             + table;
 
     System.out.println("Inserting data into occurrence table: " + insertQuery);

@@ -2,8 +2,6 @@ package org.gbif.pipelines.core.converters;
 
 import static org.gbif.pipelines.core.utils.ModelUtils.extractOptValue;
 
-import com.fasterxml.jackson.databind.node.TextNode;
-import com.google.common.base.Strings;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,7 +23,6 @@ import org.gbif.dwc.terms.*;
 import org.gbif.occurrence.common.TermUtils;
 import org.gbif.occurrence.download.hive.HiveColumns;
 import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
-import org.gbif.pipelines.core.utils.MediaSerDeser;
 import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.pipelines.core.utils.TemporalConverter;
 import org.gbif.pipelines.io.avro.*;
@@ -918,20 +915,20 @@ public class OccurrenceHdfsRecordConverter {
       return;
     }
     // media types
-    List<String> mediaTypes =
-        multimediaRecord.getMultimediaItems().stream()
-            .map(Multimedia::getType)
-            .filter(type -> !Strings.isNullOrEmpty(type))
-            .map(TextNode::valueOf)
-            .map(TextNode::asText)
-            .collect(Collectors.toList());
-    occurrenceHdfsRecord.setExtMultimedia(
-        MediaSerDeser.toJson(multimediaRecord.getMultimediaItems()));
-
-    setCreatedIfGreater(occurrenceHdfsRecord, multimediaRecord.getCreated());
-    occurrenceHdfsRecord.setMediatype(mediaTypes);
-
-    addIssues(multimediaRecord.getIssues(), occurrenceHdfsRecord);
+    //    List<String> mediaTypes =
+    //        multimediaRecord.getMultimediaItems().stream()
+    //            .map(Multimedia::getType)
+    //            .filter(type -> !Strings.isNullOrEmpty(type))
+    //            .map(TextNode::valueOf)
+    //            .map(TextNode::asText)
+    //            .collect(Collectors.toList());
+    //    occurrenceHdfsRecord.setExtMultimedia(
+    //        MediaSerDeser.toJson(multimediaRecord.getMultimediaItems()));
+    //
+    //    setCreatedIfGreater(occurrenceHdfsRecord, multimediaRecord.getCreated());
+    //    occurrenceHdfsRecord.setMediatype(mediaTypes);
+    //
+    //    addIssues(multimediaRecord.getIssues(), occurrenceHdfsRecord);
   }
 
   private void mapDnaDerivedDataRecord(OccurrenceHdfsRecord occurrenceHdfsRecord) {
