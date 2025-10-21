@@ -41,6 +41,7 @@ public class InterpretationStandalone {
     factory.setHost(host);
     factory.setUsername(messagingConfig.getUsername());
     factory.setPassword(messagingConfig.getPassword());
+    factory.setVirtualHost(messagingConfig.getVirtualHost());
 
     try (Connection connection = factory.newConnection();
         Channel channel = connection.createChannel()) {
