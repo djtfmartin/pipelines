@@ -382,7 +382,7 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
   }
 
   @Builder
-  class TrackingInfo {
+  public static class TrackingInfo {
     long processKey;
     long executionId;
     long stepKey;
