@@ -10,7 +10,9 @@ import lombok.NoArgsConstructor;
 public class MessagingConfig {
   String queueName;
   String host;
+  Integer port;
   String virtualHost;
   String username;
   String password;
+  Integer prefetchCount;
 }

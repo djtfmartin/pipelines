@@ -4,18 +4,21 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 
 import com.rabbitmq.client.*;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
+import org.gbif.common.messaging.ConnectionParameters;
+import org.gbif.common.messaging.DefaultMessagePublisher;
+import org.gbif.common.messaging.MessageListener;
 import org.gbif.pipelines.core.config.model.MessagingConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.jetbrains.annotations.NotNull;
 
 @Slf4j
 public class InterpretationStandalone {
 
   private volatile boolean running = true;
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
 
     if (args.length != 1) {
       throw new IllegalArgumentException(
@@ -31,67 +34,50 @@ public class InterpretationStandalone {
     new InterpretationStandalone().start(config);
   }
 
-  public void start(PipelinesConfig pipelinesConfig) {
+  public void start(PipelinesConfig pipelinesConfig) throws IOException {
 
-    MessagingConfig messagingConfig = pipelinesConfig.getStandalone().getMessaging();
-    String queueName = messagingConfig.getQueueName();
-    String host = messagingConfig.getHost();
+    try (MessageListener listener = createListener(pipelinesConfig);
+        DefaultMessagePublisher publisher = createPublisher(pipelinesConfig)) {
 
-    ConnectionFactory factory = new ConnectionFactory();
-    factory.setHost(host);
-    factory.setUsername(messagingConfig.getUsername());
-    factory.setPassword(messagingConfig.getPassword());
-    factory.setVirtualHost(messagingConfig.getVirtualHost());
+      // create the callback that does everything
+      InterpretationCallback interpretationCallback =
+          new InterpretationCallback(pipelinesConfig, publisher);
 
-    try (Connection connection = factory.newConnection();
-        Channel channel = connection.createChannel()) {
+      MessagingConfig messagingConfig = pipelinesConfig.getStandalone().getMessaging();
 
-      // 1. Declare the queue (idempotent)
-      channel.queueDeclare(queueName, true, false, false, null);
-      System.out.println("Listening for messages on RabbitMQ queue: " + queueName);
-
-      // 2. Setup graceful shutdown hook
-      Runtime.getRuntime()
-          .addShutdownHook(
-              new Thread(
-                  () -> {
-                    System.out.println("\nShutdown signal received. Cleaning up...");
-                    running = false;
-                    try {
-                      channel.close();
-                      connection.close();
-                    } catch (Exception e) {
-                      e.printStackTrace();
-                    }
-                    System.out.println("Graceful shutdown complete.");
-                  }));
-
-      // 3. Consumer callback
-      DeliverCallback deliverCallback =
-          (consumerTag, delivery) -> {
-            String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
-            System.out.println("Received: " + message);
-          };
-
-      CancelCallback cancelCallback =
-          consumerTag -> System.out.println("Consumer " + consumerTag + " canceled");
-
-      // 4. Start consuming
-      channel.basicConsume(queueName, true, deliverCallback, cancelCallback);
-
-      // 5. Keep running until shutdown
-      while (running) {
-        try {
-          Thread.sleep(2000);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
-      }
+      listener.listen(messagingConfig.getQueueName(), 1, interpretationCallback);
 
       System.out.println("Listener stopped.");
 
-    } catch (IOException | TimeoutException e) {
+    } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  @NotNull
+  private static MessageListener createListener(PipelinesConfig pipelinesConfig)
+      throws IOException {
+    MessagingConfig messagingConfig = pipelinesConfig.getStandalone().getMessaging();
+    return new MessageListener(
+        new ConnectionParameters(
+            messagingConfig.getHost(),
+            messagingConfig.getPort(),
+            messagingConfig.getVirtualHost(),
+            messagingConfig.getUsername(),
+            messagingConfig.getPassword()),
+        messagingConfig.getPrefetchCount());
+  }
+
+  @NotNull
+  private static DefaultMessagePublisher createPublisher(PipelinesConfig pipelinesConfig)
+      throws IOException {
+    MessagingConfig messagingConfig = pipelinesConfig.getStandalone().getMessaging();
+    return new DefaultMessagePublisher(
+        new ConnectionParameters(
+            messagingConfig.getHost(),
+            messagingConfig.getPort(),
+            messagingConfig.getVirtualHost(),
+            messagingConfig.getUsername(),
+            messagingConfig.getPassword()));
   }
 }

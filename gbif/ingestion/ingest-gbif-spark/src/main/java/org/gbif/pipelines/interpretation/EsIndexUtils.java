@@ -28,6 +28,9 @@ import org.gbif.pipelines.estools.service.EsService;
 import org.gbif.pipelines.interpretation.spark.Elastic;
 import org.gbif.wrangler.lock.Mutex;
 
+/**
+ * Utility methods to create and update Elasticsearch indexes and aliases. Ported from beam module
+ */
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EsIndexUtils {

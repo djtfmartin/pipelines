@@ -22,6 +22,10 @@ public class PipelinesConfig implements Serializable {
   /** The directory where the output files are written to */
   private String outputPath;
 
+  private String hdfsSiteConfig;
+
+  private String coreSiteConfig;
+
   private String zkConnectionString;
 
   private WsConfig gbifApi;

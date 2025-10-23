@@ -71,12 +71,6 @@ public class Interpretation implements Serializable {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(names = "--coreSiteConfig", description = "Path to core-site.xml", required = false)
-    private String coreSiteConfig;
-
-    @Parameter(names = "--hdfsSiteConfig", description = "Path to hdfs-site.xml", required = false)
-    private String hdfsSiteConfig;
-
     @Parameter(names = "--properties", description = "Path to properties file", required = true)
     private String properties;
 
@@ -110,26 +104,43 @@ public class Interpretation implements Serializable {
 
     String datasetId = args.datasetId;
     int attempt = args.attempt;
+
+    runInterpretation(config, datasetId, attempt, args.numberOfShards, args.appName, args.master);
+  }
+
+  public static void runInterpretation(
+      PipelinesConfig config, String datasetId, int attempt, int numberOfShards, String appName) {
+    runInterpretation(config, datasetId, attempt, numberOfShards, appName, null);
+  }
+
+  private static void runInterpretation(
+      PipelinesConfig config,
+      String datasetId,
+      int attempt,
+      int numberOfShards,
+      String appName,
+      String master) {
+
     String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
-    if (args.master != null && !args.master.isEmpty()) {
-      sparkBuilder = sparkBuilder.master(args.master);
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
+    if (master != null) {
+      sparkBuilder = sparkBuilder.master(master);
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
 
     // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
-        loadExtendedRecords(spark, config, inputPath, outputPath, args.numberOfShards);
+        loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards);
 
     // Process and then reload identifiers
     // if the /identifiers directory exists, then
     // we assume that the valid and absent identifiers are already present because of a previous
     // interpretation run
     if (!FsUtils.fileExists(
-        HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig),
+        HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
         outputPath + "/identifiers")) {
       log.info("Processing identifiers - first interpretation run for this dataset and attempt");
       processIdentifiers(spark, config, outputPath, datasetId);
@@ -145,7 +156,7 @@ public class Interpretation implements Serializable {
         joinRecordsAndIdentifiers(extendedRecords, identifiers, outputPath, spark);
 
     // A single call to the registry to get the dataset metadata
-    final MetadataRecord metadata = getMetadataRecord(config, args);
+    final MetadataRecord metadata = getMetadataRecord(config, datasetId);
 
     // run all transforms
     Dataset<Occurrence> interpreted =
@@ -158,13 +169,23 @@ public class Interpretation implements Serializable {
     toHdfs(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath + "/hdfs");
 
     // cleanup intermediate parquet outputs
-    HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
+    HdfsConfigs hdfsConfigs =
+        HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
     FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/simple-occurrence");
     FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
 
+    // write a metrics file?
+
+    //        log.info("Deleting old attempts directories");
+    //        String pathToDelete = String.join("/", config.stepConfig.repositoryPath, datasetId);
+    //        HdfsConfigs hdfsConfigs =
+    //                HdfsConfigs.create(config.stepConfig.hdfsSiteConfig,
+    // config.stepConfig.coreSiteConfig);
+    //        HdfsUtils.deleteSubFolders(
+    //                hdfsConfigs, pathToDelete, config.deleteAfterDays,
+    // Collections.singleton(attempt));
+
     spark.close();
-    System.exit(0);
   }
 
   /**
@@ -211,15 +232,14 @@ public class Interpretation implements Serializable {
    * Retrieves the metadata for the dataset from the metadata service.
    *
    * @param config The pipelines configuration.
-   * @param args The command line arguments containing the dataset ID.
+   * @param datasetId The dataset ID.
    * @return The metadata record for the dataset.
    */
-  private static MetadataRecord getMetadataRecord(PipelinesConfig config, Args args) {
+  private static MetadataRecord getMetadataRecord(PipelinesConfig config, String datasetId) {
     MetadataServiceClient metadataServiceClient =
         MetadataServiceClient.create(config.getGbifApi(), config.getContent());
-    final MetadataRecord metadata =
-        MetadataRecord.newBuilder().setDatasetKey(args.datasetId).build();
-    MetadataInterpreter.interpret(metadataServiceClient).accept(args.datasetId, metadata);
+    final MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(datasetId).build();
+    MetadataInterpreter.interpret(metadataServiceClient).accept(datasetId, metadata);
     return metadata;
   }
 
