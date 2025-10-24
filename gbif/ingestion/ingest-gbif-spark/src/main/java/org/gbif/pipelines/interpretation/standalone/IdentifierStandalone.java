@@ -7,7 +7,6 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 public class IdentifierStandalone {
 
   public void start(PipelinesConfig pipelinesConfig) {
-    throw new UnsupportedOperationException(
-        "IdentifierStandalone is not yet implemented");
+    throw new UnsupportedOperationException("IdentifierStandalone is not yet implemented");
   }
 }
