@@ -58,13 +58,15 @@ public class InterpretationStandalone {
   private static MessageListener createListener(PipelinesConfig pipelinesConfig)
       throws IOException {
     MessagingConfig messagingConfig = pipelinesConfig.getStandalone().getMessaging();
+
+    // String host, int port, String username, String password, String virtualHost
     return new MessageListener(
         new ConnectionParameters(
             messagingConfig.getHost(),
             messagingConfig.getPort(),
-            messagingConfig.getVirtualHost(),
             messagingConfig.getUsername(),
-            messagingConfig.getPassword()),
+            messagingConfig.getPassword(),
+            messagingConfig.getVirtualHost()),
         messagingConfig.getPrefetchCount());
   }
 
@@ -76,8 +78,8 @@ public class InterpretationStandalone {
         new ConnectionParameters(
             messagingConfig.getHost(),
             messagingConfig.getPort(),
-            messagingConfig.getVirtualHost(),
             messagingConfig.getUsername(),
-            messagingConfig.getPassword()));
+            messagingConfig.getPassword(),
+            messagingConfig.getVirtualHost()));
   }
 }
