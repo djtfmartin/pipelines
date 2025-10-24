@@ -240,7 +240,7 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
 
   @Override
   public Class<PipelinesVerbatimMessage> getMessageClass() {
-    return null;
+    return PipelinesVerbatimMessage.class;
   }
 
   private void updateQueuedStatus(TrackingInfo info, PipelinesVerbatimMessage message) {
