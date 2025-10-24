@@ -5,5 +5,13 @@ ARG JAR_FILE=${JAVA_JAR_FILE}
 USER root
 RUN mkdir /jobs
 COPY --chown=1000:1000 "./target/${JAR_FILE}" "/jobs/ingest-gbif-spark.jar"
+# Ensure Spark jars are accessible to the JVM
+ENV SPARK_HOME=/opt/spark
+ENV PATH="${SPARK_HOME}/bin:${PATH}"
+ENV CLASSPATH="${SPARK_HOME}/jars/*:/jobs/ingest-gbif-spark.jar"
+
+# Default runtime arguments
 CMD ["MODE", "PATH_TO_CONFIG"]
-ENTRYPOINT ["java", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "-jar", "/jobs/ingest-gbif-spark.jar"]
+
+# Use 'java' with Spark jars on classpath
+ENTRYPOINT ["java", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "-cp", "/opt/spark/jars/*:/jobs/ingest-gbif-spark.jar", "com.example.MainClass"]
