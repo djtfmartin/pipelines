@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.gbif.common.messaging.ConnectionParameters;
 import org.gbif.common.messaging.DefaultMessagePublisher;
 import org.gbif.common.messaging.MessageListener;
+import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
 import org.gbif.pipelines.core.config.model.MessagingConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.jetbrains.annotations.NotNull;
@@ -45,7 +46,12 @@ public class InterpretationStandalone {
 
       MessagingConfig messagingConfig = pipelinesConfig.getStandalone().getMessaging();
 
-      listener.listen(messagingConfig.getQueueName(), 1, interpretationCallback);
+      listener.listen(
+          messagingConfig.getQueueName(),
+          PipelinesVerbatimMessage.ROUTING_KEY,
+          "occurrence",
+          1,
+          interpretationCallback);
 
       System.out.println("Listener stopped.");
 
