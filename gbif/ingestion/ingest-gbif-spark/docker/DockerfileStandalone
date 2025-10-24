@@ -11,6 +11,9 @@ ENV SPARK_HOME=/opt/spark
 ENV PATH="${SPARK_HOME}/bin:${PATH}"
 ENV CLASSPATH="${SPARK_HOME}/jars/*:/jobs/ingest-gbif-spark.jar"
 
+# Remove the conflicting or unwanted log4j binding from Spark jars
+RUN rm -f /opt/spark/jars/log4j-slf4j2-impl-2.20.0.jar
+
 # Default runtime arguments
 CMD ["MODE", "PATH_TO_CONFIG"]
 
