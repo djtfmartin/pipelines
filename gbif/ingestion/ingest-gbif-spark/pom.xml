@@ -64,6 +64,12 @@
           <groupId>org.gbif.registry</groupId>
           <artifactId>registry-ws-client</artifactId>
           <version>${registry.version}</version>
+          <exclusions>
+              <exclusion>
+                  <groupId>org.apache.logging.log4j</groupId>
+                  <artifactId>log4j-to-slf4j</artifactId>
+              </exclusion>
+          </exclusions>
       </dependency>
       <dependency>
           <groupId>org.gbif.common</groupId>
