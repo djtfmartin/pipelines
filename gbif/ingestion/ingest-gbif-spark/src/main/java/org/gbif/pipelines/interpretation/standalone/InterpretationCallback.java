@@ -91,7 +91,8 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
           message.getDatasetUuid(),
           message.getAttempt());
 
-      TrackingInfo trackingInfo = trackPipelineStep(message);
+      //FIXME: Temporarily disabled
+//      TrackingInfo trackingInfo = trackPipelineStep(message);
 
       // Run interpretation
       Interpretation.runInterpretation(
@@ -102,7 +103,8 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
           "interpretation_standalone_" + message.getDatasetUuid());
 
       // Acknowledge message processing
-      updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
+        //FIXME: Temporarily disabled
+//      updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
 
       // Create and send outgoing message
       PipelinesInterpretedMessage outgoingMessage = createOutgoingMessage(message);
