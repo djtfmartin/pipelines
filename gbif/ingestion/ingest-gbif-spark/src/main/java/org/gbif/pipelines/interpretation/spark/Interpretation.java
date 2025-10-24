@@ -122,6 +122,7 @@ public class Interpretation implements Serializable {
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
     if (master != null) {
       sparkBuilder = sparkBuilder.master(master);
+      sparkBuilder.config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.5.1");
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
