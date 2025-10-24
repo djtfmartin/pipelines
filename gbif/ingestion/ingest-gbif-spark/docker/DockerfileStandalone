@@ -21,4 +21,4 @@ ENV CLASSPATH="${SPARK_HOME}/jars/*:/jobs/ingest-gbif-spark.jar"
 CMD ["MODE", "PATH_TO_CONFIG"]
 
 # Use 'java' with Spark jars on classpath
-ENTRYPOINT ["java", "--add-opens java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED", "--add-exports=java.base/sun.security.action=ALL-UNNAMED", "-cp", "/opt/spark/jars/*:/jobs/ingest-gbif-spark.jar", "org.gbif.pipelines.interpretation.standalone.Standalone"]
+ENTRYPOINT ["java", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED", "--add-exports=java.base/sun.security.action=ALL-UNNAMED", "-cp", "/opt/spark/jars/*:/jobs/ingest-gbif-spark.jar", "org.gbif.pipelines.interpretation.standalone.Standalone"]
