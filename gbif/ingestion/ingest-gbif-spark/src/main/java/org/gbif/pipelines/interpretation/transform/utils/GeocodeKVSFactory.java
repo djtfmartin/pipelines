@@ -18,6 +18,7 @@ import java.util.Optional;
 import javax.imageio.ImageIO;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
 import org.gbif.kvs.conf.CachedHBaseKVStoreConfiguration;
 import org.gbif.kvs.geocode.GeocodeKVStoreFactory;
@@ -33,6 +34,7 @@ import org.gbif.rest.client.geocode.GeocodeResponse;
 
 /** Provides the {@link KeyValueStore} as a singleton per JVM. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@Slf4j
 public class GeocodeKVSFactory {
   private static Object LOCK = new Object();
   private static KeyValueStore<GeocodeRequest, GeocodeResponse> kvStore;
@@ -60,6 +62,7 @@ public class GeocodeKVSFactory {
           String zk = geocodeConfig.getZkConnectionString();
           zk = zk == null || zk.isEmpty() ? config.getZkConnectionString() : zk;
           if (zk == null || geocodeConfig.isRestOnly()) {
+            log.warn("ZK config is null - wont use HBase, only REST API");
             kvStore = GeocodeKVStoreFactory.simpleGeocodeKVStore(clientConfig);
             return kvStore;
           }

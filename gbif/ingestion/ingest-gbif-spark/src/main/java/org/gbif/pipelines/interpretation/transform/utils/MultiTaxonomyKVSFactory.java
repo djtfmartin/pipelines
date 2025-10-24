@@ -63,7 +63,7 @@ public class MultiTaxonomyKVSFactory {
         String zk = kvConfig.getZkConnectionString();
         zk = zk == null || zk.isEmpty() ? kvConfig.getZkConnectionString() : zk;
         if (zk == null || kvConfig.isRestOnly()) {
-          log.error("ZK config is null - wont use HBase, only REST API");
+          log.warn("ZK config is null - wont use HBase, only REST API");
           kvStore = NameUsageMatchKVStoreFactory.nameUsageMatchKVStore(clientConfiguration);
           return kvStore;
         }
