@@ -303,53 +303,6 @@
           <version>3.3.6</version>
           <scope>provided</scope>
       </dependency>
-
-<!--    &lt;!&ndash; GEOTOOLS &ndash;&gt; -->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-referencing</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-metadata</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-opengis</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-main</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-api</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-transform</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-geometry</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-epsg-hsql</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
-<!--    <dependency>-->
-<!--      <groupId>org.geotools</groupId>-->
-<!--      <artifactId>gt-epsg-extension</artifactId>-->
-<!--      <version>${geotools.version}</version>-->
-<!--    </dependency>-->
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_${scala.binary.version}</artifactId>
@@ -450,7 +403,7 @@
             <configuration>
                 <archive>
                     <manifest>
-                        <mainClass>org.gbif.pipelines.interpretation.standalone.InterpretationStandalone</mainClass>
+                        <mainClass>org.gbif.pipelines.interpretation.standalone.Standalone</mainClass>
                     </manifest>
                 </archive>
             </configuration>
