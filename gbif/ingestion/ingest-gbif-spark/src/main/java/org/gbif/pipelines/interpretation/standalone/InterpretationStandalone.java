@@ -64,7 +64,7 @@ public class InterpretationStandalone {
         }
       }
 
-      System.out.println("Listener stopped.");
+        log.info("Listener stopped.");
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -105,9 +105,9 @@ public class InterpretationStandalone {
         .addShutdownHook(
             new Thread(
                 () -> {
-                  System.out.println("\nShutdown signal received. Cleaning up...");
+                  log.info("\nShutdown signal received. Cleaning up...");
                   running = false;
-                  System.out.println("Graceful shutdown complete.");
+                    log.info("Graceful shutdown complete.");
                 }));
   }
 }
