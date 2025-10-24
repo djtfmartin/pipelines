@@ -37,6 +37,8 @@ public class InterpretationStandalone {
 
   public void start(PipelinesConfig pipelinesConfig) throws IOException {
 
+    System.out.println("Starting InterpretationStandalone...");
+
     try (MessageListener listener = createListener(pipelinesConfig);
         DefaultMessagePublisher publisher = createPublisher(pipelinesConfig)) {
 
@@ -65,6 +67,8 @@ public class InterpretationStandalone {
       }
 
       log.info("Listener stopped.");
+
+      System.out.println("Exiting InterpretationStandalone...");
 
     } catch (IOException e) {
       e.printStackTrace();
