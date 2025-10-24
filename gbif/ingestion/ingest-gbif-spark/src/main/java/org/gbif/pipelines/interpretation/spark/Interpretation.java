@@ -109,11 +109,6 @@ public class Interpretation implements Serializable {
   }
 
   public static void runInterpretation(
-      PipelinesConfig config, String datasetId, int attempt, int numberOfShards, String appName) {
-    runInterpretation(config, datasetId, attempt, numberOfShards, appName, null);
-  }
-
-  private static void runInterpretation(
       PipelinesConfig config,
       String datasetId,
       int attempt,
