@@ -4,6 +4,10 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public class Standalone {
 
   public static void main(String[] args) throws Exception {
@@ -25,7 +29,8 @@ public class Standalone {
         new HdfsViewStandalone().start(config);
         break;
       default:
-        throw new IllegalArgumentException("Unknown mode: " + args[0]);
+        throw new IllegalArgumentException("Unknown mode: " + args[0] + ". Recognized modes are: "
+                + Stream.of(Mode.values()).map(Enum::name).collect(Collectors.joining(",")));
     }
   }
 
