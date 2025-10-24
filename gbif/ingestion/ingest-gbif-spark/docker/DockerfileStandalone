@@ -5,5 +5,5 @@ ARG JAR_FILE=${JAVA_JAR_FILE}
 USER root
 RUN mkdir /jobs
 COPY --chown=1000:1000 "./target/${JAR_FILE}" "/jobs/ingest-gbif-spark.jar"
-CMD ["arg1"]
+CMD ["MODE", "PATH_TO_CONFIG"]
 ENTRYPOINT ["java", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "-jar", "/jobs/ingest-gbif-spark.jar"]
