@@ -132,9 +132,9 @@ public class Interpretation implements Serializable {
     SparkSession spark = sparkBuilder.getOrCreate();
 
     if (master != null) {
-        Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-        hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
-        hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
     }
 
     // Load the extended records

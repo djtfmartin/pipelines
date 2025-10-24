@@ -91,8 +91,8 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
           message.getDatasetUuid(),
           message.getAttempt());
 
-      //FIXME: Temporarily disabled
-//      TrackingInfo trackingInfo = trackPipelineStep(message);
+      // FIXME: Temporarily disabled
+      //      TrackingInfo trackingInfo = trackPipelineStep(message);
 
       // Run interpretation
       Interpretation.runInterpretation(
@@ -101,12 +101,11 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
           message.getAttempt(),
           1,
           "interpretation_standalone_" + message.getDatasetUuid(),
-           "local[*]"
-      );
+          "local[*]");
 
       // Acknowledge message processing
-        //FIXME: Temporarily disabled
-//      updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
+      // FIXME: Temporarily disabled
+      //      updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
 
       // Create and send outgoing message
       PipelinesInterpretedMessage outgoingMessage = createOutgoingMessage(message);
@@ -129,14 +128,14 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
     } catch (Exception ex) {
 
       try {
-          //FIXME
-//        TrackingInfo trackingInfo = trackPipelineStep(message);
+        // FIXME
+        //        TrackingInfo trackingInfo = trackPipelineStep(message);
         String error =
             "Error for datasetKey - " + message.getDatasetUuid() + " : " + ex.getMessage();
         log.error(error, ex);
 
         // update tracking status
-//        updateTrackingStatus(trackingInfo, message, PipelineStep.Status.FAILED);
+        //        updateTrackingStatus(trackingInfo, message, PipelineStep.Status.FAILED);
       } catch (Exception e) {
         log.error(
             "Failed to update tracking status for datasetKey - " + message.getDatasetUuid(), e);
