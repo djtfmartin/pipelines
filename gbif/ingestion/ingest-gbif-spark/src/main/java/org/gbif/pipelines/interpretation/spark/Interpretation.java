@@ -22,6 +22,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.Serializable;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
@@ -123,9 +125,17 @@ public class Interpretation implements Serializable {
     if (master != null) {
       sparkBuilder = sparkBuilder.master(master);
       sparkBuilder.config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.5.1");
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
+
+    if (master != null) {
+        Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+        hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
+        hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+    }
 
     // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
