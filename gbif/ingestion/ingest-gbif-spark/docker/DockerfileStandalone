@@ -6,6 +6,8 @@ USER root
 RUN mkdir /jobs
 COPY --chown=1000:1000 "./target/${JAR_FILE}" "/jobs/ingest-gbif-spark.jar"
 
+USER stackable:stackable
+
 # Ensure Spark jars are accessible to the JVM
 ENV SPARK_HOME=/opt/spark
 ENV PATH="${SPARK_HOME}/bin:${PATH}"
