@@ -12,8 +12,8 @@ public class Standalone {
       throw new IllegalArgumentException("Expecting two arguments: <mode> <config-file>");
     }
 
-    PipelinesConfig config = loadConfig(args[0]);
     Mode mode = Mode.valueOf(args[0].toUpperCase());
+    PipelinesConfig config = loadConfig(args[1]);
     switch (mode) {
       case INTERPRETATION:
         new InterpretationStandalone().start(config);
