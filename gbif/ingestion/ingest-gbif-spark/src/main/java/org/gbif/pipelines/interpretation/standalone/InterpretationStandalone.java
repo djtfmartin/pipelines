@@ -53,6 +53,17 @@ public class InterpretationStandalone {
           1,
           interpretationCallback);
 
+      setupShutdown();
+
+      // 5. Keep running until shutdown
+      while (running) {
+        try {
+          Thread.sleep(2000);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+
       System.out.println("Listener stopped.");
 
     } catch (IOException e) {
@@ -87,5 +98,16 @@ public class InterpretationStandalone {
             messagingConfig.getUsername(),
             messagingConfig.getPassword(),
             messagingConfig.getVirtualHost()));
+  }
+
+  private void setupShutdown() {
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  System.out.println("\nShutdown signal received. Cleaning up...");
+                  running = false;
+                  System.out.println("Graceful shutdown complete.");
+                }));
   }
 }
