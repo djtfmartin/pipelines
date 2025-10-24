@@ -314,6 +314,13 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
       // create execution
       boolean containsEvents = containsEvents(message);
       boolean containsOccurrences = message.getDatasetInfo().isContainsOccurrences();
+
+      log.info(
+          "containsOccurrences: {}, containsEvents: {}, stepType: {}",
+          containsOccurrences,
+          containsEvents,
+          stepType);
+
       Set<StepType> stepTypes =
           PipelinesWorkflow.getWorkflow(containsOccurrences, containsEvents)
               .getAllNodesFor(Collections.singleton(stepType));
