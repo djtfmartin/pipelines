@@ -64,7 +64,7 @@ public class InterpretationStandalone {
         }
       }
 
-        log.info("Listener stopped.");
+      log.info("Listener stopped.");
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -107,7 +107,7 @@ public class InterpretationStandalone {
                 () -> {
                   log.info("\nShutdown signal received. Cleaning up...");
                   running = false;
-                    log.info("Graceful shutdown complete.");
+                  log.info("Graceful shutdown complete.");
                 }));
   }
 }

@@ -86,6 +86,11 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
   public void handleMessage(PipelinesVerbatimMessage message) {
 
     try {
+      log.info(
+          "InterpretationCallback - Processing datasetKey: {}, attempt: {}",
+          message.getDatasetUuid(),
+          message.getAttempt());
+
       TrackingInfo trackingInfo = trackPipelineStep(message);
 
       // Run interpretation
@@ -114,6 +119,8 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
               + outgoingMessage;
       log.info(logInfo);
       //            info.ifPresent(this::updateQueuedStatus);
+
+      log.info("Finished processing datasetKey: {}", message.getDatasetUuid());
 
     } catch (Exception ex) {
 
