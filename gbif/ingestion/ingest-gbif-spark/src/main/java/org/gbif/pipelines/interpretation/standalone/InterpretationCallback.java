@@ -129,13 +129,14 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
     } catch (Exception ex) {
 
       try {
-        TrackingInfo trackingInfo = trackPipelineStep(message);
+          //FIXME
+//        TrackingInfo trackingInfo = trackPipelineStep(message);
         String error =
             "Error for datasetKey - " + message.getDatasetUuid() + " : " + ex.getMessage();
         log.error(error, ex);
 
         // update tracking status
-        updateTrackingStatus(trackingInfo, message, PipelineStep.Status.FAILED);
+//        updateTrackingStatus(trackingInfo, message, PipelineStep.Status.FAILED);
       } catch (Exception e) {
         log.error(
             "Failed to update tracking status for datasetKey - " + message.getDatasetUuid(), e);
