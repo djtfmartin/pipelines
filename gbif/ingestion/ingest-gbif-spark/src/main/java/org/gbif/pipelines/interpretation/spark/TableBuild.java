@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -73,11 +72,12 @@ public class TableBuild {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
-//    SparkConf sparkConf =
-//        new SparkConf().set("hive.metastore.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
+    //    SparkConf sparkConf =
+    //        new SparkConf().set("hive.metastore.warehouse.dir",
+    // "hdfs://gbif-hdfs/stackable/warehouse");
     sparkBuilder
         .enableHiveSupport()
-//        .config(sparkConf)
+        //        .config(sparkConf)
         .config("spark.jars.packages", "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0")
         .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.iceberg.type", "hive")
@@ -94,6 +94,10 @@ public class TableBuild {
       sparkBuilder = sparkBuilder.master(master);
       sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
       sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
+      // FIXME
+      sparkBuilder.config(
+          "spark.hadoop.hive.metastore.uris",
+          "thrift://gbif-hive-metastore-metastore-default-0.gbif-hive-metastore-metastore-default.test.svc.cluster.local:9083");
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
