@@ -28,12 +28,6 @@ public class TableBuild {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(names = "--coreSiteConfig", description = "Path to core-site.xml", required = false)
-    private String coreSiteConfig;
-
-    @Parameter(names = "--hdfsSiteConfig", description = "Path to hdfs-site.xml", required = false)
-    private String hdfsSiteConfig;
-
     @Parameter(names = "--properties", description = "Path to properties file", required = true)
     private String properties;
 
