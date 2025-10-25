@@ -26,6 +26,8 @@ public class PipelinesConfig implements Serializable {
 
   private String coreSiteConfig;
 
+  private String hiveDB;
+
   private String zkConnectionString;
 
   private WsConfig gbifApi;

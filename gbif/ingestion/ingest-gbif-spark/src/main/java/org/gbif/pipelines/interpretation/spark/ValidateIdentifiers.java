@@ -133,13 +133,35 @@ public class ValidateIdentifiers implements Serializable {
     PipelinesConfig config = loadConfig(args.properties);
     String datasetID = args.datasetId;
     int attempt = args.attempt;
+    runValidation(
+        config,
+        datasetID,
+        attempt,
+        args.appName,
+        args.master,
+        args.numberOfShards,
+        args.tripletValid,
+        args.occurrenceIdValid,
+        args.useExtendedRecordId);
+  }
+
+  public static void runValidation(
+      PipelinesConfig config,
+      String datasetID,
+      int attempt,
+      String appName,
+      String master,
+      int numberOfShards,
+      boolean tripletValid,
+      boolean occurrenceIdValid,
+      boolean useExtendedRecordId) {
     String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
 
-    if (args.master != null && !args.master.isEmpty()) {
-      sparkBuilder = sparkBuilder.master(args.master);
+    if (master != null && !master.isEmpty()) {
+      sparkBuilder = sparkBuilder.master(master);
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
@@ -150,7 +172,7 @@ public class ValidateIdentifiers implements Serializable {
             .read()
             .format("avro")
             .load(inputPath + "/verbatim.avro")
-            .repartition(args.numberOfShards)
+            .repartition(numberOfShards)
             .as(Encoders.bean(ExtendedRecord.class));
 
     // read the extended records and check for occurrences in the extensions
@@ -167,11 +189,11 @@ public class ValidateIdentifiers implements Serializable {
     identifierTransform(
             config,
             datasetID,
-            args.tripletValid,
-            args.occurrenceIdValid,
-            args.useExtendedRecordId,
+            tripletValid,
+            occurrenceIdValid,
+            useExtendedRecordId,
             recordsExpanded)
-        .repartition(args.numberOfShards)
+        .repartition(numberOfShards)
         .write()
         .mode("overwrite")
         .parquet(outputPath + "/identifiers_transformed");
@@ -199,9 +221,10 @@ public class ValidateIdentifiers implements Serializable {
     absentIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_absent");
 
     // 4. write metrics to yaml
-    HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
+    HdfsConfigs hdfsConfigs =
+        HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
     FileSystem fs = FsUtils.getFileSystem(hdfsConfigs, "/");
-    writeMetricsYaml(fs, metrics, outputPath + "/" + args.metaFileName);
+    writeMetricsYaml(fs, metrics, outputPath + "/verbatim-to-identifier.yml");
 
     // clean up
     FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended_records_expanded");
@@ -209,7 +232,6 @@ public class ValidateIdentifiers implements Serializable {
 
     log.info("ValidateIdentifiers finished");
     spark.close();
-    System.exit(0);
   }
 
   private static void writeMetricsYaml(

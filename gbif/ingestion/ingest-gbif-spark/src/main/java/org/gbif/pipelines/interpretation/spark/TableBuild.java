@@ -37,6 +37,12 @@ public class TableBuild {
     private String properties;
 
     @Parameter(
+        names = "--master",
+        description = "Spark master - there for local dev only",
+        required = false)
+    private String master;
+
+    @Parameter(
         names = {"--help", "-h"},
         help = true,
         description = "Show usage")
@@ -54,12 +60,17 @@ public class TableBuild {
     }
 
     PipelinesConfig config = loadConfig(args.properties);
-
     String datasetId = args.datasetId;
     int attempt = args.attempt;
+
+    runTableBuild(config, datasetId, attempt, args.appName, args.master);
+  }
+
+  public static void runTableBuild(
+      PipelinesConfig config, String datasetId, int attempt, String appName, String master) {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
     SparkConf sparkConf =
         new SparkConf().set("hive.metastore.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
     sparkBuilder
@@ -76,6 +87,10 @@ public class TableBuild {
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
         .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
+
+    if (master != null && !master.isEmpty()) {
+      sparkBuilder = sparkBuilder.master(master);
+    }
 
     SparkSession spark = sparkBuilder.getOrCreate();
 
@@ -109,7 +124,7 @@ public class TableBuild {
 
     String table = "occurrence_" + datasetId.replace("-", "_") + "_" + attempt;
 
-    spark.sql("use dave");
+    spark.sql("use " + config.getHiveDB());
 
     spark.sql("DROP TABLE IF EXISTS " + table);
 

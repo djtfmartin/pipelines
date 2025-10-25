@@ -121,6 +121,7 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
               + ":"
               + outgoingMessage;
       log.info(logInfo);
+
       //            info.ifPresent(this::updateQueuedStatus);
 
       log.info("Finished processing datasetKey: {}", message.getDatasetUuid());
@@ -289,6 +290,7 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
   }
 
   private TrackingInfo trackPipelineStep(PipelinesVerbatimMessage message) throws Exception {
+
     //
     //        if (isValidator) {
     //            log.info("Skiping status updating, isValidator {}", isValidator);

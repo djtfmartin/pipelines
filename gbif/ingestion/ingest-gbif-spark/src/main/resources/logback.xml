@@ -26,4 +26,8 @@
     <logger name="org.gbif.pipelines" level="DEBUG" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
+    <logger name="org.gbif" level="INFO" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
 </configuration>
