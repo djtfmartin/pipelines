@@ -17,9 +17,7 @@ import org.gbif.pipelines.core.config.model.MessagingConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * The runnable
- */
+/** The runnable */
 @Slf4j
 public class Standalone {
 
@@ -34,39 +32,50 @@ public class Standalone {
     Mode mode = Mode.valueOf(args[0].toUpperCase());
     PipelinesConfig config = loadConfig(args[1]);
     switch (mode) {
-      case INTERPRETATION:
-        new Standalone()
-            .start(
-                config,
-                "pipelines_occurrence_interpretation_standalone", // is this used ? - exchange /
-                // routing key are used
-                "occurrence.pipelines.verbatim.finished",
-                "occurrence",
-                1,
-                (messagePublisher -> new InterpretationCallback(config, messagePublisher)));
-        break;
       case IDENTIFIER:
         new Standalone()
             .start(
+                mode,
                 config,
-                "pipelines_occurrence_identifier_standalone", // is this used ? - exchange / routing
-                // key are used
+                "pipelines_occurrence_identifier_standalone",
                 "occurrence.pipelines.verbatim.finished.identifier",
                 "occurrence",
                 1,
                 (messagePublisher -> new IdentifierCallback(config, messagePublisher)));
         break;
+      case INTERPRETATION:
+        new Standalone()
+            .start(
+                    mode,
+                config,
+                "pipelines_occurrence_interpretation_standalone", //FIXME used ? exchange/routingkey are used
+                "occurrence.pipelines.verbatim.finished",
+                "occurrence",
+                1,
+                (messagePublisher -> new InterpretationCallback(config, messagePublisher)));
+        break;
       case TABLEBUILD:
         new Standalone()
             .start(
+                    mode,
                 config,
-                "pipelines_occurrence_hdfsview_standalone", // is this used ? - exchange / routing
-                // key are used
-                "occurrence.pipelines.verbatim.finished.identifier",
+                "pipelines_occurrence_hdfs_view_standalone",
+                "occurrence.pipelines.interpretation.finished",
                 "occurrence",
                 1,
                 (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
         break;
+        case INDEXING:
+            new Standalone()
+                    .start(
+                            mode,
+                            config,
+                            "pipelines_occurrence_indexing_standalone",
+                            "occurrence.pipelines.interpretation.finished",
+                            "occurrence",
+                            1,
+                            (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
+            break;
       default:
         throw new IllegalArgumentException(
             "Unknown mode: "
@@ -77,15 +86,16 @@ public class Standalone {
   }
 
   public void start(
+      Mode mode,
       PipelinesConfig pipelinesConfig,
       String queueName,
       String routingKey,
       String exchange,
       int threads,
-      Function<MessagePublisher, MessageCallback<PipelinesVerbatimMessage>> callbackCreateFcn)
-      throws IOException {
+      Function<MessagePublisher, MessageCallback<PipelinesVerbatimMessage>> callbackCreateFcn) {
 
-    System.out.println("Starting InterpretationStandalone...");
+    System.out.println("Starting standalone mode: " + mode);
+    System.out.println("Starting standalone listening to queue " + queueName);
 
     try (MessageListener listener = createListener(pipelinesConfig);
         DefaultMessagePublisher publisher = createPublisher(pipelinesConfig)) {
@@ -110,7 +120,7 @@ public class Standalone {
 
       log.info("Listener stopped.");
 
-      System.out.println("Exiting InterpretationStandalone...");
+      System.out.println("Exiting Standalone...");
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -160,6 +170,7 @@ public class Standalone {
   public enum Mode {
     INTERPRETATION,
     IDENTIFIER,
-    TABLEBUILD
+    TABLEBUILD,
+    INDEXING
   }
 }

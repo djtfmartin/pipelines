@@ -54,6 +54,8 @@ public class PipelinesConfig implements Serializable {
 
   private LockConfig hdfsLock;
 
+  private EsConfig esConfig;
+
   @Deprecated private VocabularyConfig vocabularyConfig;
 
   private WsConfig vocabularyService;
