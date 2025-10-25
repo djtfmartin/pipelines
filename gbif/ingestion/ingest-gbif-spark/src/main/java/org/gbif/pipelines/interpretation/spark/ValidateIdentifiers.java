@@ -121,7 +121,7 @@ public class ValidateIdentifiers implements Serializable {
     boolean help;
   }
 
-  public static void main(String[] argsv) {
+  public static void main(String[] argsv) throws Exception {
 
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
@@ -156,7 +156,8 @@ public class ValidateIdentifiers implements Serializable {
       int numberOfShards,
       boolean tripletValid,
       boolean occurrenceIdValid,
-      boolean useExtendedRecordId) {
+      boolean useExtendedRecordId)
+      throws Exception {
     String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 
@@ -169,11 +170,17 @@ public class ValidateIdentifiers implements Serializable {
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
+    FileSystem fs = null;
 
     if (master != null) {
       Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
       hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
       hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+      fs = FileSystem.get(hadoopConf);
+    } else {
+      HdfsConfigs hdfsConfigs =
+          HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
+      fs = FsUtils.getFileSystem(hdfsConfigs, "/");
     }
 
     // Read the verbatim input
@@ -233,12 +240,11 @@ public class ValidateIdentifiers implements Serializable {
     // 4. write metrics to yaml
     HdfsConfigs hdfsConfigs =
         HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-    FileSystem fs = FsUtils.getFileSystem(hdfsConfigs, "/");
     writeMetricsYaml(fs, metrics, outputPath + "/verbatim-to-identifier.yml");
 
     // clean up
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended_records_expanded");
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/identifiers_transformed");
+    fs.delete(new Path(outputPath + "/extended_records_expanded"), true);
+    fs.delete(new Path(outputPath + "/identifiers_transformed"), true);
 
     log.info("ValidateIdentifiers finished");
     spark.close();
