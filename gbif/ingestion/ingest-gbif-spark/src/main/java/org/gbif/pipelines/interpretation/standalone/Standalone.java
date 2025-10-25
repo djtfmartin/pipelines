@@ -46,9 +46,10 @@ public class Standalone {
       case INTERPRETATION:
         new Standalone()
             .start(
-                    mode,
+                mode,
                 config,
-                "pipelines_occurrence_interpretation_standalone", //FIXME used ? exchange/routingkey are used
+                "pipelines_occurrence_interpretation_standalone", // FIXME used ?
+                // exchange/routingkey are used
                 "occurrence.pipelines.verbatim.finished",
                 "occurrence",
                 1,
@@ -57,7 +58,7 @@ public class Standalone {
       case TABLEBUILD:
         new Standalone()
             .start(
-                    mode,
+                mode,
                 config,
                 "pipelines_occurrence_hdfs_view_standalone",
                 "occurrence.pipelines.interpretation.finished",
@@ -65,17 +66,17 @@ public class Standalone {
                 1,
                 (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
         break;
-        case INDEXING:
-            new Standalone()
-                    .start(
-                            mode,
-                            config,
-                            "pipelines_occurrence_indexing_standalone",
-                            "occurrence.pipelines.interpretation.finished",
-                            "occurrence",
-                            1,
-                            (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
-            break;
+      case INDEXING:
+        new Standalone()
+            .start(
+                mode,
+                config,
+                "pipelines_occurrence_indexing_standalone",
+                "occurrence.pipelines.interpretation.finished",
+                "occurrence",
+                1,
+                (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
+        break;
       default:
         throw new IllegalArgumentException(
             "Unknown mode: "

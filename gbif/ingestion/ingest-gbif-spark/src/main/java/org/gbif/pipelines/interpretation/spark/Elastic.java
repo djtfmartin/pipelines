@@ -164,54 +164,60 @@ public class Elastic {
     runIndexing(config, args.datasetId, args.attempt, args.appName, args.master, args);
   }
 
-    private static void runIndexing(PipelinesConfig config, String datasetId, Integer attempt, String appName, String master, Args args) {
-        String inputPath =
-            String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
+  private static void runIndexing(
+      PipelinesConfig config,
+      String datasetId,
+      Integer attempt,
+      String appName,
+      String master,
+      Args args) {
+    String inputPath =
+        String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
 
-        // Create Spark session
-        SparkSession.Builder sparkBuilder =
-            SparkSession.builder()
-                .appName(appName)
-                .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.12.1")
-                .config("es.nodes", String.join(",", config.getEsConfig().getEsHosts()));
+    // Create Spark session
+    SparkSession.Builder sparkBuilder =
+        SparkSession.builder()
+            .appName(appName)
+            .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.12.1")
+            .config("es.nodes", String.join(",", config.getEsConfig().getEsHosts()));
 
-        if (master != null && !master.isEmpty()) {
-          sparkBuilder = sparkBuilder.master(master);
-        }
-
-        SparkSession spark = sparkBuilder.getOrCreate();
-
-        ElasticOptions options = ElasticOptions.fromArgsAndConfig(args);
-
-        // Create ES index and alias if not exists
-        EsIndexUtils.createIndexAndAliasForDefault(options);
-
-        // Returns indices names in case of swapping
-        Set<String> indices = EsIndexUtils.deleteRecordsByDatasetId(options);
-
-        // Read parquet files
-        Dataset<Row> df = spark.read().parquet(inputPath);
-        //    df.repartition(args.numberOfShards);
-
-        // Write to Elasticsearch
-        df.write()
-            .format("org.elasticsearch.spark.sql")
-            .option("es.resource", args.esIndexName)
-            .option("es.batch.size.entries", args.esMaxBatchSize)
-            .option("es.batch.size.bytes", args.esMaxBatchSizeBytes)
-            .option("es.mapping.id", "id")
-            .option("es.nodes.wan.only", "true")
-            .option("es.batch.write.refresh", "false")
-            .mode("append")
-            .save();
-
-        spark.stop();
-
-        EsIndexUtils.updateAlias(options, indices, config != null ? config.getIndexLock() : null);
-        EsIndexUtils.refreshIndex(options);
+    if (master != null && !master.isEmpty()) {
+      sparkBuilder = sparkBuilder.master(master);
     }
 
-    @Builder
+    SparkSession spark = sparkBuilder.getOrCreate();
+
+    ElasticOptions options = ElasticOptions.fromArgsAndConfig(args);
+
+    // Create ES index and alias if not exists
+    EsIndexUtils.createIndexAndAliasForDefault(options);
+
+    // Returns indices names in case of swapping
+    Set<String> indices = EsIndexUtils.deleteRecordsByDatasetId(options);
+
+    // Read parquet files
+    Dataset<Row> df = spark.read().parquet(inputPath);
+    //    df.repartition(args.numberOfShards);
+
+    // Write to Elasticsearch
+    df.write()
+        .format("org.elasticsearch.spark.sql")
+        .option("es.resource", args.esIndexName)
+        .option("es.batch.size.entries", args.esMaxBatchSize)
+        .option("es.batch.size.bytes", args.esMaxBatchSizeBytes)
+        .option("es.mapping.id", "id")
+        .option("es.nodes.wan.only", "true")
+        .option("es.batch.write.refresh", "false")
+        .mode("append")
+        .save();
+
+    spark.stop();
+
+    EsIndexUtils.updateAlias(options, indices, config != null ? config.getIndexLock() : null);
+    EsIndexUtils.refreshIndex(options);
+  }
+
+  @Builder
   @Data
   public static class ElasticOptions {
     String esSchemaPath;
