@@ -15,7 +15,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.MapFunction;
@@ -162,9 +164,17 @@ public class ValidateIdentifiers implements Serializable {
 
     if (master != null && !master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(master);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
+
+    if (master != null) {
+      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+    }
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =

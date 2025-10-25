@@ -7,6 +7,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -90,9 +92,17 @@ public class TableBuild {
 
     if (master != null && !master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(master);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
+
+    if (master != null) {
+      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+    }
 
     // load hdfs view
     Dataset<Row> hdfs = spark.read().parquet(outputPath + "/hdfs");
