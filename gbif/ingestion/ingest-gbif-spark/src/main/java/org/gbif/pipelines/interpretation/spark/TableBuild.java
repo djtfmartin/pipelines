@@ -73,11 +73,11 @@ public class TableBuild {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
-    SparkConf sparkConf =
-        new SparkConf().set("hive.metastore.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
+//    SparkConf sparkConf =
+//        new SparkConf().set("hive.metastore.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
     sparkBuilder
         .enableHiveSupport()
-        .config(sparkConf)
+//        .config(sparkConf)
         .config("spark.jars.packages", "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0")
         .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.iceberg.type", "hive")

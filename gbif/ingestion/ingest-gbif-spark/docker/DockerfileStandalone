@@ -4,9 +4,6 @@ USER root
 RUN mkdir /jobs
 COPY --chown=1000:1000 "./target/${JAR_FILE}" "/jobs/ingest-gbif-spark.jar"
 
-RUN groupadd -r stackable && useradd -r -g stackable -m stackable
-USER stackable:stackable
-
 # Add Iceberg runtime jar to Spark jars folder
 ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.6.1/iceberg-spark-runtime-3.5_2.12-1.6.1.jar \
     /opt/spark/jars/
@@ -14,6 +11,9 @@ ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-extensions-3
     /opt/spark/jars/
 RUN chmod 777 /opt/spark/jars/iceberg-spark-extensions-3.5_2.12-1.6.1.jar
 RUN chmod 777 /opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.6.1.jar
+
+RUN groupadd -r stackable && useradd -r -g stackable -m stackable
+USER stackable:stackable
 
 # Ensure Spark jars are accessible to the JVM
 ENV SPARK_HOME=/opt/spark
