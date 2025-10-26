@@ -10,6 +10,7 @@ import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelinesBalancerMessage;
 import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.interpretation.spark.Indexing;
 import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
 import org.gbif.ws.client.ClientBuilder;
 import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
@@ -41,16 +42,19 @@ public class IndexingCallback implements MessageCallback<PipelinesVerbatimMessag
   public void handleMessage(PipelinesVerbatimMessage message) {
 
     try {
-      //      Elastic.runIndexing(
-      //          pipelinesConfig,
-      //          message.getDatasetUuid().toString(),
-      //          message.getAttempt(),
-      //          "indexing_standalone_" + message.getDatasetUuid(),
-      //          "local[*]");
+      Indexing.runIndexing(
+          pipelinesConfig,
+          message.getDatasetUuid().toString(),
+          message.getAttempt(),
+          "indexing_standalone_" + message.getDatasetUuid(),
+          "local[*]",
+          pipelinesConfig.getElastic().getEsAlias(),
+          1, // FIXME
+          0 // FIXME
+          );
 
       // Create and send outgoing message
       PipelinesVerbatimMessage outgoingMessage = createOutgoingMessage(message);
-
       String nextMessageClassName = outgoingMessage.getClass().getSimpleName();
       String messagePayload = outgoingMessage.toString();
 

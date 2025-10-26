@@ -158,17 +158,27 @@ public class Indexing {
     }
 
     PipelinesConfig config = loadConfig(args.properties);
-
-    runIndexing(config, args.datasetId, args.attempt, args.appName, args.master, args);
+    runIndexing(
+        config,
+        args.datasetId,
+        args.attempt,
+        args.appName,
+        args.master,
+        args.esIndexName,
+        args.indexNumberShards,
+        args.indexNumberReplicas);
   }
 
-  private static void runIndexing(
+  public static void runIndexing(
       PipelinesConfig config,
       String datasetId,
       Integer attempt,
       String appName,
       String master,
-      Args args) {
+      String esIndexName,
+      Integer indexNumberShards,
+      Integer indexNumberReplicas) {
+
     String inputPath =
         String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
 
@@ -185,7 +195,9 @@ public class Indexing {
 
     SparkSession spark = sparkBuilder.getOrCreate();
 
-    ElasticOptions options = ElasticOptions.fromArgsAndConfig(args, config);
+    ElasticOptions options =
+        ElasticOptions.fromArgsAndConfig(
+            config, esIndexName, datasetId, attempt, indexNumberShards, indexNumberReplicas);
 
     // Create ES index and alias if not exists
     EsIndexUtils.createIndexAndAliasForDefault(options);
@@ -199,9 +211,9 @@ public class Indexing {
     // Write to Elasticsearch
     df.write()
         .format("org.elasticsearch.spark.sql")
-        .option("es.resource", args.esIndexName)
-        .option("es.batch.size.entries", args.esMaxBatchSize)
-        .option("es.batch.size.bytes", args.esMaxBatchSizeBytes)
+        .option("es.resource", esIndexName)
+        .option("es.batch.size.entries", config.getElastic().getEsMaxBatchSize())
+        .option("es.batch.size.bytes", config.getElastic().getEsMaxBatchSizeBytes())
         .option("es.mapping.id", "id")
         .option("es.nodes.wan.only", "true")
         .option("es.batch.write.refresh", "false")
@@ -210,7 +222,7 @@ public class Indexing {
 
     spark.stop();
 
-    EsIndexUtils.updateAlias(options, indices, config != null ? config.getIndexLock() : null);
+    EsIndexUtils.updateAlias(options, indices, config.getIndexLock());
     EsIndexUtils.refreshIndex(options);
   }
 
@@ -237,17 +249,23 @@ public class Indexing {
     @Builder.Default Integer searchQueryTimeoutSec = 5;
     @Builder.Default Integer searchQueryAttempts = 200;
 
-    public static ElasticOptions fromArgsAndConfig(Indexing.Args args, PipelinesConfig config) {
+    public static ElasticOptions fromArgsAndConfig(
+        PipelinesConfig config,
+        String esIndexName,
+        String datasetId,
+        Integer attempt,
+        Integer indexNumberShards,
+        Integer indexNumberReplicas) {
       EsConfig esConfig = config.getElastic();
       ElasticOptionsBuilder builder =
           ElasticOptions.builder()
-              .esIndexName(args.esIndexName)
-              .esAlias(args.esAlias.toArray(new String[0]))
-              .datasetId(args.datasetId)
-              .attempt(args.attempt)
-              .esSchemaPath(args.esSchemaPath)
-              .indexNumberShards(args.indexNumberShards)
-              .indexNumberReplicas(args.indexNumberReplicas)
+              .esIndexName(esIndexName)
+              .indexNumberShards(indexNumberShards)
+              .indexNumberReplicas(indexNumberReplicas)
+              .esAlias(new String[] {esConfig.getEsAlias()})
+              .datasetId(datasetId)
+              .attempt(attempt)
+              .esSchemaPath(esConfig.getEsSchemaPath())
               .esHosts(esConfig.getEsHosts().split(","));
 
       if (esConfig.getIndexRefreshInterval() != null) {

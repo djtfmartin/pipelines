@@ -75,7 +75,7 @@ public class Standalone {
                 "occurrence.pipelines.interpretation.finished",
                 "occurrence",
                 1,
-                (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
+                (messagePublisher -> new IndexingCallback(config, messagePublisher)));
         break;
       default:
         throw new IllegalArgumentException(

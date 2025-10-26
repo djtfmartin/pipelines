@@ -15,6 +15,8 @@ public class EsConfig implements Serializable {
   private String esHosts;
   private String esSchemaPath;
   private String esAlias;
+  private Long esMaxBatchSize;
+  private Long esMaxBatchSizeBytes;
   private String indexRefreshInterval;
   private Integer indexMaxResultWindow;
   private String unassignedNodeDelay;
