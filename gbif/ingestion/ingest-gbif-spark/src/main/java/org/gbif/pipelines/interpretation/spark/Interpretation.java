@@ -73,6 +73,20 @@ public class Interpretation implements Serializable {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
+    @Parameter(
+        names = "--tripletValid",
+        description = "DWCA validation from crawler, all triplets are unique",
+        required = false,
+        arity = 1)
+    private boolean tripletValid = false;
+
+    @Parameter(
+        names = "--occurrenceIdValid",
+        description = "DWCA validation from crawler, all occurrenceIds are unique",
+        required = false,
+        arity = 1)
+    private boolean occurrenceIdValid = true;
+
     @Parameter(names = "--properties", description = "Path to properties file", required = true)
     private String properties;
 
@@ -107,7 +121,15 @@ public class Interpretation implements Serializable {
     String datasetId = args.datasetId;
     int attempt = args.attempt;
 
-    runInterpretation(config, datasetId, attempt, args.numberOfShards, args.appName, args.master);
+    runInterpretation(
+        config,
+        datasetId,
+        attempt,
+        args.numberOfShards,
+        args.appName,
+        args.master,
+        args.tripletValid,
+        args.occurrenceIdValid);
   }
 
   public static void runInterpretation(
@@ -116,7 +138,9 @@ public class Interpretation implements Serializable {
       int attempt,
       int numberOfShards,
       String appName,
-      String master) {
+      String master,
+      Boolean tripletValid,
+      Boolean occurrenceIdValid) {
 
     String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
@@ -149,7 +173,7 @@ public class Interpretation implements Serializable {
         HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
         outputPath + "/identifiers")) {
       log.info("Processing identifiers - first interpretation run for this dataset and attempt");
-      processIdentifiers(spark, config, outputPath, datasetId);
+      processIdentifiers(spark, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
     } else {
       log.info("Skipping processing identifiers - re-using existing identifiers");
     }
@@ -399,7 +423,12 @@ public class Interpretation implements Serializable {
   }
 
   public static void processIdentifiers(
-      SparkSession spark, PipelinesConfig config, String outputPath, String datasetId) {
+      SparkSession spark,
+      PipelinesConfig config,
+      String outputPath,
+      String datasetId,
+      boolean tripletValid,
+      boolean occurrenceIdValid) {
 
     // load the valid identifiers - identifiers already present in hbase
     Dataset<IdentifierRecord> identifiers = loadValidIdentifiers(spark, outputPath);
@@ -407,7 +436,8 @@ public class Interpretation implements Serializable {
     // persist the absent identifiers - records that need to be assigned an identifier
     // (i.e. added to hbase)
     Dataset<IdentifierRecord> newlyAdded =
-        persistAbsentIdentifiers(spark, outputPath, config, datasetId);
+        persistAbsentIdentifiers(
+            spark, outputPath, config, datasetId, tripletValid, occurrenceIdValid);
 
     // merge the two datasets
     Dataset<IdentifierRecord> allIdentifiers = identifiers.union(newlyAdded);
@@ -417,7 +447,12 @@ public class Interpretation implements Serializable {
   }
 
   private static Dataset<IdentifierRecord> persistAbsentIdentifiers(
-      SparkSession spark, String outputPath, PipelinesConfig config, String datasetId) {
+      SparkSession spark,
+      String outputPath,
+      PipelinesConfig config,
+      String datasetId,
+      boolean tripletValid,
+      boolean occurrenceIdValid) {
 
     Dataset<IdentifierRecord> absentIdentifiers =
         spark
@@ -427,9 +462,9 @@ public class Interpretation implements Serializable {
 
     GbifAbsentIdTransform absentIdTransform =
         GbifAbsentIdTransform.builder()
-            .isTripletValid(true)
-            .isOccurrenceIdValid(true)
-            .useExtendedRecordId(false)
+            .isTripletValid(tripletValid)
+            .isOccurrenceIdValid(occurrenceIdValid)
+            .useExtendedRecordId(false) // validator thing
             .generateIdIfAbsent(true)
             .keygenServiceSupplier(
                 (SerializableSupplier<HBaseLockingKey>)

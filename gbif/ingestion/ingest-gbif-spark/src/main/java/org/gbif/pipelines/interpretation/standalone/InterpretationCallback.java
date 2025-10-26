@@ -101,7 +101,9 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
           message.getAttempt(),
           1,
           "interpretation_standalone_" + message.getDatasetUuid(),
-          "local[*]");
+          "local[*]",
+          message.getValidationResult().isTripletValid(),
+          message.getValidationResult().isOccurrenceIdValid());
 
       // Acknowledge message processing
       // FIXME: Temporarily disabled
