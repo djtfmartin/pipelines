@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Data;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -116,6 +118,11 @@ public class Indexing {
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
+    if (master != null) {
+      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
+      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+    }
 
     ElasticOptions options =
         ElasticOptions.fromArgsAndConfig(
