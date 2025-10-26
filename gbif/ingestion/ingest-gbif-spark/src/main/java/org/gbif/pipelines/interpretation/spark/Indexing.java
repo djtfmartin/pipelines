@@ -145,7 +145,7 @@ public class Indexing {
         .option("es.resource", esIndexName)
         .option("es.batch.size.entries", config.getElastic().getEsMaxBatchSize())
         .option("es.batch.size.bytes", config.getElastic().getEsMaxBatchSizeBytes())
-        .option("es.mapping.id", "id")
+        .option("es.mapping.id", "gbifId")
         .option("es.nodes.wan.only", "true")
         .option("es.batch.write.refresh", "false")
         .mode("append")
