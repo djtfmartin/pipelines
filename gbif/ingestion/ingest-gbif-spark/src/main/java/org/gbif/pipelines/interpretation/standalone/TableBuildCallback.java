@@ -21,7 +21,7 @@ public class TableBuildCallback implements MessageCallback<PipelinesVerbatimMess
   private final PipelinesConfig pipelinesConfig;
   private final PipelinesHistoryClient historyClient;
   private final MessagePublisher publisher;
-  private static final StepType TYPE = StepType.VERBATIM_TO_IDENTIFIER;
+  private static final StepType TYPE = StepType.HDFS_VIEW;
 
   public TableBuildCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     this.pipelinesConfig = pipelinesConfig;
