@@ -9,11 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.pojo.HdfsConfigs;
+import org.gbif.pipelines.core.utils.FsUtils;
 
 @Slf4j
 public class TableBuild {
@@ -46,7 +49,7 @@ public class TableBuild {
     private boolean help;
   }
 
-  public static void main(String[] argsv) {
+  public static void main(String[] argsv) throws Exception {
     TableBuild.Args args = new TableBuild.Args();
     JCommander jCommander = new JCommander(args);
     jCommander.parse(argsv);
@@ -64,7 +67,7 @@ public class TableBuild {
   }
 
   public static void runTableBuild(
-      PipelinesConfig config, String datasetId, int attempt, String appName, String master) {
+      PipelinesConfig config, String datasetId, int attempt, String appName, String master) throws Exception {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
@@ -82,22 +85,28 @@ public class TableBuild {
         .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
         .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
 
+
+
     if (master != null && !master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(master);
       sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
       sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
       // FIXME
       sparkBuilder.config(
-          "spark.hadoop.hive.metastore.uris",
-          "thrift://gbif-hive-metastore-metastore-default-0.gbif-hive-metastore-metastore-default.test.svc.cluster.local:9083");
+          "spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
-
+    FileSystem fs = null;
     if (master != null) {
       Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
       hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
       hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+        fs = FileSystem.get(hadoopConf);
+    } else {
+        HdfsConfigs hdfsConfigs =
+                HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
+        fs = FsUtils.getFileSystem(hdfsConfigs, "/");
     }
 
     // load hdfs view
@@ -137,7 +146,11 @@ public class TableBuild {
     // Drop the table if it already exists
     spark.sql("DROP TABLE IF EXISTS " + table);
 
-    // TODO: Check HDFS for remnant DB files from failed attempts
+    // Check HDFS for remnant DB files from failed attempts
+    Path path = new Path(config.getHdfsWarehousePath(), config.getHiveDB() + "/" + table);
+    if (fs.exists(path)) {
+      fs.delete(path, true);
+    }
     hdfs.writeTo(table).create();
 
     log.info("Created Iceberg table: " + table);

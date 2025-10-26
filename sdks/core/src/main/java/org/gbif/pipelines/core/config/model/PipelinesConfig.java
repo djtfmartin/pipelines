@@ -28,6 +28,10 @@ public class PipelinesConfig implements Serializable {
 
   private String hiveDB;
 
+  private String hdfsWarehousePath;
+
+  private String hiveMetastoreUris;
+
   private String zkConnectionString;
 
   private WsConfig gbifApi;
