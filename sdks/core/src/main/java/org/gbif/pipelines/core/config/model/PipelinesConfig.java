@@ -71,7 +71,8 @@ public class PipelinesConfig implements Serializable {
    * invalid, only accepts standard ISO date format. Parsing 2/3/2008 will fail . <code>DMY</code>
    * will parse 2/3/2008 as 2 Mar 2008 <code>MDY</code> will parse 2/3/2008 as 3 Feb 2008
    */
-  private List<DateComponentOrdering> defaultDateFormat = Arrays.asList(DateComponentOrdering.ISO_FORMATS);
+  private List<DateComponentOrdering> defaultDateFormat =
+      Arrays.asList(DateComponentOrdering.ISO_FORMATS);
 
   private Set<String> extensionsAllowedForVerbatimSet;
 
