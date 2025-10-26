@@ -77,6 +77,17 @@ public class Standalone {
                 1,
                 (messagePublisher -> new IndexingCallback(config, messagePublisher)));
         break;
+      case FRAGMENTER:
+        new Standalone()
+            .start(
+                mode,
+                config,
+                "pipelines_occurrence_fragmenter_standalone",
+                "occurrence.pipelines.interpretation.finished",
+                "occurrence",
+                1,
+                (messagePublisher -> new FragmenterCallback(config, messagePublisher)));
+        break;
       default:
         throw new IllegalArgumentException(
             "Unknown mode: "
@@ -172,6 +183,7 @@ public class Standalone {
     INTERPRETATION,
     IDENTIFIER,
     TABLEBUILD,
-    INDEXING
+    INDEXING,
+    FRAGMENTER
   }
 }

@@ -2,7 +2,9 @@ kubectl delete -f identifier-standalone.yaml -n dev
 kubectl delete -f interpretation-standalone.yaml -n dev
 kubectl delete -f tablebuild-standalone.yaml -n dev
 kubectl delete -f indexing-standalone.yaml -n dev
+kubectl delete -f fragmenter-standalone.yaml -n dev
 kubectl apply -f identifier-standalone.yaml -n dev
 kubectl apply -f interpretation-standalone.yaml -n dev
 kubectl apply -f tablebuild-standalone.yaml -n dev
 kubectl apply -f indexing-standalone.yaml -n dev
+kubectl apply -f fragmenter-standalone.yaml -n dev
