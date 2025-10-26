@@ -145,7 +145,7 @@ public class TableBuild {
     spark.sql("DROP TABLE IF EXISTS " + table);
 
     // Check HDFS for remnant DB files from failed attempts
-    Path warehousePath = new Path(config.getHdfsWarehousePath(), config.getHiveDB() + "/" + table);
+    Path warehousePath = new Path(config.getHdfsWarehousePath(), "/" + table);
     log.info("Checking warehouse path: {}", warehousePath);
     if (fs.exists(warehousePath)) {
       log.info("Deleting warehouse path: {}", warehousePath);
