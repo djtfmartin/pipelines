@@ -7,6 +7,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
@@ -14,6 +15,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 
+@Slf4j
 public class TableBuild {
 
   @Parameters(separators = "=")
@@ -66,12 +68,8 @@ public class TableBuild {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
-    //    SparkConf sparkConf =
-    //        new SparkConf().set("hive.metastore.warehouse.dir",
-    // "hdfs://gbif-hdfs/stackable/warehouse");
     sparkBuilder
         .enableHiveSupport()
-        //        .config(sparkConf)
         .config("spark.jars.packages", "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0")
         .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.iceberg.type", "hive")
@@ -130,48 +128,50 @@ public class TableBuild {
       }
     }
 
-    String table =
-        "occurrence_"
-            + datasetId.replace("-", "_")
-            + "_"
-            + attempt
-            + "_"
-            + System.currentTimeMillis();
+    // Generate a unique temporary table name
+    String table = String.format("occurrence_%s_%d", datasetId.replace("-", "_"), attempt);
 
-    spark.sql("use " + config.getHiveDB());
+    // Switch to the configured Hive database
+    spark.sql("USE " + config.getHiveDB());
 
+    // Drop the table if it already exists
     spark.sql("DROP TABLE IF EXISTS " + table);
 
-    // FIXME check HDFS for remnant db files from failed attempts
-
+    // TODO: Check HDFS for remnant DB files from failed attempts
     hdfs.writeTo(table).create();
 
-    System.out.println("Created Iceberg table:");
+    log.info("Created Iceberg table: " + table);
 
+    // Display table schema and initial record count
     spark.sql("DESCRIBE TABLE " + table).show(false);
+    spark.sql("SELECT COUNT(*) FROM " + table).show(false);
 
-    spark.sql("SELECT count(*) FROM " + table).show(false);
-
+    // Create or populate the occurrence table SQL
     spark.sql(occurrenceTableSQL);
 
+    // Build the insert query
     String insertQuery =
-        "INSERT OVERWRITE TABLE " + config.getHiveDB() + ".occurrence ("
-            + String.join(", ", columnList)
-            + ") "
-            + "SELECT "
-            + selectBuffer
-            + " FROM "
-            + config.getHiveDB()
-            + "."
-            + table;
+        String.format(
+            "INSERT OVERWRITE TABLE %s.occurrence (%s) SELECT %s FROM %s.%s",
+            config.getHiveDB(),
+            String.join(", ", columnList),
+            selectBuffer,
+            config.getHiveDB(),
+            table);
 
-    System.out.println("Inserting data into occurrence table: " + insertQuery);
+    log.info("Inserting data into occurrence table: " + insertQuery);
 
+    // Execute the insert
     spark.sql(insertQuery);
 
+    // Drop the temporary table
     spark.sql("DROP TABLE " + table);
 
+    log.info("Dropped Iceberg table: " + table);
+
     spark.close();
+
+    log.info("HDFS VIEW complete for dataset: " + datasetId);
   }
 
   static final String occurrenceTableSQL =

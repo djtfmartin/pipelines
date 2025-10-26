@@ -3,6 +3,7 @@ package org.gbif.pipelines.interpretation.standalone;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
@@ -15,6 +16,7 @@ import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
 import org.gbif.ws.client.ClientBuilder;
 import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 
+@Slf4j
 public class TableBuildCallback implements MessageCallback<PipelinesVerbatimMessage> {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -41,6 +43,15 @@ public class TableBuildCallback implements MessageCallback<PipelinesVerbatimMess
   @Override
   public void handleMessage(PipelinesVerbatimMessage message) {
 
+    if (!message.getRunner().equalsIgnoreCase("STANDALONE")
+        && message.getPipelineSteps().contains(TYPE.toString())) {
+      log.info(
+          "Incorrect message received - runner {}, stepTypes: {}",
+          message.getRunner(),
+          message.getPipelineSteps());
+      return;
+    }
+
     try {
       TableBuild.runTableBuild(
           pipelinesConfig,
@@ -54,7 +65,6 @@ public class TableBuildCallback implements MessageCallback<PipelinesVerbatimMess
 
       String nextMessageClassName = outgoingMessage.getClass().getSimpleName();
       String messagePayload = outgoingMessage.toString();
-
       publisher.send(new PipelinesBalancerMessage(nextMessageClassName, messagePayload));
     } catch (Exception e) {
       e.printStackTrace();
