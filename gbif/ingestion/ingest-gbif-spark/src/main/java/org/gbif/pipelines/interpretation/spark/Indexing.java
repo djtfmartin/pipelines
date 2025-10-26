@@ -111,6 +111,8 @@ public class Indexing {
 
     if (master != null && !master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(master);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();

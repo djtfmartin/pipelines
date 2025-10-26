@@ -90,7 +90,6 @@ public class TableBuild {
       sparkBuilder = sparkBuilder.master(master);
       sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
       sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-      // FIXME
       sparkBuilder.config("spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
     }
 
