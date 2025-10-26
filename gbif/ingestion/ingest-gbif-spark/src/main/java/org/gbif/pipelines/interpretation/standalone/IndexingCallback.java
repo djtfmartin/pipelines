@@ -3,6 +3,7 @@ package org.gbif.pipelines.interpretation.standalone;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
@@ -15,6 +16,7 @@ import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
 import org.gbif.ws.client.ClientBuilder;
 import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 
+@Slf4j
 public class IndexingCallback implements MessageCallback<PipelinesVerbatimMessage> {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -40,6 +42,15 @@ public class IndexingCallback implements MessageCallback<PipelinesVerbatimMessag
 
   @Override
   public void handleMessage(PipelinesVerbatimMessage message) {
+
+    if (!message.getRunner().equalsIgnoreCase("STANDALONE")
+        || !message.getPipelineSteps().contains(TYPE.toString())) {
+      log.info(
+          "Incorrect message received - runner {}, stepTypes: {}",
+          message.getRunner(),
+          message.getPipelineSteps());
+      return;
+    }
 
     try {
       Indexing.runIndexing(
