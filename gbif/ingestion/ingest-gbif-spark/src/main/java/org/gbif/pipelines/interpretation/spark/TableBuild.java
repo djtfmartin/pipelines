@@ -130,7 +130,12 @@ public class TableBuild {
       }
     }
 
-    String table = "occurrence_" + datasetId.replace("-", "_") + "_" + attempt + "_"
+    String table =
+        "occurrence_"
+            + datasetId.replace("-", "_")
+            + "_"
+            + attempt
+            + "_"
             + System.currentTimeMillis();
 
     spark.sql("use " + config.getHiveDB());
