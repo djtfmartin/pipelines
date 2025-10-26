@@ -51,7 +51,9 @@ public class IdentifierCallback implements MessageCallback<PipelinesVerbatimMess
           1,
           message.getValidationResult().isTripletValid(),
           message.getValidationResult().isOccurrenceIdValid(),
-          message.getValidationResult().isUseExtendedRecordId());
+          message.getValidationResult().isUseExtendedRecordId() != null
+              ? message.getValidationResult().isUseExtendedRecordId()
+              : false);
 
       // Create and send outgoing message
       PipelinesVerbatimMessage outgoingMessage = createOutgoingMessage(message);
