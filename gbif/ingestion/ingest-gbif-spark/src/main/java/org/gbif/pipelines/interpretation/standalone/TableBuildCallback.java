@@ -44,7 +44,7 @@ public class TableBuildCallback implements MessageCallback<PipelinesVerbatimMess
   public void handleMessage(PipelinesVerbatimMessage message) {
 
     if (!message.getRunner().equalsIgnoreCase("STANDALONE")
-        && message.getPipelineSteps().contains(TYPE.toString())) {
+        || !message.getPipelineSteps().contains(TYPE.toString())) {
       log.info(
           "Incorrect message received - runner {}, stepTypes: {}",
           message.getRunner(),
