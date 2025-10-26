@@ -67,7 +67,8 @@ public class TableBuild {
   }
 
   public static void runTableBuild(
-      PipelinesConfig config, String datasetId, int attempt, String appName, String master) throws Exception {
+      PipelinesConfig config, String datasetId, int attempt, String appName, String master)
+      throws Exception {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
@@ -85,15 +86,12 @@ public class TableBuild {
         .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
         .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
 
-
-
     if (master != null && !master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(master);
       sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
       sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
       // FIXME
-      sparkBuilder.config(
-          "spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
+      sparkBuilder.config("spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
@@ -102,11 +100,11 @@ public class TableBuild {
       Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
       hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
       hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
-        fs = FileSystem.get(hadoopConf);
+      fs = FileSystem.get(hadoopConf);
     } else {
-        HdfsConfigs hdfsConfigs =
-                HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-        fs = FsUtils.getFileSystem(hdfsConfigs, "/");
+      HdfsConfigs hdfsConfigs =
+          HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
+      fs = FsUtils.getFileSystem(hdfsConfigs, "/");
     }
 
     // load hdfs view
@@ -147,9 +145,9 @@ public class TableBuild {
     spark.sql("DROP TABLE IF EXISTS " + table);
 
     // Check HDFS for remnant DB files from failed attempts
-    Path path = new Path(config.getHdfsWarehousePath(), config.getHiveDB() + "/" + table);
-    if (fs.exists(path)) {
-      fs.delete(path, true);
+    Path warehousePath = new Path(config.getHdfsWarehousePath(), config.getHiveDB() + "/" + table);
+    if (fs.exists(warehousePath)) {
+      fs.delete(warehousePath, true);
     }
     hdfs.writeTo(table).create();
 
@@ -181,6 +179,9 @@ public class TableBuild {
     spark.sql("DROP TABLE " + table);
 
     log.info("Dropped Iceberg table: " + table);
+    if (fs.exists(warehousePath)) {
+      fs.delete(warehousePath, true);
+    }
 
     spark.close();
 
