@@ -15,20 +15,25 @@ package org.gbif.pipelines.interpretation.transform;
 
 import java.io.Serializable;
 import java.time.Instant;
-import lombok.Builder;
+import lombok.NoArgsConstructor;
+import org.gbif.api.vocabulary.OccurrenceStatus;
+import org.gbif.common.parsers.OccurrenceStatusParser;
+import org.gbif.common.parsers.core.ParseResult;
+import org.gbif.kvs.KeyValueStore;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.core.*;
 import org.gbif.pipelines.interpretation.transform.utils.VocabularyServiceFactory;
 import org.gbif.pipelines.io.avro.*;
 
 /** */
-@Builder
 public class BasicTransform implements Serializable {
 
   private final PipelinesConfig config;
+  private volatile OccurrenceStatusParserKvStore occurrenceStatusParserKvStore;
 
   private BasicTransform(PipelinesConfig config) {
     this.config = config;
+    this.occurrenceStatusParserKvStore = OccurrenceStatusParserKvStore.create();
   }
 
   public static BasicTransform create(PipelinesConfig config) {
@@ -49,6 +54,10 @@ public class BasicTransform implements Serializable {
     var vocabServiceUrl = config.getVocabularyService().getWsUrl();
     var vocabService = VocabularyServiceFactory.getInstance(vocabServiceUrl);
 
+    if (occurrenceStatusParserKvStore == null) {
+      occurrenceStatusParserKvStore = OccurrenceStatusParserKvStore.create();
+    }
+
     // Apply interpreters sequentially
     BasicInterpreter.interpretBasisOfRecord(source, record);
     BasicInterpreter.interpretTypifiedName(source, record);
@@ -64,7 +73,9 @@ public class BasicTransform implements Serializable {
     CoreInterpreter.interpretLicense(source, record::setLicense);
     BasicInterpreter.interpretIdentifiedByIds(source, record);
     BasicInterpreter.interpretRecordedByIds(source, record);
-    VocabularyInterpreter.interpretOccurrenceStatus(vocabService).accept(source, record);
+    // FIXME
+    BasicInterpreter.interpretOccurrenceStatus(occurrenceStatusParserKvStore)
+        .accept(source, record);
     VocabularyInterpreter.interpretEstablishmentMeans(vocabService).accept(source, record);
     VocabularyInterpreter.interpretLifeStage(vocabService).accept(source, record);
     VocabularyInterpreter.interpretPathway(vocabService).accept(source, record);
@@ -94,5 +105,24 @@ public class BasicTransform implements Serializable {
     DynamicPropertiesInterpreter.interpretLifeStage(vocabService).accept(source, record);
 
     return record;
+  }
+
+  // This versions will be replaced by vocabulary server in the future
+  @NoArgsConstructor(staticName = "create")
+  public static class OccurrenceStatusParserKvStore
+      implements KeyValueStore<String, OccurrenceStatus>, Serializable {
+
+    private final OccurrenceStatusParser parser = OccurrenceStatusParser.getInstance();
+
+    @Override
+    public OccurrenceStatus get(String s) {
+      ParseResult<OccurrenceStatus> parse = parser.parse(s);
+      return parse.isSuccessful() ? parse.getPayload() : null;
+    }
+
+    @Override
+    public void close() {
+      // NOP
+    }
   }
 }

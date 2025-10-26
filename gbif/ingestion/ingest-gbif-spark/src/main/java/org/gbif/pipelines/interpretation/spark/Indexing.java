@@ -13,6 +13,7 @@ import lombok.Data;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.gbif.pipelines.core.config.model.EsConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.EsIndexUtils;
 
@@ -21,7 +22,7 @@ import org.gbif.pipelines.interpretation.EsIndexUtils;
  * creates an Elasticsearch index if it doesn't exist, deletes existing records for a specific
  * dataset ID, and writes new records to the index.
  */
-public class Elastic {
+public class Indexing {
 
   @Parameters(separators = "=")
   private static class Args {
@@ -132,9 +133,6 @@ public class Elastic {
     @Parameter(names = "--properties", description = "Path to YAML file", required = true)
     private String properties;
 
-    //    @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
-    //    private int numberOfShards = 10;
-
     @Parameter(
         names = "--master",
         description = "Spark master - there for local dev only",
@@ -179,7 +177,7 @@ public class Elastic {
         SparkSession.builder()
             .appName(appName)
             .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.12.1")
-            .config("es.nodes", String.join(",", config.getEsConfig().getEsHosts()));
+            .config("es.nodes", String.join(",", config.getElastic().getEsHosts()));
 
     if (master != null && !master.isEmpty()) {
       sparkBuilder = sparkBuilder.master(master);
@@ -187,7 +185,7 @@ public class Elastic {
 
     SparkSession spark = sparkBuilder.getOrCreate();
 
-    ElasticOptions options = ElasticOptions.fromArgsAndConfig(args);
+    ElasticOptions options = ElasticOptions.fromArgsAndConfig(args, config);
 
     // Create ES index and alias if not exists
     EsIndexUtils.createIndexAndAliasForDefault(options);
@@ -197,7 +195,6 @@ public class Elastic {
 
     // Read parquet files
     Dataset<Row> df = spark.read().parquet(inputPath);
-    //    df.repartition(args.numberOfShards);
 
     // Write to Elasticsearch
     df.write()
@@ -240,28 +237,50 @@ public class Elastic {
     @Builder.Default Integer searchQueryTimeoutSec = 5;
     @Builder.Default Integer searchQueryAttempts = 200;
 
-    public static ElasticOptions fromArgsAndConfig(Elastic.Args args) {
-      return ElasticOptions.builder()
-          .esSchemaPath(args.esSchemaPath)
-          .esHosts(args.esHosts.toArray(new String[0]))
-          .esIndexName(args.esIndexName)
-          .esAlias(args.esAlias.toArray(new String[0]))
-          .datasetId(args.datasetId)
-          .attempt(args.attempt)
-          .indexNumberShards(args.indexNumberShards)
-          .indexRefreshInterval(args.indexRefreshInterval)
-          .indexNumberReplicas(args.indexNumberReplicas)
-          .indexMaxResultWindow(args.indexMaxResultWindow)
-          .unassignedNodeDelay(args.unassignedNodeDelay)
-          .useSlowlog(args.useSlowlog)
-          .indexSearchSlowlogThresholdQueryWarn(args.indexSearchSlowlogThresholdQueryWarn)
-          .indexSearchSlowlogThresholdQueryInfo(args.indexSearchSlowlogThresholdQueryInfo)
-          .indexSearchSlowlogThresholdFetchWarn(args.indexSearchSlowlogThresholdFetchWarn)
-          .indexSearchSlowlogThresholdFetchInfo(args.indexSearchSlowlogThresholdFetchInfo)
-          .indexSearchSlowlogLevel(args.indexSearchSlowlogLevel)
-          .searchQueryTimeoutSec(args.searchQueryTimeoutSec)
-          .searchQueryAttempts(args.searchQueryAttempts)
-          .build();
+    public static ElasticOptions fromArgsAndConfig(Indexing.Args args, PipelinesConfig config) {
+      EsConfig esConfig = config.getElastic();
+      ElasticOptionsBuilder builder =
+          ElasticOptions.builder()
+              .esIndexName(args.esIndexName)
+              .esAlias(args.esAlias.toArray(new String[0]))
+              .datasetId(args.datasetId)
+              .attempt(args.attempt)
+              .esSchemaPath(args.esSchemaPath)
+              .indexNumberShards(args.indexNumberShards)
+              .indexNumberReplicas(args.indexNumberReplicas)
+              .esHosts(esConfig.getEsHosts().split(","));
+
+      if (esConfig.getIndexRefreshInterval() != null) {
+        builder.indexRefreshInterval(esConfig.getIndexRefreshInterval());
+      }
+      if (esConfig.getUnassignedNodeDelay() != null) {
+        builder.unassignedNodeDelay(esConfig.getUnassignedNodeDelay());
+      }
+      if (esConfig.getIndexSearchSlowlogThresholdQueryWarn() != null) {
+        builder.indexSearchSlowlogLevel(esConfig.getIndexSearchSlowlogThresholdQueryWarn());
+      }
+      if (esConfig.getIndexSearchSlowlogThresholdQueryInfo() != null) {
+        builder.indexSearchSlowlogThresholdQueryInfo(
+            esConfig.getIndexSearchSlowlogThresholdQueryInfo());
+      }
+      if (esConfig.getIndexSearchSlowlogThresholdFetchWarn() != null) {
+        builder.indexSearchSlowlogThresholdFetchWarn(
+            esConfig.getIndexSearchSlowlogThresholdFetchWarn());
+      }
+      if (esConfig.getIndexSearchSlowlogThresholdFetchInfo() != null) {
+        builder.indexSearchSlowlogThresholdFetchInfo(
+            esConfig.getIndexSearchSlowlogThresholdFetchInfo());
+      }
+      if (esConfig.getIndexSearchSlowlogLevel() != null) {
+        builder.indexSearchSlowlogLevel(esConfig.getIndexSearchSlowlogLevel());
+      }
+      if (esConfig.getSearchQueryTimeoutSec() != null) {
+        builder.searchQueryTimeoutSec(esConfig.getSearchQueryTimeoutSec());
+      }
+      if (esConfig.getSearchQueryAttempts() != null) {
+        builder.searchQueryAttempts(esConfig.getSearchQueryAttempts());
+      }
+      return builder.build();
     }
   }
 }

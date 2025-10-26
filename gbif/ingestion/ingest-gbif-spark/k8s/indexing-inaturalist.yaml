@@ -1,7 +1,7 @@
 apiVersion: spark.stackable.tech/v1alpha1
 kind: SparkApplication
 metadata:
-  name: elastic-inaturalist
+  name: indexing-inaturalist
 spec:
   image: docker.gbif.org/ingest-gbif-spark:3.2.7-SNAPSHOT
   sparkImage:
@@ -12,7 +12,7 @@ spec:
   mode: cluster
   #  mainApplicationFile: local:///stackable/spark/jobs/ingest-gbif-spark.jar
   mainApplicationFile: hdfs://gbif-hdfs/user/dave/ingest-gbif-spark-3.2.7-SNAPSHOT-3.5.6.jar
-  mainClass: org.gbif.pipelines.interpretation.spark.Elastic
+  mainClass: org.gbif.pipelines.interpretation.spark.Indexing
   vectorAggregatorConfigMapName: gbif-vector-aggregator-discovery
   s3connection:
     inline:
@@ -28,7 +28,7 @@ spec:
         inline:
           bucketName: spark-history-test-bucket
   args:
-    - "--appName=elastic-inaturalist"
+    - "--appName=indexing-inaturalist"
     - "--esHosts=http://c6n7.gbif-test.org:9200,http://c6n7.gbif-test.org:9201,http://c6n7.gbif-test.org:9202,http://c6n7.gbif-test.org:9203,http://c6n8.gbif-test.org:9200,http://c6n8.gbif-test.org:9201,http://c6n8.gbif-test.org:9202,http://c6n8.gbif-test.org:9203,http://c6n9.gbif-test.org:9200,http://c6n9.gbif-test.org:9201,http://c6n9.gbif-test.org:9202,http://c6n9.gbif-test.org:9203"
     - "--esIndexName=occurrence_spark_50c9509d-22c7-4a22-a47d-8c48425ef4a7"
     - "--esAlias=occurrence_spark"
@@ -80,7 +80,7 @@ spec:
     "spark.decommission.enabled": "true"
     "spark.storage.decommission.rddBlocks.enabled": "true"
     "spark.storage.decommission.shuffleBlocks.enabled": "true"
-    "spark.kubernetes.executor.podNamePrefix": "elastic-spark-inaturalist"
+    "spark.kubernetes.executor.podNamePrefix": "indexing-spark-inaturalist"
     "spark.kubernetes.authenticate.driver.serviceAccountName": "cli-account"
   volumes:
     - name: ivy-settings

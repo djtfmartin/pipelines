@@ -136,6 +136,8 @@ public class TableBuild {
 
     spark.sql("DROP TABLE IF EXISTS " + table);
 
+    // FIXME check HDFS for remnant db files from failed attempts
+
     hdfs.writeTo(table).create();
 
     System.out.println("Created Iceberg table:");

@@ -31,8 +31,6 @@ spec:
     - "--appName=tablebuild-naturalis"
     - "--datasetId=15f819bd-6612-4447-854b-14d12ee1022d"
     - "--attempt=158"
-    - "--coreSiteConfig=/etc/hadoop/conf/core-site.xml"
-    - "--hdfsSiteConfig=/etc/hadoop/conf/hdfs-site.xml"
     - "--properties=/tmp/pipelines-spark.yaml"
   sparkConf:
     "spark.jars.packages": "org.apache.celeborn:celeborn-client-spark-3-shaded_2.12:0.5.4,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0,org.apache.spark:spark-avro_2.12:3.5.1"

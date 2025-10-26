@@ -23,9 +23,8 @@ import org.gbif.pipelines.estools.client.EsClient;
 import org.gbif.pipelines.estools.client.EsConfig;
 import org.gbif.pipelines.estools.model.IndexParams;
 import org.gbif.pipelines.estools.service.EsConstants.Field;
-import org.gbif.pipelines.estools.service.EsConstants.Indexing;
 import org.gbif.pipelines.estools.service.EsService;
-import org.gbif.pipelines.interpretation.spark.Elastic;
+import org.gbif.pipelines.interpretation.spark.Indexing;
 import org.gbif.wrangler.lock.Mutex;
 
 /**
@@ -36,7 +35,7 @@ import org.gbif.wrangler.lock.Mutex;
 public class EsIndexUtils {
 
   /** Connects to Elasticsearch instance and creates an index, if index doesn't exist */
-  public static void createIndexAndAliasForDefault(Elastic.ElasticOptions options) {
+  public static void createIndexAndAliasForDefault(Indexing.ElasticOptions options) {
     EsConfig config = EsConfig.from(options.getEsHosts());
     IndexParams params = createIndexParams(options);
 
@@ -50,7 +49,7 @@ public class EsIndexUtils {
   }
 
   /** Add alias to index if the index is default/regular (it will contain many datasets) */
-  private static void addIndexAliasForDefault(EsClient esClient, Elastic.ElasticOptions options) {
+  private static void addIndexAliasForDefault(EsClient esClient, Indexing.ElasticOptions options) {
     String index = options.getEsIndexName();
     Objects.requireNonNull(index, "index are required");
     if (!index.startsWith(options.getDatasetId())) {
@@ -68,19 +67,24 @@ public class EsIndexUtils {
     }
   }
 
-  private static IndexParams createIndexParams(Elastic.ElasticOptions options) {
+  private static IndexParams createIndexParams(Indexing.ElasticOptions options) {
     Path mappingsPath = Paths.get(options.getEsSchemaPath());
     boolean independentIndex = options.getEsIndexName().startsWith(options.getDatasetId());
 
     Map<String, String> settings = new HashMap<>(6);
     settings.put(
         Field.INDEX_REFRESH_INTERVAL,
-        independentIndex ? Indexing.REFRESH_INTERVAL : options.getIndexRefreshInterval());
+        independentIndex
+            ? org.gbif.pipelines.estools.service.EsConstants.Indexing.REFRESH_INTERVAL
+            : options.getIndexRefreshInterval());
     settings.put(Field.INDEX_NUMBER_SHARDS, options.getIndexNumberShards().toString());
     settings.put(
         Field.INDEX_NUMBER_REPLICAS,
-        independentIndex ? Indexing.NUMBER_REPLICAS : options.getIndexNumberReplicas().toString());
-    settings.put(Field.INDEX_ANALYSIS, Indexing.ANALYSIS);
+        independentIndex
+            ? org.gbif.pipelines.estools.service.EsConstants.Indexing.NUMBER_REPLICAS
+            : options.getIndexNumberReplicas().toString());
+    settings.put(
+        Field.INDEX_ANALYSIS, org.gbif.pipelines.estools.service.EsConstants.Indexing.ANALYSIS);
     settings.put(Field.INDEX_MAX_RESULT_WINDOW, options.getIndexMaxResultWindow().toString());
     settings.put(Field.INDEX_UNASSIGNED_NODE_DELAY, options.getUnassignedNodeDelay());
 
@@ -111,7 +115,7 @@ public class EsIndexUtils {
 
   /** Connects to Elasticsearch instance and swaps an index and an alias, if alias exists. */
   public static void updateAlias(
-      Elastic.ElasticOptions options, Set<String> existingDatasetIndexes, LockConfig lockConfig) {
+      Indexing.ElasticOptions options, Set<String> existingDatasetIndexes, LockConfig lockConfig) {
     Preconditions.checkArgument(
         options.getEsAlias() != null && options.getEsAlias().length > 0, "ES alias is required");
     Preconditions.checkArgument(
@@ -155,7 +159,7 @@ public class EsIndexUtils {
    * Connects to Elasticsearch instance and deletes records in an index by datasetId and returns the
    * indexes where the dataset was present
    */
-  public static Set<String> deleteRecordsByDatasetId(Elastic.ElasticOptions options) {
+  public static Set<String> deleteRecordsByDatasetId(Indexing.ElasticOptions options) {
     EsConfig config = EsConfig.from(options.getEsHosts());
     return EsIndex.deleteRecordsByDatasetId(
         config,
@@ -170,7 +174,7 @@ public class EsIndexUtils {
    * Connects to Elasticsearch instance and refreshes index to make queries work without waiting for
    * an update timeout
    */
-  public static void refreshIndex(Elastic.ElasticOptions options) {
+  public static void refreshIndex(Indexing.ElasticOptions options) {
     try (EsClient esClient = EsClient.from(EsConfig.from(options.getEsHosts()))) {
       EsService.refreshIndex(esClient, options.getEsIndexName());
     }
