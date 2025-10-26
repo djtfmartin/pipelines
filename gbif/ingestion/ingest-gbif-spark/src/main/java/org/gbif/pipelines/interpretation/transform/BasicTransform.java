@@ -29,11 +29,9 @@ import org.gbif.pipelines.io.avro.*;
 public class BasicTransform implements Serializable {
 
   private final PipelinesConfig config;
-  private volatile OccurrenceStatusParserKvStore occurrenceStatusParserKvStore;
 
   private BasicTransform(PipelinesConfig config) {
     this.config = config;
-    this.occurrenceStatusParserKvStore = OccurrenceStatusParserKvStore.create();
   }
 
   public static BasicTransform create(PipelinesConfig config) {
@@ -54,10 +52,6 @@ public class BasicTransform implements Serializable {
     var vocabServiceUrl = config.getVocabularyService().getWsUrl();
     var vocabService = VocabularyServiceFactory.getInstance(vocabServiceUrl);
 
-    if (occurrenceStatusParserKvStore == null) {
-      occurrenceStatusParserKvStore = OccurrenceStatusParserKvStore.create();
-    }
-
     // Apply interpreters sequentially
     BasicInterpreter.interpretBasisOfRecord(source, record);
     BasicInterpreter.interpretTypifiedName(source, record);
@@ -74,7 +68,7 @@ public class BasicTransform implements Serializable {
     BasicInterpreter.interpretIdentifiedByIds(source, record);
     BasicInterpreter.interpretRecordedByIds(source, record);
     // FIXME
-    BasicInterpreter.interpretOccurrenceStatus(occurrenceStatusParserKvStore)
+    BasicInterpreter.interpretOccurrenceStatus(OccurrenceStatusParserKvStore.create())
         .accept(source, record);
     VocabularyInterpreter.interpretEstablishmentMeans(vocabService).accept(source, record);
     VocabularyInterpreter.interpretLifeStage(vocabService).accept(source, record);
