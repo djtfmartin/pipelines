@@ -155,7 +155,7 @@ public class TableBuild {
     spark.sql(occurrenceTableSQL);
 
     String insertQuery =
-        "INSERT OVERWRITE TABLE dave.occurrence ("
+        "INSERT OVERWRITE TABLE " + config.getHiveDB() + ".occurrence ("
             + String.join(", ", columnList)
             + ") "
             + "SELECT "
