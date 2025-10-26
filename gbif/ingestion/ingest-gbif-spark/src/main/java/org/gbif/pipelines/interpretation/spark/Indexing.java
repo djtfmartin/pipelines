@@ -6,7 +6,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
-import java.util.List;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Data;
@@ -36,27 +35,10 @@ public class Indexing {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(names = "--esHosts", description = "List of Elasticsearch hosts")
-    private List<String> esHosts;
-
     @Parameter(
         names = "--esIndexName",
         description = "Name of the Elasticsearch index that will be used to index the records")
     private String esIndexName;
-
-    @Parameter(
-        names = "--esAlias",
-        description =
-            "Name of the Elasticsearch aliases. The index created will be added to these aliases")
-    private List<String> esAlias;
-
-    @Parameter(names = "--esSchemaPath", description = "Path to an occurrence indexing schema")
-    private String esSchemaPath = "elasticsearch/es-occurrence-schema.json";
-
-    @Parameter(
-        names = "--indexRefreshInterval",
-        description = "How often to perform a refresh operation, defaults to 30s")
-    private String indexRefreshInterval = "40s";
 
     @Parameter(
         names = "--indexNumberShards",
@@ -67,68 +49,6 @@ public class Indexing {
         names = "--indexNumberReplicas",
         description = "Number of replica shards per primary shard in the target index. Default = 1")
     private Integer indexNumberReplicas = 1;
-
-    @Parameter(
-        names = "--esMaxBatchSizeBytes",
-        description = "Number of replica shards per primary shard in the target index. Default = 1")
-    private Long esMaxBatchSizeBytes = 10_485_760L;
-
-    @Parameter(
-        names = "--esMaxBatchSize",
-        description = "Number of replica shards per primary shard in the target index. Default = 1")
-    private Long esMaxBatchSize = 1_700L;
-
-    @Parameter(
-        names = "--searchQueryTimeoutSec",
-        description = "Elasticsearch empty delete index query timeout in seconds")
-    private Integer searchQueryTimeoutSec = 5;
-
-    @Parameter(
-        names = "--searchQueryAttempts",
-        description = "Elasticsearch empty index query attempts")
-    private Integer searchQueryAttempts = 200;
-
-    @Parameter(
-        names = "--indexMaxResultWindow",
-        description = "Elasticsearch index max result window")
-    private Integer indexMaxResultWindow = 200_000;
-
-    @Parameter(
-        names = "--unassignedNodeDelay",
-        description = "Elasticsearch unassigned node delay timeout")
-    private String unassignedNodeDelay = "5m";
-
-    @Parameter(names = "--useSlowlog", description = "Use search slowlogs")
-    private boolean useSlowlog = true;
-
-    @Parameter(
-        names = "--indexSearchSlowlogThresholdQueryWarn",
-        description = "Index search slowlog threshold query warn")
-    private String indexSearchSlowlogThresholdQueryWarn = "20s";
-
-    @Parameter(
-        names = "--indexSearchSlowlogThresholdQueryInfo",
-        description = "Index search slowlog threshold query info")
-    private String indexSearchSlowlogThresholdQueryInfo = "10s";
-
-    @Parameter(
-        names = "--indexSearchSlowlogThresholdFetchWarn",
-        description = "Index search slowlog threshold fetch warn")
-    private String indexSearchSlowlogThresholdFetchWarn = "2s";
-
-    @Parameter(
-        names = "--indexSearchSlowlogThresholdFetchInfo",
-        description = "Index search slowlog threshold fetch info")
-    private String indexSearchSlowlogThresholdFetchInfo = "1s";
-
-    @Parameter(names = "--indexSearchSlowlogLevel", description = "Index search slowlog level")
-    private String indexSearchSlowlogLevel = "info";
-
-    @Parameter(names = "--coreSiteConfig", description = "Path to core-site.xml", required = false)
-    private String coreSiteConfig;
-
-    @Parameter(names = "--hdfsSiteConfig", description = "Path to hdfs-site.xml", required = false)
-    private String hdfsSiteConfig;
 
     @Parameter(names = "--properties", description = "Path to YAML file", required = true)
     private String properties;
