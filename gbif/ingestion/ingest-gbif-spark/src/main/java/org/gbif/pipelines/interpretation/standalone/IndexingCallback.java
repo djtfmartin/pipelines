@@ -59,7 +59,7 @@ public class IndexingCallback implements MessageCallback<PipelinesVerbatimMessag
           message.getAttempt(),
           "indexing_standalone_" + message.getDatasetUuid(),
           "local[*]",
-          pipelinesConfig.getElastic().getEsAlias(),
+          pipelinesConfig.getElastic().getEsAlias() + "_standalone",
           1, // FIXME
           0 // FIXME
           );
