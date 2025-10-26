@@ -146,8 +146,11 @@ public class TableBuild {
 
     // Check HDFS for remnant DB files from failed attempts
     Path warehousePath = new Path(config.getHdfsWarehousePath(), config.getHiveDB() + "/" + table);
+    log.info("Checking warehouse path: {}", warehousePath);
     if (fs.exists(warehousePath)) {
+      log.info("Deleting warehouse path: {}", warehousePath);
       fs.delete(warehousePath, true);
+      log.info("Deletd warehouse path: {}", warehousePath);
     }
     hdfs.writeTo(table).create();
 
@@ -179,8 +182,11 @@ public class TableBuild {
     spark.sql("DROP TABLE " + table);
 
     log.info("Dropped Iceberg table: " + table);
+    log.info("Checking warehouse path: {}", warehousePath);
     if (fs.exists(warehousePath)) {
+      log.info("Deleting warehouse path: {}", warehousePath);
       fs.delete(warehousePath, true);
+      log.info("Deletd warehouse path: {}", warehousePath);
     }
 
     spark.close();
