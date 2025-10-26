@@ -12,11 +12,12 @@ import lombok.Data;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.EsConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.EsIndexUtils;
+import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 
 /**
  * Main class for indexing occurrence data to Elasticsearch. It reads Parquet files from HDFS,
@@ -135,7 +136,8 @@ public class Indexing {
     Set<String> indices = EsIndexUtils.deleteRecordsByDatasetId(options);
 
     // Read parquet files
-    Dataset<Row> df = spark.read().parquet(inputPath);
+    Dataset<OccurrenceJsonRecord> df =
+        spark.read().parquet(inputPath).as(Encoders.bean(OccurrenceJsonRecord.class));
 
     // Write to Elasticsearch
     df.write()
