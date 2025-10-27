@@ -87,8 +87,8 @@ public class Interpretation implements Serializable {
         arity = 1)
     private boolean occurrenceIdValid = true;
 
-    @Parameter(names = "--properties", description = "Path to properties file", required = true)
-    private String properties;
+    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
         names = "--master",
@@ -117,7 +117,7 @@ public class Interpretation implements Serializable {
       return;
     }
 
-    PipelinesConfig config = loadConfig(args.properties);
+    PipelinesConfig config = loadConfig(args.config);
 
     String datasetId = args.datasetId;
     int attempt = args.attempt;

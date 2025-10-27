@@ -37,8 +37,8 @@ public class TableBuild {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(names = "--properties", description = "Path to properties file", required = true)
-    private String properties;
+    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
         names = "--master",
@@ -64,7 +64,7 @@ public class TableBuild {
       return;
     }
 
-    PipelinesConfig config = loadConfig(args.properties);
+    PipelinesConfig config = loadConfig(args.config);
     String datasetId = args.datasetId;
     int attempt = args.attempt;
 

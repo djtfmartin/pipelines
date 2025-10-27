@@ -93,8 +93,8 @@ public class ValidateIdentifiers implements Serializable {
     @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
     private int numberOfShards;
 
-    @Parameter(names = "--properties", description = "Path to properties file", required = true)
-    private String properties;
+    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
         names = "--metaFileName",
@@ -127,7 +127,7 @@ public class ValidateIdentifiers implements Serializable {
       return;
     }
 
-    PipelinesConfig config = loadConfig(args.properties);
+    PipelinesConfig config = loadConfig(args.config);
     String datasetID = args.datasetId;
     int attempt = args.attempt;
     runValidation(

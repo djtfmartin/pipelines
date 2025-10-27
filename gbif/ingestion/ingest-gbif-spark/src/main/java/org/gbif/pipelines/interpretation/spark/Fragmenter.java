@@ -27,8 +27,8 @@ public class Fragmenter {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(names = "--properties", description = "Path to YAML file", required = true)
-    private String properties;
+    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
         names = "--master",
@@ -55,7 +55,7 @@ public class Fragmenter {
       return;
     }
 
-    PipelinesConfig config = loadConfig(args.properties);
+    PipelinesConfig config = loadConfig(args.config);
     runFragmenter(config, args.datasetId, args.attempt, args.appName, args.master);
   }
 

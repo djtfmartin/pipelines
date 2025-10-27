@@ -53,8 +53,8 @@ public class Indexing {
         description = "Number of replica shards per primary shard in the target index. Default = 1")
     private Integer indexNumberReplicas = 1;
 
-    @Parameter(names = "--properties", description = "Path to YAML file", required = true)
-    private String properties;
+    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
         names = "--master",
@@ -81,7 +81,7 @@ public class Indexing {
       return;
     }
 
-    PipelinesConfig config = loadConfig(args.properties);
+    PipelinesConfig config = loadConfig(args.config);
     runIndexing(
         config,
         args.datasetId,
