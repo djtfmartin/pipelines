@@ -1,5 +1,7 @@
 package org.gbif.pipelines.interpretation.transform;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.Serializable;
 import java.time.Instant;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -9,7 +11,7 @@ import org.gbif.pipelines.interpretation.transform.utils.ClusteringServiceFactor
 import org.gbif.pipelines.io.avro.ClusteringRecord;
 import org.gbif.pipelines.io.avro.IdentifierRecord;
 
-public class ClusteringTransform implements Serializable {
+public class ClusteringTransform implements Serializable, Closeable {
 
   private final PipelinesConfig config;
   private transient ClusteringService clusteringService;
@@ -36,5 +38,12 @@ public class ClusteringTransform implements Serializable {
 
     ClusteredInterpreter.interpretIsClustered(clusteringService).accept(source, cr);
     return cr;
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (clusteringService != null) {
+      this.clusteringService.close();
+    }
   }
 }

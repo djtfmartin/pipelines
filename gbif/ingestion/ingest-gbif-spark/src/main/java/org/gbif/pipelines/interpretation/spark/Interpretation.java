@@ -134,6 +134,8 @@ public class Interpretation implements Serializable {
         args.master,
         args.tripletValid,
         args.occurrenceIdValid);
+
+    System.exit(0);
   }
 
   public static void runInterpretation(
@@ -218,7 +220,10 @@ public class Interpretation implements Serializable {
     //                hdfsConfigs, pathToDelete, config.deleteAfterDays,
     // Collections.singleton(attempt));
 
+    log.info("Finished interpretation");
+    spark.stop();
     spark.close();
+    log.info("Spark closed");
   }
 
   /**
@@ -345,6 +350,12 @@ public class Interpretation implements Serializable {
                       .build();
                 },
             Encoders.bean(Occurrence.class));
+
+    try {
+      clusteringTransform.close();
+    } catch (Exception ex) {
+      log.error(ex.getMessage(), ex);
+    }
 
     // write simple interpreted records to disk
     interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/simple-occurrence");
@@ -475,9 +486,18 @@ public class Interpretation implements Serializable {
             .build();
 
     // Persist to HBase or any other storage
-    return absentIdentifiers.map(
-        (MapFunction<IdentifierRecord, IdentifierRecord>) absentIdTransform::persist,
-        Encoders.bean(IdentifierRecord.class));
+    Dataset<IdentifierRecord> persisted =
+        absentIdentifiers.map(
+            (MapFunction<IdentifierRecord, IdentifierRecord>) absentIdTransform::persist,
+            Encoders.bean(IdentifierRecord.class));
+
+    try {
+      absentIdTransform.close();
+    } catch (Exception ex) {
+      log.error(ex.getMessage(), ex);
+    }
+
+    return persisted;
   }
 
   private static Dataset<IdentifierRecord> loadValidIdentifiers(

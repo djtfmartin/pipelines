@@ -1,5 +1,7 @@
 package org.gbif.pipelines.interpretation.transform;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.Serializable;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +12,7 @@ import org.gbif.pipelines.keygen.HBaseLockingKey;
 
 @Slf4j
 @Builder
-public class GbifAbsentIdTransform implements Serializable {
+public class GbifAbsentIdTransform implements Serializable, Closeable {
 
   private final String absentName;
   private final boolean isTripletValid;
@@ -31,5 +33,12 @@ public class GbifAbsentIdTransform implements Serializable {
         .accept(ir);
 
     return ir;
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (keygenService != null) {
+      keygenService.close();
+    }
   }
 }
