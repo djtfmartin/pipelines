@@ -29,7 +29,6 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.OccurrenceExtensionConverter;
 import org.gbif.pipelines.core.functions.SerializableSupplier;
-import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.utils.FsUtils;
 import org.gbif.pipelines.interpretation.transform.GbifIdTransform;
 import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
@@ -168,18 +167,11 @@ public class ValidateIdentifiers implements Serializable {
     }
 
     SparkSession spark = sparkBuilder.getOrCreate();
-    FileSystem fs = null;
 
-    if (master != null) {
-      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
-      fs = FileSystem.get(hadoopConf);
-    } else {
-      HdfsConfigs hdfsConfigs =
-          HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-      fs = FsUtils.getFileSystem(hdfsConfigs, "/");
-    }
+    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+    hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
+    hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
+    FileSystem fs = FileSystem.get(hadoopConf);
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =
@@ -236,8 +228,9 @@ public class ValidateIdentifiers implements Serializable {
     absentIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_absent");
 
     // 4. write metrics to yaml
-    HdfsConfigs hdfsConfigs =
-        HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
+    //      HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
+    //      FileSystem fs = FsUtils.getFileSystem(hdfsConfigs, "/");
+    //      writeMetricsYaml(fs, metrics, outputPath + "/" + args.metaFileName);
     writeMetricsYaml(fs, metrics, outputPath + "/verbatim-to-identifier.yml");
 
     // clean up
