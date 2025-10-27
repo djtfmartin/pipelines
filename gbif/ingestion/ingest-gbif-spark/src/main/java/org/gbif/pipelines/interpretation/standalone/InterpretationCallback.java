@@ -20,6 +20,18 @@ public class InterpretationCallback extends AbstractCallback<PipelinesVerbatimMe
   }
 
   @Override
+  protected boolean isMessageCorrect(PipelinesVerbatimMessage message) {
+    if (!message.getRunner().equalsIgnoreCase("STANDALONE")) {
+      log.info(
+          "Incorrect message received - runner {}, stepTypes: {}",
+          message.getRunner(),
+          message.getPipelineSteps());
+      return false;
+    }
+    return true;
+  }
+
+  @Override
   protected void runPipeline(PipelinesVerbatimMessage message) {
 
     log.info(

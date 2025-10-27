@@ -64,6 +64,18 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
                       Duration.ofSeconds(1), 2d, Duration.ofSeconds(30)))
               .build());
 
+  private static final Retry RUNNING_EXECUTION_CALL =
+      Retry.of(
+          "runningExecutionCall",
+          RetryConfig.custom()
+              .maxAttempts(15)
+              .retryExceptions(JsonParseException.class, IOException.class, TimeoutException.class)
+              .intervalFunction(
+                  IntervalFunction.ofExponentialBackoff(
+                      Duration.ofSeconds(1), 2d, Duration.ofSeconds(30)))
+              .retryOnResult(Objects::isNull)
+              .build());
+
   public AbstractCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     this.pipelinesConfig = pipelinesConfig;
     this.publisher = publisher;
@@ -81,6 +93,8 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
 
   protected abstract StepType getStepType();
 
+  protected abstract boolean isMessageCorrect(PipelinesVerbatimMessage message);
+
   protected abstract void runPipeline(PipelinesVerbatimMessage message) throws Exception;
 
   @Override
@@ -88,10 +102,16 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
 
     if (!message.getRunner().equalsIgnoreCase("STANDALONE")
         || !message.getPipelineSteps().contains(getStepType().toString())) {
-      log.info(
+      log.warn(
           "Incorrect message received - runner {}, stepTypes: {}",
           message.getRunner(),
           message.getPipelineSteps());
+      return;
+    }
+
+    if (!isMessageCorrect(message) || isProcessingStopped(message)) {
+      log.info(
+          "Skip the message, please check that message is correct/runner/validation info/etc, exit from handler");
       return;
     }
 
@@ -103,10 +123,9 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
           message.getDatasetUuid(),
           message.getAttempt());
 
-      // FIXME: Temporarily disabled
       trackingInfo = trackPipelineStep(message);
 
-      // Run interpretation
+      // Run pipeline for this callback
       runPipeline(message);
 
       // Acknowledge message processing
@@ -127,9 +146,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
               + outgoingMessage;
       log.info(logInfo);
 
-      if (trackingInfo != null) {
-        updateQueuedStatus(trackingInfo, message);
-      }
+      updateQueuedStatus(trackingInfo, message);
 
       log.info("Finished processing datasetKey: {}", message.getDatasetUuid());
 
@@ -170,6 +187,35 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
         Retry.decorateRunnable(RETRY, r).run();
       }
     }
+  }
+
+  private boolean isProcessingStopped(PipelinesVerbatimMessage message) {
+
+    Long currentKey = message.getExecutionId();
+
+    Supplier<Long> s = () -> historyClient.getRunningExecutionKey(message.getDatasetUuid());
+    Long runningKey;
+    if (currentKey == null) {
+      runningKey = s.get();
+    } else {
+      // if current key is not null, running key must not be null unless execution was aborted,
+      // check multiple times
+      runningKey = RUNNING_EXECUTION_CALL.executeSupplier(s);
+    }
+    if (currentKey == null && runningKey == null) {
+      log.info("Continue execution. New execution and no other running executions");
+      return false;
+    }
+    if (currentKey == null) {
+      log.warn("Can't run new execution if some other execution is running");
+      return true;
+    }
+    if (runningKey == null) {
+      log.warn("Stop execution. Execution is aborted");
+      return true;
+    }
+    // Stop the process if execution keys are different
+    return !currentKey.equals(runningKey);
   }
 
   private void updateTrackingStatus(
@@ -304,7 +350,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
 
     //
     //        if (isValidator) {
-    //            log.info("Skiping status updating, isValidator {}", isValidator);
+    //            log.info("Skipping status updating, isValidator {}", isValidator);
     //            return Optional.empty();
     //        }
 
