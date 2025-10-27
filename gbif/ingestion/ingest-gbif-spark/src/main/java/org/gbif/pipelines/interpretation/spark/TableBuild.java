@@ -129,6 +129,11 @@ public class TableBuild {
         String icebergCol = "ext_multimedia";
         selectBuffer.append("`extMultimedia` AS `").append(icebergCol).append("`");
         columnList.add(icebergCol);
+      } else if (columns[i].equalsIgnoreCase("extHumboldt")) {
+        // FIXME - something odd happening with the content of 'extMultimedia'
+        String icebergCol = "ext_humboldt";
+        selectBuffer.append("`extHumboldt` AS `").append(icebergCol).append("`");
+        columnList.add(icebergCol);
       } else if (columns[i].matches("^v[A-Z].*") || columns[i].matches("^V[A-Z].*")) {
         String icebergCol = "v_" + columns[i].substring(1).toLowerCase().replaceAll("\\$", "");
         selectBuffer.append("`").append(columns[i]).append("` AS ").append(icebergCol);
@@ -645,6 +650,7 @@ public class TableBuild {
       level3name STRING,
       iucnredlistcategory STRING,
       ext_multimedia STRING,
+      ext_humboldt STRING,
       datasetkey STRING
     )
     USING iceberg
