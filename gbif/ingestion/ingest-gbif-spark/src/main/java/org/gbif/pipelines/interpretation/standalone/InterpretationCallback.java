@@ -85,6 +85,17 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
   @Override
   public void handleMessage(PipelinesVerbatimMessage message) {
 
+    if (!message.getRunner().equalsIgnoreCase("STANDALONE")
+        || !message.getPipelineSteps().contains(StepType.VERBATIM_TO_INTERPRETED.toString())) {
+      log.info(
+          "Incorrect message received - runner {}, stepTypes: {}",
+          message.getRunner(),
+          message.getPipelineSteps());
+      return;
+    }
+
+    TrackingInfo trackingInfo = null;
+
     try {
       log.info(
           "InterpretationCallback - Processing datasetKey: {}, attempt: {}",
@@ -92,7 +103,7 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
           message.getAttempt());
 
       // FIXME: Temporarily disabled
-      //      TrackingInfo trackingInfo = trackPipelineStep(message);
+      trackingInfo = trackPipelineStep(message);
 
       // Run interpretation
       Interpretation.runInterpretation(
@@ -107,7 +118,7 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
 
       // Acknowledge message processing
       // FIXME: Temporarily disabled
-      //      updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
+      updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
 
       // Create and send outgoing message
       PipelinesInterpretedMessage outgoingMessage = createOutgoingMessage(message);
@@ -124,21 +135,25 @@ public class InterpretationCallback implements MessageCallback<PipelinesVerbatim
               + outgoingMessage;
       log.info(logInfo);
 
-      //            info.ifPresent(this::updateQueuedStatus);
+      if (trackingInfo != null) {
+        updateQueuedStatus(trackingInfo, message);
+      }
 
       log.info("Finished processing datasetKey: {}", message.getDatasetUuid());
 
     } catch (Exception ex) {
 
       try {
-        // FIXME
-        //        TrackingInfo trackingInfo = trackPipelineStep(message);
+        // FIXMETrackingInfo trackingInfo = trackPipelineStep(message);
         String error =
             "Error for datasetKey - " + message.getDatasetUuid() + " : " + ex.getMessage();
         log.error(error, ex);
 
         // update tracking status
-        //        updateTrackingStatus(trackingInfo, message, PipelineStep.Status.FAILED);
+        if (trackingInfo != null) {
+          updateTrackingStatus(trackingInfo, message, PipelineStep.Status.FAILED);
+        }
+
       } catch (Exception e) {
         log.error(
             "Failed to update tracking status for datasetKey - " + message.getDatasetUuid(), e);
