@@ -6,8 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * POJO that holds the contents of an Occurrence.
- * Each string property is JSON serialisation of the
+ * POJO that holds the contents of an Occurrence. Each string property is JSON serialisation of the
  * output from a transform.
  */
 @Data

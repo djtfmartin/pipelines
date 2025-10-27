@@ -109,7 +109,7 @@ public class Interpretation implements Serializable {
   public static void main(String[] argsv) {
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
-    jCommander.setAcceptUnknownOptions(true); //FIXME to ease airflow/registry integration
+    jCommander.setAcceptUnknownOptions(true); // FIXME to ease airflow/registry integration
     jCommander.parse(argsv);
 
     if (args.help) {

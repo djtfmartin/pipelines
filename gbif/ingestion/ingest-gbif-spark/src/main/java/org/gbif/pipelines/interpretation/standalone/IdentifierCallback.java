@@ -3,7 +3,7 @@ package org.gbif.pipelines.interpretation.standalone;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
-import org.codehaus.jackson.map.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
@@ -15,9 +15,9 @@ import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
 import org.gbif.ws.client.ClientBuilder;
 import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 
+@Slf4j
 public class IdentifierCallback implements MessageCallback<PipelinesVerbatimMessage> {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final PipelinesConfig pipelinesConfig;
   private final PipelinesHistoryClient historyClient;
   private final MessagePublisher publisher;
@@ -36,12 +36,25 @@ public class IdentifierCallback implements MessageCallback<PipelinesVerbatimMess
             .withExponentialBackoffRetry(Duration.ofSeconds(3L), 2d, 10)
             .withFormEncoder()
             .build(PipelinesHistoryClient.class);
+    //          new ClientBuilder()
+    //                  .withUrl(pipelinesConfig.getStandalone().getRegistry().getWsUrl())
+    //                  .withCredentials(
+    //                          pipelinesConfig.getStandalone().getRegistry().getUser(),
+    //                          pipelinesConfig.getStandalone().getRegistry().getPassword())
+    //
+    // .withObjectMapper(JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport())
+    //                  .withExponentialBackoffRetry(Duration.ofSeconds(3L), 2d, 10)
+    //                  .withFormEncoder()
+    //                  .build(PipelinesHistoryClient.class);
+
   }
 
   @Override
   public void handleMessage(PipelinesVerbatimMessage message) {
 
     try {
+
+      // run pipeline
       ValidateIdentifiers.runValidation(
           pipelinesConfig,
           message.getDatasetUuid().toString(),
@@ -54,6 +67,29 @@ public class IdentifierCallback implements MessageCallback<PipelinesVerbatimMess
           message.getValidationResult().isUseExtendedRecordId() != null
               ? message.getValidationResult().isUseExtendedRecordId()
               : false);
+
+      //        IdentifierValidationResult validationResult =
+      //                PostprocessValidation.builder()
+      //                        .httpClient(httpClient)
+      //                        .message(message)
+      //                        .config(pipelinesConfig)
+      //                        .build()
+      //                        .validate();
+      //
+      //        if (validationResult.isResultValid()) {
+      //            log.info(validationResult.getValidationMessage());
+      //        } else {
+      //            historyClient.notifyAbsentIdentifiers(
+      //                    message.getDatasetUuid(),
+      //                    message.getAttempt(),
+      //                    message.getExecutionId(),
+      //                    validationResult.getValidationMessage());
+      //            log.error(validationResult.getValidationMessage());
+      ////            if (config.cleanAndMarkAsAborted) {
+      //            historyClient.markPipelineStatusAsAborted(message.getExecutionId());
+      ////            }
+      //            throw new PipelinesException(validationResult.getValidationMessage());
+      //        }
 
       // Create and send outgoing message
       PipelinesVerbatimMessage outgoingMessage = createOutgoingMessage(message);
