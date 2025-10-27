@@ -18,6 +18,12 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.utils.FsUtils;
 
+/**
+ * This pipeline loads the /hdfs directory for a dataset/attempt,
+ * creates a temporary table with the parquet, and then loads
+ * into the main occurrence table which is partitioned
+ * by datasetKey/
+ */
 @Slf4j
 public class TableBuild {
 
@@ -52,6 +58,7 @@ public class TableBuild {
   public static void main(String[] argsv) throws Exception {
     TableBuild.Args args = new TableBuild.Args();
     JCommander jCommander = new JCommander(args);
+    jCommander.setAcceptUnknownOptions(true); //FIXME to ease airflow/registry integration
     jCommander.parse(argsv);
 
     if (args.help) {
@@ -117,6 +124,7 @@ public class TableBuild {
     for (int i = 0; i < columns.length; i++) {
 
       if (columns[i].equalsIgnoreCase("extMultimedia")) {
+        //FIXME - something odd happening with the content of 'extMultimedia'
         String icebergCol = "ext_multimedia";
         selectBuffer.append("`extMultimedia` AS `").append(icebergCol).append("`");
         columnList.add(icebergCol);
@@ -193,6 +201,7 @@ public class TableBuild {
     log.info("HDFS VIEW complete for dataset: " + datasetId);
   }
 
+  // FIXME - the table definition needs to be loaded from elsewhere...
   static final String occurrenceTableSQL =
       """
       CREATE TABLE IF NOT EXISTS occurrence (

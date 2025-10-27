@@ -47,6 +47,7 @@ public class Fragmenter {
 
     Fragmenter.Args args = new Fragmenter.Args();
     JCommander jCommander = new JCommander(args);
+    jCommander.setAcceptUnknownOptions(true); //FIXME to ease airflow/registry integration
     jCommander.parse(argsv);
 
     if (args.help) {

@@ -109,6 +109,7 @@ public class Interpretation implements Serializable {
   public static void main(String[] argsv) {
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
+    jCommander.setAcceptUnknownOptions(true); //FIXME to ease airflow/registry integration
     jCommander.parse(argsv);
 
     if (args.help) {
@@ -205,7 +206,6 @@ public class Interpretation implements Serializable {
     FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
 
     // write a metrics file?
-
     //        log.info("Deleting old attempts directories");
     //        String pathToDelete = String.join("/", config.stepConfig.repositoryPath, datasetId);
     //        HdfsConfigs hdfsConfigs =

@@ -90,12 +90,6 @@ public class ValidateIdentifiers implements Serializable {
         arity = 1)
     private boolean useExtendedRecordId = false;
 
-    @Parameter(names = "--coreSiteConfig", description = "Path to core-site.xml", required = false)
-    private String coreSiteConfig;
-
-    @Parameter(names = "--hdfsSiteConfig", description = "Path to hdfs-site.xml", required = false)
-    private String hdfsSiteConfig;
-
     @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
     private int numberOfShards;
 
@@ -125,6 +119,7 @@ public class ValidateIdentifiers implements Serializable {
 
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
+    jCommander.setAcceptUnknownOptions(true); //FIXME to ease airflow/registry integration
     jCommander.parse(argsv);
 
     if (args.help) {
