@@ -53,7 +53,10 @@ public class Indexing {
         description = "Number of replica shards per primary shard in the target index. Default = 1")
     private Integer indexNumberReplicas = 1;
 
-    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    @Parameter(
+        names = "--config",
+        description = "Path to YAML configuration file",
+        required = false)
     private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(

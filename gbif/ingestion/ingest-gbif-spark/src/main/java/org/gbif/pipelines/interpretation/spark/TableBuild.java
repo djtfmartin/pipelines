@@ -37,7 +37,10 @@ public class TableBuild {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    @Parameter(
+        names = "--config",
+        description = "Path to YAML configuration file",
+        required = false)
     private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
