@@ -15,6 +15,19 @@ public class TableBuildCallback extends AbstractCallback<PipelinesVerbatimMessag
   }
 
   @Override
+  protected boolean isMessageCorrect(PipelinesVerbatimMessage message) {
+    if (!message.getRunner().equalsIgnoreCase("STANDALONE")
+        || !message.getPipelineSteps().contains(getStepType().toString())) {
+      log.info(
+          "Incorrect message received - runner {}, stepTypes: {}",
+          message.getRunner(),
+          message.getPipelineSteps());
+      return false;
+    }
+    return true;
+  }
+
+  @Override
   protected StepType getStepType() {
     return StepType.HDFS_VIEW;
   }
