@@ -199,7 +199,8 @@ public abstract class PipelinesCallback<
       runningKey = RUNNING_EXECUTION_CALL.executeSupplier(s);
     }
     if (currentKey == null && runningKey == null) {
-      log.info("Continue execution. New execution and no other running executions for {}", datasetKey);
+      log.info(
+          "Continue execution. New execution and no other running executions for {}", datasetKey);
       return false;
     }
     if (currentKey == null) {
@@ -211,10 +212,13 @@ public abstract class PipelinesCallback<
       return true;
     }
     // Stop the process if execution keys are different
-    if (!currentKey.equals(runningKey)){
-        log.warn("Stop the process if execution keys are different for {}, " +
-                "running key {}, currentKey {}", datasetKey, runningKey, currentKey);
-        return true;
+    if (!currentKey.equals(runningKey)) {
+      log.warn(
+          "Stop the process if execution keys are different for {}, running key {}, currentKey {}",
+          datasetKey,
+          runningKey,
+          currentKey);
+      return true;
     }
 
     return false;
