@@ -173,8 +173,10 @@ public class TableBuild {
     log.debug("Created Iceberg table: " + table);
 
     // Display table schema and initial record count
-    spark.sql("DESCRIBE TABLE " + table).show(false);
-    spark.sql("SELECT COUNT(*) FROM " + table).show(false);
+    if (log.isDebugEnabled()) {
+      spark.sql("DESCRIBE TABLE " + table).show(false);
+      spark.sql("SELECT COUNT(*) FROM " + table).show(false);
+    }
 
     // Create or populate the occurrence table SQL
     spark.sql(occurrenceTableSQL);

@@ -236,7 +236,7 @@ public class Interpretation implements Serializable {
     log.info("Finished interpretation");
     spark.stop();
     spark.close();
-    log.info("Spark closed");
+    log.debug("Spark closed");
   }
 
   private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {
