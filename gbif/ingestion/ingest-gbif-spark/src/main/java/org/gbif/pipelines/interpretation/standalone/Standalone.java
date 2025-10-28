@@ -104,8 +104,7 @@ public class Standalone {
       int threads,
       Function<MessagePublisher, PipelinesCallback> callbackCreateFcn) {
 
-    System.out.println("Starting standalone mode: " + mode);
-    System.out.println("Starting standalone listening to queue " + queueName);
+    log.info("Starting standalone mode: {}, listening to queue: {}", mode, queueName);
 
     try (MessageListener listener = createListener(pipelinesConfig);
         DefaultMessagePublisher publisher = createPublisher(pipelinesConfig)) {
@@ -128,9 +127,7 @@ public class Standalone {
         }
       }
 
-      log.info("Listener stopped.");
-
-      System.out.println("Exiting Standalone...");
+      log.info("Listener stopped. Exiting Standalone...");
 
     } catch (IOException e) {
       e.printStackTrace();

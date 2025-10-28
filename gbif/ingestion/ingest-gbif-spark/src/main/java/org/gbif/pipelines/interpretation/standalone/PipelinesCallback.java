@@ -107,8 +107,6 @@ public abstract class PipelinesCallback<
   public void handleMessage(I message) {
 
     if (!isMessageCorrect(message) || isProcessingStopped(message)) {
-      log.info(
-          "Skip the message, please check that message is correct/runner/validation info/etc, exit from handler");
       return;
     }
 
