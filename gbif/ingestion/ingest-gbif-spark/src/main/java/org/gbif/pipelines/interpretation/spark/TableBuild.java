@@ -77,6 +77,9 @@ public class TableBuild {
   public static void runTableBuild(
       PipelinesConfig config, String datasetId, int attempt, String appName, String master)
       throws Exception {
+
+    log.info("HDFS VIEW starting for dataset: " + datasetId);
+
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
@@ -120,7 +123,7 @@ public class TableBuild {
 
     StringBuilder selectBuffer = new StringBuilder();
 
-    List<String> columnList = new ArrayList<String>();
+    List<String> columnList = new ArrayList<>();
 
     for (int i = 0; i < columns.length; i++) {
 
@@ -159,15 +162,15 @@ public class TableBuild {
 
     // Check HDFS for remnant DB files from failed attempts
     Path warehousePath = new Path(config.getHdfsWarehousePath() + "/" + table);
-    log.info("Checking warehouse path: {}", warehousePath);
+    log.debug("Checking warehouse path: {}", warehousePath);
     if (fs.exists(warehousePath)) {
-      log.info("Deleting warehouse path: {}", warehousePath);
+      log.debug("Deleting warehouse path: {}", warehousePath);
       fs.delete(warehousePath, true);
-      log.info("Deletd warehouse path: {}", warehousePath);
+      log.debug("Deletd warehouse path: {}", warehousePath);
     }
     hdfs.writeTo(table).create();
 
-    log.info("Created Iceberg table: " + table);
+    log.debug("Created Iceberg table: " + table);
 
     // Display table schema and initial record count
     spark.sql("DESCRIBE TABLE " + table).show(false);
@@ -186,7 +189,7 @@ public class TableBuild {
             config.getHiveDB(),
             table);
 
-    log.info("Inserting data into occurrence table: " + insertQuery);
+    log.debug("Inserting data into occurrence table: " + insertQuery);
 
     // Execute the insert
     spark.sql(insertQuery);
@@ -194,12 +197,12 @@ public class TableBuild {
     // Drop the temporary table
     spark.sql("DROP TABLE " + table);
 
-    log.info("Dropped Iceberg table: " + table);
-    log.info("Checking warehouse path: {}", warehousePath);
+    log.debug("Dropped Iceberg table: " + table);
+    log.debug("Checking warehouse path: {}", warehousePath);
     if (fs.exists(warehousePath)) {
-      log.info("Deleting warehouse path: {}", warehousePath);
+      log.debug("Deleting warehouse path: {}", warehousePath);
       fs.delete(warehousePath, true);
-      log.info("Deletd warehouse path: {}", warehousePath);
+      log.debug("Deletd warehouse path: {}", warehousePath);
     }
 
     spark.close();
