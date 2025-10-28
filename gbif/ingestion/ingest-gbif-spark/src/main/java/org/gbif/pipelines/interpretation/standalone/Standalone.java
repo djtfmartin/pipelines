@@ -127,6 +127,8 @@ public class Standalone {
         }
       }
 
+      listener.close();
+      publisher.close();
       log.info("Listener stopped. Exiting Standalone...");
 
     } catch (IOException e) {
