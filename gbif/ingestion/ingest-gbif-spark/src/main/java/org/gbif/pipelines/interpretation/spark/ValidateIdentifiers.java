@@ -157,6 +157,12 @@ public class ValidateIdentifiers implements Serializable {
       boolean useExtendedRecordId)
       throws Exception {
     MDC.put("datasetKey", datasetID);
+    log.info(
+        "Starting validation with tripleValid: {}, occurrenceIdValid: {}, useExtendedRecordId: {}",
+        tripletValid,
+        occurrenceIdValid,
+        useExtendedRecordId);
+
     String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 

@@ -150,6 +150,10 @@ public class Interpretation implements Serializable {
       Boolean tripletValid,
       Boolean occurrenceIdValid) {
     MDC.put("datasetKey", datasetId);
+    log.info(
+        "Starting interpretation with tripleValid: {}, occurrenceIdValid: {}",
+        tripletValid,
+        occurrenceIdValid);
 
     String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);

@@ -149,6 +149,7 @@ public abstract class PipelinesCallback<
 
       try {
         // FIXMETrackingInfo trackingInfo = trackPipelineStep(message);
+        MDC.put("datasetKey", message.getDatasetUuid().toString());
         String error =
             "Error for datasetKey - " + message.getDatasetUuid() + " : " + ex.getMessage();
         log.error(error, ex);
@@ -159,6 +160,7 @@ public abstract class PipelinesCallback<
         }
 
       } catch (Exception e) {
+        MDC.put("datasetKey", message.getDatasetUuid().toString());
         log.error(
             "Failed to update tracking status for datasetKey - " + message.getDatasetUuid(), e);
       }
