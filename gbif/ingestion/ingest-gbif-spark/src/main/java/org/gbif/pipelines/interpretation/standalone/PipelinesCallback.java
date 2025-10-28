@@ -187,8 +187,9 @@ public abstract class PipelinesCallback<
   private boolean isProcessingStopped(I message) {
 
     Long currentKey = message.getExecutionId();
+    UUID datasetKey = message.getDatasetUuid();
 
-    Supplier<Long> s = () -> historyClient.getRunningExecutionKey(message.getDatasetUuid());
+    Supplier<Long> s = () -> historyClient.getRunningExecutionKey(datasetKey);
     Long runningKey;
     if (currentKey == null) {
       runningKey = s.get();
@@ -198,19 +199,25 @@ public abstract class PipelinesCallback<
       runningKey = RUNNING_EXECUTION_CALL.executeSupplier(s);
     }
     if (currentKey == null && runningKey == null) {
-      log.info("Continue execution. New execution and no other running executions");
+      log.info("Continue execution. New execution and no other running executions for {}", datasetKey);
       return false;
     }
     if (currentKey == null) {
-      log.warn("Can't run new execution if some other execution is running");
+      log.warn("Can't run new execution if some other execution is running for {}", datasetKey);
       return true;
     }
     if (runningKey == null) {
-      log.warn("Stop execution. Execution is aborted");
+      log.warn("Stop execution. Execution is aborted for {}", datasetKey);
       return true;
     }
     // Stop the process if execution keys are different
-    return !currentKey.equals(runningKey);
+    if (!currentKey.equals(runningKey)){
+        log.warn("Stop the process if execution keys are different for {}, " +
+                "running key {}, currentKey {}", datasetKey, runningKey, currentKey);
+        return true;
+    }
+
+    return false;
   }
 
   private void updateTrackingStatus(
