@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
+import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.MultimediaConverter;
 import org.gbif.pipelines.core.converters.OccurrenceHdfsRecordConverter;
@@ -176,8 +177,11 @@ public class Interpretation implements Serializable {
     // we assume that the valid and absent identifiers are already present because of a previous
     // interpretation run
     if (!FsUtils.fileExists(
-        HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
-        outputPath + "/identifiers")) {
+            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
+            outputPath + "/identifiers")
+        || !FsUtils.fileExists(
+            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
+            outputPath + "/identifiers/_SUCCESS")) {
       log.info("Processing identifiers - first interpretation run for this dataset and attempt");
       processIdentifiers(spark, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
     } else {
@@ -186,6 +190,9 @@ public class Interpretation implements Serializable {
 
     // load identifiers
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
+
+    // check all identifier records have a valid internal ID
+    checkIdentifiers(identifiers);
 
     // join extended records and identifiers
     Dataset<Occurrence> simpleRecords =
@@ -224,6 +231,24 @@ public class Interpretation implements Serializable {
     spark.stop();
     spark.close();
     log.info("Spark closed");
+  }
+
+  private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {
+    long recordsWithEmptyInternalId =
+        identifiers
+            .filter(
+                new FilterFunction<IdentifierRecord>() {
+                  @Override
+                  public boolean call(IdentifierRecord identifierRecord) throws Exception {
+                    return identifierRecord.getInternalId() == null;
+                  }
+                })
+            .count();
+
+    if (recordsWithEmptyInternalId > 0) {
+      throw new PipelinesException(
+          "Records with empty internal identifiers: " + recordsWithEmptyInternalId);
+    }
   }
 
   /**
