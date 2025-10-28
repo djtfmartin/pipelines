@@ -237,7 +237,7 @@ public class ValidateIdentifiers implements Serializable {
     fs.delete(new Path(outputPath + "/extended_records_expanded"), true);
     fs.delete(new Path(outputPath + "/identifiers_transformed"), true);
 
-    log.info("ValidateIdentifiers finished");
+    log.info("Finished");
     spark.close();
   }
 
@@ -258,7 +258,7 @@ public class ValidateIdentifiers implements Serializable {
       yaml.dump(allMetrics, writer);
 
       FsUtils.createFile(fs, fileName, writer.toString());
-      System.out.println("Metrics YAML:\n" + writer.toString());
+      log.debug("Metrics YAML:\n" + writer.toString());
 
     } catch (IOException e) {
       e.printStackTrace();

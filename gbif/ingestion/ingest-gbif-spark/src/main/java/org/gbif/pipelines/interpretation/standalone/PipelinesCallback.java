@@ -173,7 +173,7 @@ public abstract class PipelinesCallback<
       //                updateValidatorInfoStatus(Status.FAILED, errorMessage);
     } finally {
       if (message.getExecutionId() != null) {
-        log.info("Mark execution as FINISHED if all steps are FINISHED");
+        log.debug("Mark execution as FINISHED if all steps are FINISHED");
         Runnable r =
             () -> {
               log.debug(
