@@ -650,7 +650,6 @@ public class TableBuild {
       level3name STRING,
       iucnredlistcategory STRING,
       ext_multimedia STRING,
-      ext_humboldt STRING,
       datasetkey STRING
     )
     USING iceberg
