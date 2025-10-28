@@ -25,11 +25,6 @@ public class InterpretationCallback
   }
 
   @Override
-  protected boolean isMessageCorrect(PipelinesVerbatimMessage message) {
-    return false;
-  }
-
-  @Override
   protected void runPipeline(PipelinesVerbatimMessage message) throws Exception {
 
     // Run interpretation

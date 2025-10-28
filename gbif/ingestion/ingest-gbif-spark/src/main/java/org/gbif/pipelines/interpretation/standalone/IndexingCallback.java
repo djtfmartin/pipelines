@@ -24,11 +24,6 @@ public class IndexingCallback
   }
 
   @Override
-  protected boolean isMessageCorrect(PipelinesInterpretedMessage message) {
-    return false;
-  }
-
-  @Override
   protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
     Indexing.runIndexing(
         pipelinesConfig,
