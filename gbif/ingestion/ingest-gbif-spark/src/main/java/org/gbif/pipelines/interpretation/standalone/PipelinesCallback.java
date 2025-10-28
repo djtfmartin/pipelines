@@ -27,6 +27,7 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
 import org.gbif.ws.client.ClientBuilder;
 import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
+import org.slf4j.MDC;
 
 @Slf4j
 public abstract class PipelinesCallback<
@@ -113,11 +114,11 @@ public abstract class PipelinesCallback<
 
     TrackingInfo trackingInfo = null;
 
-    try {
-      log.info(
-          "InterpretationCallback - Processing datasetKey: {}, attempt: {}",
-          message.getDatasetUuid(),
-          message.getAttempt());
+    try (MDC.MDCCloseable mdc =
+            MDC.putCloseable("datasetKey", message.getDatasetUuid().toString());
+        MDC.MDCCloseable mdc1 = MDC.putCloseable("attempt", message.getAttempt().toString());
+        MDC.MDCCloseable mdc2 = MDC.putCloseable("step", getStepType().name())) {
+      log.info("Processing attempt {}", message.getAttempt());
 
       trackingInfo = trackPipelineStep(message);
 
