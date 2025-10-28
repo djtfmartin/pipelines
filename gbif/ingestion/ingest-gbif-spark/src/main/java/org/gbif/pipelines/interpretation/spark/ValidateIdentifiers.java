@@ -176,10 +176,16 @@ public class ValidateIdentifiers implements Serializable {
 
     SparkSession spark = sparkBuilder.getOrCreate();
 
+    FileSystem fs = null;
     Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-    hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
-    hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
-    FileSystem fs = FileSystem.get(hadoopConf);
+    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
+      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
+      fs = FileSystem.get(hadoopConf);
+    } else {
+      log.debug("Assuming local filesystem");
+      fs = FileSystem.getLocal(hadoopConf);
+    }
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =
@@ -220,6 +226,9 @@ public class ValidateIdentifiers implements Serializable {
             .load(outputPath + "/identifiers_transformed")
             .as(Encoders.bean(IdentifierRecord.class));
 
+    // get the records that are valid and persisted - i.e. if the have an internalId (gbifId)
+    Dataset<IdentifierRecord> validIdentifiers = validAndPersisted(identifiers, metrics);
+
     // get the absent records - i.e. records not assigned a gbifId and not stored in hbase
     Dataset<IdentifierRecord> absentIdentifiers = absentAndFilteredCount(identifiers, metrics);
 
@@ -227,7 +236,7 @@ public class ValidateIdentifiers implements Serializable {
     Dataset<IdentifierRecord> invalidIdentifiers = invalid(absentIdentifiers, metrics);
 
     // 1. write unique ids
-    identifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_valid");
+    validIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_valid");
 
     // 2. write invalid ids
     invalidIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_invalid");
@@ -236,9 +245,6 @@ public class ValidateIdentifiers implements Serializable {
     absentIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_absent");
 
     // 4. write metrics to yaml
-    //      HdfsConfigs hdfsConfigs = HdfsConfigs.create(args.hdfsSiteConfig, args.coreSiteConfig);
-    //      FileSystem fs = FsUtils.getFileSystem(hdfsConfigs, "/");
-    //      writeMetricsYaml(fs, metrics, outputPath + "/" + args.metaFileName);
     writeMetricsYaml(fs, metrics, outputPath + "/verbatim-to-identifier.yml");
 
     // clean up
@@ -264,10 +270,7 @@ public class ValidateIdentifiers implements Serializable {
     // Write to a YAML file
     try (StringWriter writer = new StringWriter()) {
       yaml.dump(allMetrics, writer);
-
       FsUtils.createFile(fs, fileName, writer.toString());
-      log.debug("Metrics YAML:\n" + writer.toString());
-
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -300,6 +303,24 @@ public class ValidateIdentifiers implements Serializable {
     metrics.put(FILTERED_GBIF_IDS_COUNT, identifiersCount - absentCount);
 
     return absentRecords;
+  }
+
+  public static Dataset<IdentifierRecord> validAndPersisted(
+      Dataset<IdentifierRecord> identifiers, Map<String, Long> metrics) {
+
+    Dataset<IdentifierRecord> validRecords =
+        identifiers.filter(
+            new FilterFunction<IdentifierRecord>() {
+              @Override
+              public boolean call(IdentifierRecord ir) throws Exception {
+                return ir.getInternalId() != null
+                    && !ir.getIssues().getIssueList().contains(GBIF_ID_INVALID)
+                    && !ir.getIssues().getIssueList().contains(GBIF_ID_ABSENT);
+              }
+            });
+
+    metrics.put(VALID_GBIF_ID_COUNT, validRecords.count());
+    return validRecords;
   }
 
   public static Dataset<IdentifierRecord> invalid(
