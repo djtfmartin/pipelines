@@ -43,6 +43,7 @@ import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import org.gbif.pipelines.keygen.HBaseLockingKey;
+import org.slf4j.MDC;
 import scala.Tuple2;
 
 /**
@@ -148,6 +149,7 @@ public class Interpretation implements Serializable {
       String master,
       Boolean tripletValid,
       Boolean occurrenceIdValid) {
+    MDC.put("datasetKey", datasetId);
 
     String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);

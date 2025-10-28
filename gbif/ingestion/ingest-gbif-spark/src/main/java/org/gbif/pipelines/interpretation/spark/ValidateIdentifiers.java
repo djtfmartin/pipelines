@@ -35,6 +35,7 @@ import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.IdentifierRecord;
 import org.gbif.pipelines.keygen.HBaseLockingKey;
+import org.slf4j.MDC;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -155,6 +156,7 @@ public class ValidateIdentifiers implements Serializable {
       boolean occurrenceIdValid,
       boolean useExtendedRecordId)
       throws Exception {
+    MDC.put("datasetKey", datasetID);
     String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
 

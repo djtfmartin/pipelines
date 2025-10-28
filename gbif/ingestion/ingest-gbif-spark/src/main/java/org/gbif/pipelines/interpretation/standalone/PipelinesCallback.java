@@ -171,6 +171,7 @@ public abstract class PipelinesCallback<
       //                updateValidatorInfoStatus(Status.FAILED, errorMessage);
     } finally {
       if (message.getExecutionId() != null) {
+        MDC.put("datasetKey", message.getDatasetUuid().toString());
         log.debug("Mark execution as FINISHED if all steps are FINISHED");
         Runnable r =
             () -> {
