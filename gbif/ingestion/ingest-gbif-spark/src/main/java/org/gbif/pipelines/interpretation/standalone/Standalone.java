@@ -10,9 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.gbif.common.messaging.ConnectionParameters;
 import org.gbif.common.messaging.DefaultMessagePublisher;
 import org.gbif.common.messaging.MessageListener;
-import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
-import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
 import org.gbif.pipelines.core.config.model.MessagingConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.jetbrains.annotations.NotNull;
@@ -104,7 +102,7 @@ public class Standalone {
       String routingKey,
       String exchange,
       int threads,
-      Function<MessagePublisher, MessageCallback<PipelinesVerbatimMessage>> callbackCreateFcn) {
+      Function<MessagePublisher, PipelinesCallback> callbackCreateFcn) {
 
     System.out.println("Starting standalone mode: " + mode);
     System.out.println("Starting standalone listening to queue " + queueName);

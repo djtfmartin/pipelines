@@ -22,8 +22,6 @@ import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelineBasedMessage;
 import org.gbif.common.messaging.api.messages.PipelinesBalancerMessage;
-import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
-import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
 import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
@@ -31,7 +29,9 @@ import org.gbif.ws.client.ClientBuilder;
 import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 
 @Slf4j
-public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVerbatimMessage> {
+public abstract class PipelinesCallback<
+        I extends PipelineBasedMessage, O extends PipelineBasedMessage>
+    implements MessageCallback<I> {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   protected final PipelinesConfig pipelinesConfig;
@@ -76,7 +76,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
               .retryOnResult(Objects::isNull)
               .build());
 
-  public AbstractCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
+  public PipelinesCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     this.pipelinesConfig = pipelinesConfig;
     this.publisher = publisher;
     this.historyClient =
@@ -93,21 +93,17 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
 
   protected abstract StepType getStepType();
 
-  protected abstract boolean isMessageCorrect(PipelinesVerbatimMessage message);
-
-  protected abstract void runPipeline(PipelinesVerbatimMessage message) throws Exception;
-
-  @Override
-  public void handleMessage(PipelinesVerbatimMessage message) {
-
-    if (!message.getRunner().equalsIgnoreCase("STANDALONE")
-        || !message.getPipelineSteps().contains(getStepType().toString())) {
-      log.warn(
-          "Incorrect message received - runner {}, stepTypes: {}",
-          message.getRunner(),
-          message.getPipelineSteps());
-      return;
+  protected boolean isMessageCorrect(I message) {
+    if (!message.getPipelineSteps().contains(getStepType().name())) {
+      log.error("The message doesn't contain {} type", getStepType().name());
+      return false;
     }
+    return true;
+  }
+
+  protected abstract void runPipeline(I message) throws Exception;
+
+  public void handleMessage(I message) {
 
     if (!isMessageCorrect(message) || isProcessingStopped(message)) {
       log.info(
@@ -132,7 +128,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
       updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
 
       // Create and send outgoing message
-      PipelinesInterpretedMessage outgoingMessage = createOutgoingMessage(message);
+      O outgoingMessage = createOutgoingMessage(message);
 
       String nextMessageClassName = outgoingMessage.getClass().getSimpleName();
       String messagePayload = outgoingMessage.toString();
@@ -189,7 +185,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
     }
   }
 
-  private boolean isProcessingStopped(PipelinesVerbatimMessage message) {
+  private boolean isProcessingStopped(I message) {
 
     Long currentKey = message.getExecutionId();
 
@@ -219,7 +215,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
   }
 
   private void updateTrackingStatus(
-      TrackingInfo trackingInfo, PipelinesVerbatimMessage message, PipelineStep.Status status) {
+      TrackingInfo trackingInfo, I message, PipelineStep.Status status) {
 
     //        String path =
     //                HdfsUtils.buildOutputPathAsString(
@@ -279,40 +275,9 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
     }
   }
 
-  public PipelinesInterpretedMessage createOutgoingMessage(PipelinesVerbatimMessage message) {
+  public abstract O createOutgoingMessage(I message);
 
-    Long recordsNumber = null;
-    Long eventRecordsNumber = null;
-    if (message.getValidationResult() != null) {
-      recordsNumber = message.getValidationResult().getNumberOfRecords();
-      eventRecordsNumber = message.getValidationResult().getNumberOfEventRecords();
-    }
-
-    Set<String> pipelineSteps = new HashSet<>(message.getPipelineSteps());
-    pipelineSteps.remove(getStepType().toString());
-
-    return new PipelinesInterpretedMessage(
-        message.getDatasetUuid(),
-        message.getAttempt(),
-        pipelineSteps,
-        recordsNumber,
-        eventRecordsNumber,
-        null, // Set in balancer cli
-        false, // repeatAttempt,
-        message.getResetPrefix(),
-        message.getExecutionId(),
-        message.getEndpointType(),
-        message.getValidationResult(),
-        message.getInterpretTypes(),
-        message.getDatasetType());
-  }
-
-  @Override
-  public Class<PipelinesVerbatimMessage> getMessageClass() {
-    return PipelinesVerbatimMessage.class;
-  }
-
-  private void updateQueuedStatus(TrackingInfo info, PipelinesVerbatimMessage message) {
+  private void updateQueuedStatus(TrackingInfo info, I message) {
     List<PipelinesWorkflow.Graph<StepType>.Edge> nodeEdges;
     if (false /* isValidator*/) {
       nodeEdges = PipelinesWorkflow.getValidatorWorkflow().getNodeEdges(getStepType());
@@ -337,7 +302,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
     }
   }
 
-  private boolean containsEvents(PipelinesVerbatimMessage message) {
+  private boolean containsEvents(I message) {
     PipelineBasedMessage.DatasetInfo datasetInfo = message.getDatasetInfo();
     boolean containsEvents = false;
     if (datasetInfo.getDatasetType() == DatasetType.SAMPLING_EVENT) {
@@ -346,7 +311,7 @@ public abstract class AbstractCallback<P> implements MessageCallback<PipelinesVe
     return containsEvents;
   }
 
-  private TrackingInfo trackPipelineStep(PipelinesVerbatimMessage message) throws Exception {
+  private TrackingInfo trackPipelineStep(I message) throws Exception {
 
     //
     //        if (isValidator) {
