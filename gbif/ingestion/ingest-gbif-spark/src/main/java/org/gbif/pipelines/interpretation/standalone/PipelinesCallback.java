@@ -141,7 +141,7 @@ public abstract class PipelinesCallback<
               + outgoingMessage.getClass().getSimpleName()
               + ":"
               + outgoingMessage;
-      log.info(logInfo);
+      log.debug(logInfo);
 
       updateQueuedStatus(trackingInfo, message);
 
@@ -176,7 +176,7 @@ public abstract class PipelinesCallback<
         log.info("Mark execution as FINISHED if all steps are FINISHED");
         Runnable r =
             () -> {
-              log.info(
+              log.debug(
                   "History client: mark pipeline execution if finished, executionId {}",
                   message.getExecutionId());
               historyClient.markPipelineExecutionIfFinished(message.getExecutionId());
@@ -231,7 +231,7 @@ public abstract class PipelinesCallback<
 
     Function<Long, PipelineStep> getPipelineStepFn =
         sk -> {
-          log.info("History client: get steps by execution key {}", sk);
+          log.debug("History client: get steps by execution key {}", sk);
           return historyClient.getPipelineStep(sk);
         };
     PipelineStep pipelineStep =
@@ -256,7 +256,7 @@ public abstract class PipelinesCallback<
     try {
       Function<PipelineStep, Long> pipelineStepFn =
           s -> {
-            log.info("History client: update pipeline step: {}", s);
+            log.debug("History client: update pipeline step: {}", s);
             PipelineStep step = historyClient.getPipelineStep(s.getKey());
             if (FINISHED_STATE_SET.contains(step.getState())) {
               return step.getKey();
@@ -264,7 +264,7 @@ public abstract class PipelinesCallback<
             return historyClient.updatePipelineStep(s);
           };
       long stepKey = Retry.decorateFunction(RETRY, pipelineStepFn).apply(pipelineStep);
-      log.info(
+      log.debug(
           "Step key {}, step type {} is {}",
           stepKey,
           pipelineStep.getType(),
@@ -294,7 +294,7 @@ public abstract class PipelinesCallback<
       PipelineStep step = info.pipelineStepMap.get(e.getNode());
       if (step != null && !PROCESSED_STATE_SET.contains(step.getState())) {
         // Call Registry to change the state to queued
-        log.info("History client: set pipeline step to QUEUED: {}", step);
+        log.debug("History client: set pipeline step to QUEUED: {}", step);
         Retry.decorateRunnable(
                 RETRY, () -> historyClient.setSubmittedPipelineStepToQueued(step.getKey()))
             .run();
@@ -327,7 +327,7 @@ public abstract class PipelinesCallback<
 
     Supplier<Long> pkSupplier =
         () -> {
-          log.info(
+          log.debug(
               "History client: create pipeline process, datasetKey {}, attempt {}",
               datasetUuid,
               attempt);
@@ -359,7 +359,7 @@ public abstract class PipelinesCallback<
 
       Supplier<Long> executionIdSupplier =
           () -> {
-            log.info(
+            log.debug(
                 "History client: add pipeline execution, processKey {}, execution {}",
                 processKey,
                 execution);
@@ -372,7 +372,7 @@ public abstract class PipelinesCallback<
 
     Function<Long, List<PipelineStep>> getStepsByExecutionKeyFn =
         ek -> {
-          log.info("History client: get steps by execution key {}", ek);
+          log.debug("History client: get steps by execution key {}", ek);
           return historyClient.getPipelineStepsByExecutionKey(ek);
         };
 
@@ -405,7 +405,7 @@ public abstract class PipelinesCallback<
 
     Function<PipelineStep, Long> pipelineStepFn =
         s -> {
-          log.info("History client: update pipeline step: {}", s);
+          log.debug("History client: update pipeline step: {}", s);
           return historyClient.updatePipelineStep(s);
         };
     long stepKey = Retry.decorateFunction(RETRY, pipelineStepFn).apply(step);
