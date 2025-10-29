@@ -12,4 +12,5 @@ public class StandaloneConfig implements Serializable {
 
   RegistryConfig registry;
   MessagingConfig messaging;
+  Integer numberOfShards = 12;
 }

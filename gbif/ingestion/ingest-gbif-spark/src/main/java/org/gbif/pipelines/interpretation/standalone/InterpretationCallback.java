@@ -40,7 +40,7 @@ public class InterpretationCallback
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
-        1,
+        pipelinesConfig.getStandalone().getNumberOfShards(),
         message.getValidationResult().isTripletValid(),
         message.getValidationResult().isOccurrenceIdValid());
   }
