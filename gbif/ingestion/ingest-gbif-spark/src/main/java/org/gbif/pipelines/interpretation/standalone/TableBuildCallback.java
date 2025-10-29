@@ -35,9 +35,7 @@ public class TableBuildCallback
         fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
-        message.getAttempt(),
-        "hdfsview_standalone_" + message.getDatasetUuid(),
-        "local[*]");
+        message.getAttempt());
   }
 
   @Override

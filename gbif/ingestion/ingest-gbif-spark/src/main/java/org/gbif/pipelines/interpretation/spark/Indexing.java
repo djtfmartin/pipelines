@@ -20,6 +20,7 @@ import org.gbif.pipelines.core.config.model.EsConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.EsIndexUtils;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
+import org.slf4j.MDC;
 
 /**
  * Main class for indexing occurrence data to Elasticsearch. It reads Parquet files from HDFS,
@@ -144,6 +145,12 @@ public class Indexing {
       Integer indexNumberReplicas) {
 
     long start = System.currentTimeMillis();
+    MDC.put("datasetKey", datasetId);
+    log.info(
+        "Starting index with esIndexName: {}, indexNumberShards: {}, indexNumberReplicas: {}",
+        esIndexName,
+        indexNumberShards,
+        indexNumberReplicas);
 
     String inputPath =
         String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");

@@ -92,7 +92,7 @@ public class TableBuild {
     }
     /* ############ standard init block - end ########## */
 
-    runTableBuild(spark, fileSystem, config, datasetId, attempt, args.appName, args.master);
+    runTableBuild(spark, fileSystem, config, datasetId, attempt);
   }
 
   public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
@@ -117,9 +117,7 @@ public class TableBuild {
       FileSystem fileSystem,
       PipelinesConfig config,
       String datasetId,
-      int attempt,
-      String appName,
-      String master)
+      int attempt)
       throws Exception {
 
     long start = System.currentTimeMillis();
@@ -214,10 +212,8 @@ public class TableBuild {
     if (fileSystem.exists(warehousePath)) {
       log.debug("Deleting warehouse path: {}", warehousePath);
       fileSystem.delete(warehousePath, true);
-      log.debug("Deletd warehouse path: {}", warehousePath);
+      log.debug("Deleted warehouse path: {}", warehousePath);
     }
-
-    spark.close();
 
     log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
   }

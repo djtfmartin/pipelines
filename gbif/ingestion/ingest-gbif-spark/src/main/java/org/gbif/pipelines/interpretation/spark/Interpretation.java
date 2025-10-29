@@ -246,7 +246,10 @@ public class Interpretation {
             PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
         outputPath + "/verbatim-to-occurrence.yml");
 
-    log.info("Finished interpretation in {} secs", (System.currentTimeMillis() - start) / 1000);
+    log.info(
+        "Finished interpretation in {} secs, records: {}",
+        (System.currentTimeMillis() - start) / 1000,
+        identifiersCount);
   }
 
   /**
