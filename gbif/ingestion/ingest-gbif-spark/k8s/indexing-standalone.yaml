@@ -21,11 +21,11 @@ spec:
           args: ["INDEXING", "/tmp/pipelines-spark.yaml"]
           resources:
             limits:
+              memory: "16Gi"
+              cpu: "24"
+            requests:
               memory: "8Gi"
               cpu: "12"
-            requests:
-              memory: "4Gi"
-              cpu: "6"
           volumeMounts:
             - name: hdfs-env
               mountPath: /etc/hadoop/conf/core-site.xml
