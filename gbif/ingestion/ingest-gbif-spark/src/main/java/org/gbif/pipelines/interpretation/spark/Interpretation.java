@@ -163,6 +163,7 @@ public class Interpretation {
     fileSystem.close();
     spark.stop();
     spark.close();
+    System.exit(0);
   }
 
   public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {

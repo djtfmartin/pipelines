@@ -165,8 +165,10 @@ public class ValidateIdentifiers {
         args.occurrenceIdValid,
         args.useExtendedRecordId);
 
-    fileSystem.close();
+    spark.stop();
     spark.close();
+    fileSystem.close();
+    System.exit(0);
   }
 
   public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {

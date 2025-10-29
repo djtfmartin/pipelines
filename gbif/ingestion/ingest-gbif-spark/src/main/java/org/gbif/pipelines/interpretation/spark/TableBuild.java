@@ -93,6 +93,11 @@ public class TableBuild {
     /* ############ standard init block - end ########## */
 
     runTableBuild(spark, fileSystem, config, datasetId, attempt);
+
+    spark.stop();
+    spark.close();
+    fileSystem.close();
+    System.exit(0);
   }
 
   public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
