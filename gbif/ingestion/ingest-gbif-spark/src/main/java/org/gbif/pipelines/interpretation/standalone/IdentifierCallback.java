@@ -3,6 +3,7 @@ package org.gbif.pipelines.interpretation.standalone;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.spark.sql.SparkSession;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
@@ -25,15 +26,20 @@ public class IdentifierCallback
   }
 
   @Override
+  protected void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
+    ValidateIdentifiers.configSparkSession(sparkBuilder, config);
+  }
+
+  @Override
   protected void runPipeline(PipelinesVerbatimMessage message) throws Exception {
 
     // run pipeline
     ValidateIdentifiers.runValidation(
+        sparkSession,
+        fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
-        "identifiers_standalone_" + message.getDatasetUuid(),
-        "local[*]",
         1,
         message.getValidationResult().isTripletValid(),
         message.getValidationResult().isOccurrenceIdValid(),

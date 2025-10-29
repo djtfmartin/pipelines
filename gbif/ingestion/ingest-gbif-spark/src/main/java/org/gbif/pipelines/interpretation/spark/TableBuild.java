@@ -15,8 +15,6 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.pojo.HdfsConfigs;
-import org.gbif.pipelines.core.utils.FsUtils;
 
 /**
  * This pipeline loads the /hdfs directory for a dataset/attempt, creates a temporary table with the
@@ -71,18 +69,33 @@ public class TableBuild {
     String datasetId = args.datasetId;
     int attempt = args.attempt;
 
-    runTableBuild(config, datasetId, attempt, args.appName, args.master);
+    /* ############ standard init block ########## */
+    // spark
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+    if (args.master != null) {
+      sparkBuilder = sparkBuilder.master(args.master);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
+    }
+    configSparkSession(sparkBuilder, config);
+    SparkSession spark = sparkBuilder.getOrCreate();
+
+    FileSystem fileSystem;
+    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
+      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
+      fileSystem = FileSystem.get(hadoopConf);
+    } else {
+      log.warn("Using local filesystem - this is suitable for local development only");
+      fileSystem = FileSystem.getLocal(hadoopConf);
+    }
+    /* ############ standard init block - end ########## */
+
+    runTableBuild(spark, fileSystem, config, datasetId, attempt, args.appName, args.master);
   }
 
-  public static void runTableBuild(
-      PipelinesConfig config, String datasetId, int attempt, String appName, String master)
-      throws Exception {
-
-    log.info("HDFS VIEW starting for dataset: " + datasetId);
-
-    String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
-
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
+  public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
     sparkBuilder
         .enableHiveSupport()
         .config("spark.jars.packages", "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0")
@@ -95,27 +108,23 @@ public class TableBuild {
             "spark.sql.extensions",
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
-        .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse");
+        .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse")
+        .config("spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
+  }
 
-    if (master != null && !master.isEmpty()) {
-      sparkBuilder = sparkBuilder.master(master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
-    }
+  public static void runTableBuild(
+      SparkSession spark,
+      FileSystem fileSystem,
+      PipelinesConfig config,
+      String datasetId,
+      int attempt,
+      String appName,
+      String master)
+      throws Exception {
 
-    SparkSession spark = sparkBuilder.getOrCreate();
-    FileSystem fs = null;
-    if (master != null) {
-      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
-      fs = FileSystem.get(hadoopConf);
-    } else {
-      HdfsConfigs hdfsConfigs =
-          HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-      fs = FsUtils.getFileSystem(hdfsConfigs, "/");
-    }
+    log.info("HDFS VIEW starting for dataset: " + datasetId);
+
+    String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     // load hdfs view
     Dataset<Row> hdfs = spark.read().parquet(outputPath + "/hdfs");
@@ -163,9 +172,9 @@ public class TableBuild {
     // Check HDFS for remnant DB files from failed attempts
     Path warehousePath = new Path(config.getHdfsWarehousePath() + "/" + table);
     log.debug("Checking warehouse path: {}", warehousePath);
-    if (fs.exists(warehousePath)) {
+    if (fileSystem.exists(warehousePath)) {
       log.debug("Deleting warehouse path: {}", warehousePath);
-      fs.delete(warehousePath, true);
+      fileSystem.delete(warehousePath, true);
       log.debug("Deletd warehouse path: {}", warehousePath);
     }
     hdfs.writeTo(table).create();
@@ -201,9 +210,9 @@ public class TableBuild {
 
     log.debug("Dropped Iceberg table: " + table);
     log.debug("Checking warehouse path: {}", warehousePath);
-    if (fs.exists(warehousePath)) {
+    if (fileSystem.exists(warehousePath)) {
       log.debug("Deleting warehouse path: {}", warehousePath);
-      fs.delete(warehousePath, true);
+      fileSystem.delete(warehousePath, true);
       log.debug("Deletd warehouse path: {}", warehousePath);
     }
 

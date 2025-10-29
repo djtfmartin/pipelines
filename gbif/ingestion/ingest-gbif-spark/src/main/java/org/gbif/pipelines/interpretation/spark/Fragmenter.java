@@ -8,6 +8,7 @@ import com.beust.jcommander.Parameters;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -59,31 +60,50 @@ public class Fragmenter {
     }
 
     PipelinesConfig config = loadConfig(args.config);
-    runFragmenter(config, args.datasetId, args.attempt, args.appName, args.master);
-  }
 
-  public static void runFragmenter(
-      PipelinesConfig config, String datasetId, Integer attempt, String appName, String master) {
-
-    String inputPath =
-        String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
-
-    // Create Spark session
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
-
-    if (master != null && !master.isEmpty()) {
-      sparkBuilder = sparkBuilder.master(master);
+    /* ############ standard init block ########## */
+    // spark
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+    if (args.master != null) {
+      sparkBuilder = sparkBuilder.master(args.master);
       sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
       sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
     }
-
+    configSparkSession(sparkBuilder, config);
     SparkSession spark = sparkBuilder.getOrCreate();
-    if (master != null) {
-      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
-    }
 
+    FileSystem fileSystem;
+    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
+      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
+      fileSystem = FileSystem.get(hadoopConf);
+    } else {
+      log.warn("Using local filesystem - this is suitable for local development only");
+      fileSystem = FileSystem.getLocal(hadoopConf);
+    }
+    /* ############ standard init block - end ########## */
+
+    runFragmenter(
+        spark, fileSystem, config, args.datasetId, args.attempt, args.appName, args.master);
+
+    spark.stop();
+    spark.close();
+    fileSystem.close();
+  }
+
+  public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
+    // nothing
+  }
+
+  public static void runFragmenter(
+      SparkSession spark,
+      FileSystem fileSystem,
+      PipelinesConfig config,
+      String datasetId,
+      Integer attempt,
+      String appName,
+      String master) {
     log.info("Not implemented yet !");
   }
 }

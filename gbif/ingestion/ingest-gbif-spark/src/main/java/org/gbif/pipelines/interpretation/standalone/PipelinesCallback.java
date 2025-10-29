@@ -14,6 +14,10 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.spark.sql.SparkSession;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.api.model.pipelines.*;
 import org.gbif.api.model.pipelines.ws.PipelineProcessParameters;
@@ -32,12 +36,14 @@ import org.slf4j.MDC;
 @Slf4j
 public abstract class PipelinesCallback<
         I extends PipelineBasedMessage, O extends PipelineBasedMessage>
-    implements MessageCallback<I> {
+    implements MessageCallback<I>, AutoCloseable {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   protected final PipelinesConfig pipelinesConfig;
   protected final PipelinesHistoryClient historyClient;
   protected final MessagePublisher publisher;
+  protected SparkSession sparkSession;
+  protected FileSystem fileSystem;
 
   private static final Set<PipelineStep.Status> FINISHED_STATE_SET =
       new HashSet<>(
@@ -92,6 +98,39 @@ public abstract class PipelinesCallback<
             .build(PipelinesHistoryClient.class);
   }
 
+  public void init() throws IOException {
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName("pipelines_standalone");
+    sparkBuilder = sparkBuilder.master("local[*}");
+
+    sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+    sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
+
+    // let the individual implementations add their wares
+    configSparkSession(sparkBuilder, pipelinesConfig);
+
+    this.sparkSession = sparkBuilder.getOrCreate();
+
+    Configuration hadoopConf = this.sparkSession.sparkContext().hadoopConfiguration();
+    if (pipelinesConfig.getHdfsSiteConfig() != null
+        && pipelinesConfig.getCoreSiteConfig() != null) {
+      hadoopConf.addResource(new Path(pipelinesConfig.getHdfsSiteConfig()));
+      hadoopConf.addResource(new Path(pipelinesConfig.getCoreSiteConfig()));
+      fileSystem = FileSystem.get(hadoopConf);
+    } else {
+      log.warn("Using local filesystem - this is suitable for local development only");
+      fileSystem = FileSystem.getLocal(hadoopConf);
+    }
+  }
+
+  public void close() throws IOException {
+    if (sparkSession != null) {
+      sparkSession.close();
+    }
+    if (fileSystem != null) {
+      fileSystem.close();
+    }
+  }
+
   protected abstract StepType getStepType();
 
   protected boolean isMessageCorrect(I message) {
@@ -103,6 +142,8 @@ public abstract class PipelinesCallback<
   }
 
   protected abstract void runPipeline(I message) throws Exception;
+
+  protected void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {}
 
   public void handleMessage(I message) {
 

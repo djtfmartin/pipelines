@@ -105,18 +105,22 @@ public class Standalone {
       Function<MessagePublisher, PipelinesCallback> callbackCreateFcn) {
 
     log.info("Starting standalone mode: {}, listening to queue: {}", mode, queueName);
+    setupShutdown();
 
     try (MessageListener listener = createListener(pipelinesConfig);
-        DefaultMessagePublisher publisher = createPublisher(pipelinesConfig)) {
+        DefaultMessagePublisher publisher = createPublisher(pipelinesConfig);
+        PipelinesCallback callback = callbackCreateFcn.apply(publisher)) {
 
+      // initialise spark session & filesystem
+      callback.init();
+
+      // start the listener
       listener.listen(
           queueName, // is this used ? - exchange / routing key are used
           routingKey,
           exchange,
           threads,
-          callbackCreateFcn.apply(publisher));
-
-      setupShutdown();
+          callback);
 
       // 5. Keep running until shutdown
       while (running) {
@@ -127,13 +131,11 @@ public class Standalone {
         }
       }
 
-      listener.close();
-      publisher.close();
-      log.info("Listener stopped. Exiting Standalone...");
-
     } catch (IOException e) {
-      e.printStackTrace();
+      log.error("Error starting standalone", e);
     }
+
+    log.info("Exiting Standalone.");
   }
 
   @NotNull

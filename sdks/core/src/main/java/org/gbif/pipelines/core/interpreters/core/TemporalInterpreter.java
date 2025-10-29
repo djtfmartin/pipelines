@@ -65,87 +65,90 @@ public class TemporalInterpreter implements Serializable {
   }
 
   public void interpretTemporal(ExtendedRecord er, TemporalRecord tr) {
-      String year = extractValue(er, DwcTerm.year);
-      String month = extractValue(er, DwcTerm.month);
-      String day = extractValue(er, DwcTerm.day);
-      String startDayOfYear = extractValue(er, DwcTerm.startDayOfYear);
-      String endDayOfYear = extractValue(er, DwcTerm.endDayOfYear);
-      String eventDate = extractValue(er, DwcTerm.eventDate);
+    String year = extractValue(er, DwcTerm.year);
+    String month = extractValue(er, DwcTerm.month);
+    String day = extractValue(er, DwcTerm.day);
+    String startDayOfYear = extractValue(er, DwcTerm.startDayOfYear);
+    String endDayOfYear = extractValue(er, DwcTerm.endDayOfYear);
+    String eventDate = extractValue(er, DwcTerm.eventDate);
 
-      String normalizedEventDate =
-              Optional.ofNullable(preprocessDateFn).map(x -> x.apply(eventDate)).orElse(eventDate);
+    String normalizedEventDate =
+        Optional.ofNullable(preprocessDateFn).map(x -> x.apply(eventDate)).orElse(eventDate);
 
-      // Interpret as a range, taking into account all DWC event date parameters
-      if (year != null || month != null || day != null || normalizedEventDate != null || startDayOfYear != null || endDayOfYear != null) {
-          OccurrenceParseResult<IsoDateInterval> parseResult =
-                  temporalRangeParser.parse(
-                          year, month, day, normalizedEventDate, startDayOfYear, endDayOfYear);
+    // Interpret as a range, taking into account all DWC event date parameters
+    if (year != null
+        || month != null
+        || day != null
+        || normalizedEventDate != null
+        || startDayOfYear != null
+        || endDayOfYear != null) {
+      OccurrenceParseResult<IsoDateInterval> parseResult =
+          temporalRangeParser.parse(
+              year, month, day, normalizedEventDate, startDayOfYear, endDayOfYear);
 
-          Optional<TemporalAccessor> fromTa =
-                  Optional.ofNullable(parseResult.getPayload()).map(IsoDateInterval::getFrom);
-          Optional<TemporalAccessor> toTa =
-                  Optional.ofNullable(parseResult.getPayload()).map(IsoDateInterval::getTo);
+      Optional<TemporalAccessor> fromTa =
+          Optional.ofNullable(parseResult.getPayload()).map(IsoDateInterval::getFrom);
+      Optional<TemporalAccessor> toTa =
+          Optional.ofNullable(parseResult.getPayload()).map(IsoDateInterval::getTo);
 
-          Optional<AtomizedLocalDate> fromYmd = fromTa.map(AtomizedLocalDate::fromTemporalAccessor);
-          Optional<AtomizedLocalDate> toYmd = toTa.map(AtomizedLocalDate::fromTemporalAccessor);
+      Optional<AtomizedLocalDate> fromYmd = fromTa.map(AtomizedLocalDate::fromTemporalAccessor);
+      Optional<AtomizedLocalDate> toYmd = toTa.map(AtomizedLocalDate::fromTemporalAccessor);
 
-          // Set dwc:year, dwc:month and dwc:day if these fields are equal for both ends of the range
-          if (fromYmd.isPresent() && toYmd.isPresent()) {
-              if (Objects.equals(fromYmd.get().getYear(), toYmd.get().getYear())) {
-                  tr.setYear(fromYmd.get().getYear());
-                  if (Objects.equals(fromYmd.get().getMonth(), toYmd.get().getMonth())) {
-                      tr.setMonth(fromYmd.get().getMonth());
-                      if (Objects.equals(fromYmd.get().getDay(), toYmd.get().getDay())) {
-                          tr.setDay(fromYmd.get().getDay());
-                      }
-                  }
-              }
+      // Set dwc:year, dwc:month and dwc:day if these fields are equal for both ends of the range
+      if (fromYmd.isPresent() && toYmd.isPresent()) {
+        if (Objects.equals(fromYmd.get().getYear(), toYmd.get().getYear())) {
+          tr.setYear(fromYmd.get().getYear());
+          if (Objects.equals(fromYmd.get().getMonth(), toYmd.get().getMonth())) {
+            tr.setMonth(fromYmd.get().getMonth());
+            if (Objects.equals(fromYmd.get().getDay(), toYmd.get().getDay())) {
+              tr.setDay(fromYmd.get().getDay());
+            }
           }
-
-
-          // Set dwc:startDayOfYear and dwc:endDayOfYear if possible
-          fromTa
-                  .filter(t -> t.isSupported(ChronoField.DAY_OF_YEAR))
-                  .ifPresent(t -> tr.setStartDayOfYear(t.get(ChronoField.DAY_OF_YEAR)));
-
-          toTa.filter(t -> t.isSupported(ChronoField.DAY_OF_YEAR))
-                  .ifPresent(t -> tr.setEndDayOfYear(t.get(ChronoField.DAY_OF_YEAR)));
-
-          EventDate ed = new EventDate();
-
-          if (explicitRangeEnd) {
-              fromTa
-                      .map(ta -> TemporalAccessorUtils.toEarliestLocalDateTime(ta, true))
-                      .map(StringToDateFunctions.getTemporalToStringFn())
-                      .ifPresent(ed::setGte);
-          } else {
-              fromTa
-                      .map(ta -> TemporalAccessorUtils.stripOffsetOrZone(ta, true))
-                      .map(StringToDateFunctions.getTemporalToStringFn())
-                      .ifPresent(ed::setGte);
-          }
-
-          if (explicitRangeEnd || (fromTa.isPresent() && !fromTa.equals(toTa))) {
-              if (explicitRangeEnd) {
-                  toTa.map(ta -> TemporalAccessorUtils.toLatestLocalDateTime(ta, true))
-                          .map(StringToDateFunctions.getTemporalToStringFn())
-                          .ifPresent(ed::setLte);
-              } else {
-                  toTa.map(ta -> TemporalAccessorUtils.stripOffsetOrZone(ta, true))
-                          .map(StringToDateFunctions.getTemporalToStringFn())
-                          .ifPresent(ed::setLte);
-              }
-          }
-
-
-          // Formatted range like 2003-04/2003-06.
-          if (parseResult.isSuccessful()) {
-              ed.setInterval(parseResult.getPayload().toString(true));
-          }
-
-          tr.setEventDate(ed);
-          addIssueSet(tr, parseResult.getIssues());
+        }
       }
+
+      // Set dwc:startDayOfYear and dwc:endDayOfYear if possible
+      fromTa
+          .filter(t -> t.isSupported(ChronoField.DAY_OF_YEAR))
+          .ifPresent(t -> tr.setStartDayOfYear(t.get(ChronoField.DAY_OF_YEAR)));
+
+      toTa.filter(t -> t.isSupported(ChronoField.DAY_OF_YEAR))
+          .ifPresent(t -> tr.setEndDayOfYear(t.get(ChronoField.DAY_OF_YEAR)));
+
+      EventDate ed = new EventDate();
+
+      if (explicitRangeEnd) {
+        fromTa
+            .map(ta -> TemporalAccessorUtils.toEarliestLocalDateTime(ta, true))
+            .map(StringToDateFunctions.getTemporalToStringFn())
+            .ifPresent(ed::setGte);
+      } else {
+        fromTa
+            .map(ta -> TemporalAccessorUtils.stripOffsetOrZone(ta, true))
+            .map(StringToDateFunctions.getTemporalToStringFn())
+            .ifPresent(ed::setGte);
+      }
+
+      if (explicitRangeEnd || (fromTa.isPresent() && !fromTa.equals(toTa))) {
+        if (explicitRangeEnd) {
+          toTa.map(ta -> TemporalAccessorUtils.toLatestLocalDateTime(ta, true))
+              .map(StringToDateFunctions.getTemporalToStringFn())
+              .ifPresent(ed::setLte);
+        } else {
+          toTa.map(ta -> TemporalAccessorUtils.stripOffsetOrZone(ta, true))
+              .map(StringToDateFunctions.getTemporalToStringFn())
+              .ifPresent(ed::setLte);
+        }
+      }
+
+      // Formatted range like 2003-04/2003-06.
+      if (parseResult.isSuccessful()) {
+        ed.setInterval(parseResult.getPayload().toString(true));
+      }
+
+      tr.setEventDate(ed);
+      addIssueSet(tr, parseResult.getIssues());
+    }
   }
 
   public void interpretModified(ExtendedRecord er, TemporalRecord tr) {

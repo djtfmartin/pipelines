@@ -5,6 +5,7 @@ import static org.gbif.pipelines.common.PipelinesVariables.Metrics.*;
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_ABSENT;
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_INVALID;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -29,15 +30,12 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.OccurrenceExtensionConverter;
 import org.gbif.pipelines.core.functions.SerializableSupplier;
-import org.gbif.pipelines.core.utils.FsUtils;
 import org.gbif.pipelines.interpretation.transform.GbifIdTransform;
 import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.IdentifierRecord;
 import org.gbif.pipelines.keygen.HBaseLockingKey;
 import org.slf4j.MDC;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
 
 /**
  * Validates the identifiers in a dataset of ExtendedRecords and generates IdentifierRecords. This
@@ -55,7 +53,7 @@ import org.yaml.snakeyaml.Yaml;
  * </ol>
  */
 @Slf4j
-public class ValidateIdentifiers implements Serializable {
+public class ValidateIdentifiers {
 
   @Parameters(separators = "=")
   private static class Args {
@@ -131,26 +129,56 @@ public class ValidateIdentifiers implements Serializable {
     }
 
     PipelinesConfig config = loadConfig(args.config);
+
+    /* ############ standard init block ########## */
+    // spark
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+    if (args.master != null) {
+      sparkBuilder = sparkBuilder.master(args.master);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
+    }
+    configSparkSession(sparkBuilder, config);
+    SparkSession spark = sparkBuilder.getOrCreate();
+
+    FileSystem fileSystem;
+    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
+      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
+      fileSystem = FileSystem.get(hadoopConf);
+    } else {
+      log.warn("Using local filesystem - this is suitable for local development only");
+      fileSystem = FileSystem.getLocal(hadoopConf);
+    }
+    /* ############ standard init block - end ########## */
     String datasetID = args.datasetId;
     int attempt = args.attempt;
     runValidation(
+        spark,
+        fileSystem,
         config,
         datasetID,
         attempt,
-        args.appName,
-        args.master,
         args.numberOfShards,
         args.tripletValid,
         args.occurrenceIdValid,
         args.useExtendedRecordId);
+
+    fileSystem.close();
+    spark.close();
+  }
+
+  public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
+    sparkBuilder.config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.5.1");
   }
 
   public static void runValidation(
+      SparkSession spark,
+      FileSystem fs,
       PipelinesConfig config,
       String datasetID,
       int attempt,
-      String appName,
-      String master,
       int numberOfShards,
       boolean tripletValid,
       boolean occurrenceIdValid,
@@ -165,27 +193,6 @@ public class ValidateIdentifiers implements Serializable {
 
     String inputPath = config.getInputPath() + "/" + datasetID + "/" + attempt;
     String outputPath = config.getOutputPath() + "/" + datasetID + "/" + attempt;
-
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
-
-    if (master != null && !master.isEmpty()) {
-      sparkBuilder = sparkBuilder.master(master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-
-    SparkSession spark = sparkBuilder.getOrCreate();
-
-    FileSystem fs = null;
-    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
-      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
-      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
-      fs = FileSystem.get(hadoopConf);
-    } else {
-      log.debug("Assuming local filesystem");
-      fs = FileSystem.getLocal(hadoopConf);
-    }
 
     // Read the verbatim input
     Dataset<ExtendedRecord> records =
@@ -252,28 +259,6 @@ public class ValidateIdentifiers implements Serializable {
     fs.delete(new Path(outputPath + "/identifiers_transformed"), true);
 
     log.info("Finished");
-    spark.close();
-  }
-
-  private static void writeMetricsYaml(
-      FileSystem fs, Map<String, Long> allMetrics, String fileName) {
-
-    // Configure YAML output (optional)
-    DumperOptions options = new DumperOptions();
-    options.setIndent(2);
-    options.setPrettyFlow(true);
-    options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-
-    // Create YAML instance
-    Yaml yaml = new Yaml(options);
-
-    // Write to a YAML file
-    try (StringWriter writer = new StringWriter()) {
-      yaml.dump(allMetrics, writer);
-      FsUtils.createFile(fs, fileName, writer.toString());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
   }
 
   /**

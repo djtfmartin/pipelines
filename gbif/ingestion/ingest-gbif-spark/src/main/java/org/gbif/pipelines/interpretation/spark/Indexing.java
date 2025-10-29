@@ -9,7 +9,9 @@ import java.io.IOException;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -24,6 +26,7 @@ import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
  * creates an Elasticsearch index if it doesn't exist, deletes existing records for a specific
  * dataset ID, and writes new records to the index.
  */
+@Slf4j
 public class Indexing {
 
   @Parameters(separators = "=")
@@ -85,49 +88,63 @@ public class Indexing {
     }
 
     PipelinesConfig config = loadConfig(args.config);
+
+    /* ############ standard init block ########## */
+    // spark
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+    if (args.master != null) {
+      sparkBuilder = sparkBuilder.master(args.master);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
+    }
+    configSparkSession(sparkBuilder, config);
+    SparkSession spark = sparkBuilder.getOrCreate();
+
+    FileSystem fileSystem;
+    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
+      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
+      fileSystem = FileSystem.get(hadoopConf);
+    } else {
+      log.warn("Using local filesystem - this is suitable for local development only");
+      fileSystem = FileSystem.getLocal(hadoopConf);
+    }
+    /* ############ standard init block - end ########## */
+
     runIndexing(
+        spark,
+        fileSystem,
         config,
         args.datasetId,
         args.attempt,
-        args.appName,
-        args.master,
         args.esIndexName,
         args.indexNumberShards,
         args.indexNumberReplicas);
+
+    spark.stop();
+    spark.close();
+    fileSystem.close();
+  }
+
+  public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
+    sparkBuilder.config(
+        "spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.12.1");
+    sparkBuilder.config("es.nodes", String.join(",", config.getElastic().getEsHosts()));
   }
 
   public static void runIndexing(
+      SparkSession spark,
+      FileSystem fileSystem,
       PipelinesConfig config,
       String datasetId,
       Integer attempt,
-      String appName,
-      String master,
       String esIndexName,
       Integer indexNumberShards,
       Integer indexNumberReplicas) {
 
     String inputPath =
         String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
-
-    // Create Spark session
-    SparkSession.Builder sparkBuilder =
-        SparkSession.builder()
-            .appName(appName)
-            .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:7.12.1")
-            .config("es.nodes", String.join(",", config.getElastic().getEsHosts()));
-
-    if (master != null && !master.isEmpty()) {
-      sparkBuilder = sparkBuilder.master(master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-
-    SparkSession spark = sparkBuilder.getOrCreate();
-    if (master != null) {
-      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
-    }
 
     ElasticOptions options =
         ElasticOptions.fromArgsAndConfig(
@@ -154,8 +171,6 @@ public class Indexing {
         .option("es.batch.write.refresh", "false")
         .mode("append")
         .save();
-
-    spark.stop();
 
     EsIndexUtils.updateAlias(options, indices, config.getIndexLock());
     EsIndexUtils.refreshIndex(options);

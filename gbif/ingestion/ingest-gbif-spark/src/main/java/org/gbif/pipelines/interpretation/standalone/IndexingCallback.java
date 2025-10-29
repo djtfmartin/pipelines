@@ -1,6 +1,7 @@
 package org.gbif.pipelines.interpretation.standalone;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.spark.sql.SparkSession;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
@@ -24,14 +25,19 @@ public class IndexingCallback
   }
 
   @Override
+  protected void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
+    Indexing.configSparkSession(sparkBuilder, config);
+  }
+
+  @Override
   protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
     Indexing.runIndexing(
+        sparkSession,
+        fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         "indexing_standalone_" + message.getDatasetUuid(),
-        "local[*]",
-        pipelinesConfig.getElastic().getEsAlias() + "_standalone",
         1, // FIXME
         0 // FIXME
         );

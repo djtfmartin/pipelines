@@ -2,6 +2,7 @@ package org.gbif.pipelines.interpretation.standalone;
 
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.spark.sql.SparkSession;
 import org.gbif.api.model.pipelines.*;
 import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
@@ -20,6 +21,11 @@ public class InterpretationCallback
   }
 
   @Override
+  protected void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
+    Interpretation.configSparkSession(sparkBuilder, config);
+  }
+
+  @Override
   protected StepType getStepType() {
     return StepType.VERBATIM_TO_INTERPRETED;
   }
@@ -29,12 +35,12 @@ public class InterpretationCallback
 
     // Run interpretation
     Interpretation.runInterpretation(
+        sparkSession,
+        fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         1,
-        "interpretation_standalone_" + message.getDatasetUuid(),
-        "local[*]",
         message.getValidationResult().isTripletValid(),
         message.getValidationResult().isOccurrenceIdValid());
   }

@@ -14,20 +14,21 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.Serializable;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
-import org.gbif.pipelines.common.PipelinesException;
+import org.gbif.pipelines.common.PipelinesVariables;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.MultimediaConverter;
 import org.gbif.pipelines.core.converters.OccurrenceHdfsRecordConverter;
@@ -59,7 +60,7 @@ import scala.Tuple2;
  * </ol>
  */
 @Slf4j
-public class Interpretation implements Serializable {
+public class Interpretation {
 
   static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -111,7 +112,7 @@ public class Interpretation implements Serializable {
     private boolean help;
   }
 
-  public static void main(String[] argsv) {
+  public static void main(String[] argsv) throws Exception {
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
     jCommander.setAcceptUnknownOptions(true); // FIXME to ease airflow/registry integration
@@ -123,30 +124,58 @@ public class Interpretation implements Serializable {
     }
 
     PipelinesConfig config = loadConfig(args.config);
-
     String datasetId = args.datasetId;
     int attempt = args.attempt;
 
+    /* ############ standard init block ########## */
+    // spark
+    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
+    if (args.master != null) {
+      sparkBuilder = sparkBuilder.master(args.master);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
+    }
+    configSparkSession(sparkBuilder, config);
+    SparkSession spark = sparkBuilder.getOrCreate();
+
+    FileSystem fileSystem;
+    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
+    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
+      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
+      fileSystem = FileSystem.get(hadoopConf);
+    } else {
+      log.warn("Using local filesystem - this is suitable for local development only");
+      fileSystem = FileSystem.getLocal(hadoopConf);
+    }
+    /* ############ standard init block - end ########## */
+
     runInterpretation(
+        spark,
+        fileSystem,
         config,
         datasetId,
         attempt,
         args.numberOfShards,
-        args.appName,
-        args.master,
         args.tripletValid,
         args.occurrenceIdValid);
 
-    System.exit(0);
+    fileSystem.close();
+    spark.stop();
+    spark.close();
+  }
+
+  public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
+    sparkBuilder.config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.5.1");
   }
 
   public static void runInterpretation(
+      SparkSession spark,
+      FileSystem fs,
       PipelinesConfig config,
       String datasetId,
       int attempt,
       int numberOfShards,
-      String appName,
-      String master,
       Boolean tripletValid,
       Boolean occurrenceIdValid) {
     MDC.put("datasetKey", datasetId);
@@ -157,22 +186,6 @@ public class Interpretation implements Serializable {
 
     String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
-
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(appName);
-    if (master != null) {
-      sparkBuilder = sparkBuilder.master(master);
-      sparkBuilder.config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.5.1");
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-
-    SparkSession spark = sparkBuilder.getOrCreate();
-
-    if (master != null) {
-      Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/core-site.xml"));
-      hadoopConf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
-    }
 
     // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
@@ -196,15 +209,13 @@ public class Interpretation implements Serializable {
 
     // load identifiers
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
-
-    // check all identifier records have a valid internal ID
-    checkIdentifiers(identifiers);
+    long identifiersCount = identifiers.count();
 
     // join extended records and identifiers
     Dataset<Occurrence> simpleRecords =
         joinRecordsAndIdentifiers(extendedRecords, identifiers, outputPath, spark);
 
-    // A single call to the registry to get the dataset metadata
+    // a single call to the registry to get the dataset metadata
     final MetadataRecord metadata = getMetadataRecord(config, datasetId);
 
     // run all transforms
@@ -223,38 +234,16 @@ public class Interpretation implements Serializable {
     FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
     FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
 
-    // write a metrics file?
-    //        log.info("Deleting old attempts directories");
-    //        String pathToDelete = String.join("/", config.stepConfig.repositoryPath, datasetId);
-    //        HdfsConfigs hdfsConfigs =
-    //                HdfsConfigs.create(config.stepConfig.hdfsSiteConfig,
-    // config.stepConfig.coreSiteConfig);
-    //        HdfsUtils.deleteSubFolders(
-    //                hdfsConfigs, pathToDelete, config.deleteAfterDays,
-    // Collections.singleton(attempt));
+    // write metrics to yaml
+    writeMetricsYaml(
+        fs,
+        Map.of(
+            PipelinesVariables.Metrics.BASIC_RECORDS_COUNT,
+                identifiersCount, // need to check cli coordinator to use 1
+            PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
+        outputPath + "/verbatim-to-occurrence.yml");
 
     log.info("Finished interpretation");
-    spark.stop();
-    spark.close();
-    log.debug("Spark closed");
-  }
-
-  private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {
-    long recordsWithEmptyInternalId =
-        identifiers
-            .filter(
-                new FilterFunction<IdentifierRecord>() {
-                  @Override
-                  public boolean call(IdentifierRecord identifierRecord) throws Exception {
-                    return identifierRecord.getInternalId() == null;
-                  }
-                })
-            .count();
-
-    if (recordsWithEmptyInternalId > 0) {
-      throw new PipelinesException(
-          "Records with empty internal identifiers: " + recordsWithEmptyInternalId);
-    }
   }
 
   /**
