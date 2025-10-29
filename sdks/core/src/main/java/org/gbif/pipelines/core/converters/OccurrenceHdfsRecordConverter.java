@@ -797,12 +797,11 @@ public class OccurrenceHdfsRecordConverter {
         PropertyUtils.setProperty(occurrenceHdfsRecord, fieldName, value);
       }
     } catch (Exception ex) {
-      log.error(
+      log.debug(
           "Ignoring error setting field {}, field name {}, value. Exception: {}",
           field,
           fieldName,
-          value,
-          ex);
+          value);
     }
   }
 
