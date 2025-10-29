@@ -19,7 +19,7 @@ USER stackable:stackable
 
 # Ensure Spark jars are accessible to the JVM
 ENV SPARK_HOME=/opt/spark
-ENV JVM_OPTIONS="-XX:+CrashOnOutOfMemoryError -XX:+PerfDisableSharedMem -XX:+UseShenandoahGC -Xms8G -Xmx16G"
+ENV JVM_OPTIONS="-XX:+CrashOnOutOfMemoryError -XX:+PerfDisableSharedMem -XX:+UseShenandoahGC -Xms8G -Xmx12G"
 
 # Default runtime arguments
 CMD ["MODE", "PATH_TO_CONFIG"]
