@@ -100,7 +100,7 @@ public abstract class PipelinesCallback<
 
   public void init() throws IOException {
     SparkSession.Builder sparkBuilder = SparkSession.builder().appName("pipelines_standalone");
-    sparkBuilder = sparkBuilder.master("local[*}");
+    sparkBuilder = sparkBuilder.master("local[*]");
 
     sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
     sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
