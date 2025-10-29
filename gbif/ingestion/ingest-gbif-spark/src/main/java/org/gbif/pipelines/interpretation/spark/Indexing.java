@@ -143,6 +143,8 @@ public class Indexing {
       Integer indexNumberShards,
       Integer indexNumberReplicas) {
 
+    long start = System.currentTimeMillis();
+
     String inputPath =
         String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
 
@@ -174,6 +176,8 @@ public class Indexing {
 
     EsIndexUtils.updateAlias(options, indices, config.getIndexLock());
     EsIndexUtils.refreshIndex(options);
+
+    log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
   }
 
   @Builder

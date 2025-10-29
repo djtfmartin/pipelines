@@ -184,6 +184,8 @@ public class ValidateIdentifiers {
       boolean occurrenceIdValid,
       boolean useExtendedRecordId)
       throws Exception {
+
+    long start = System.currentTimeMillis();
     MDC.put("datasetKey", datasetID);
     log.info(
         "Starting validation with tripleValid: {}, occurrenceIdValid: {}, useExtendedRecordId: {}",
@@ -258,7 +260,7 @@ public class ValidateIdentifiers {
     fs.delete(new Path(outputPath + "/extended_records_expanded"), true);
     fs.delete(new Path(outputPath + "/identifiers_transformed"), true);
 
-    log.info("Finished");
+    log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
   }
 
   /**

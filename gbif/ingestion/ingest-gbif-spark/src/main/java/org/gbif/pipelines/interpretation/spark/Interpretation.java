@@ -178,6 +178,9 @@ public class Interpretation {
       int numberOfShards,
       Boolean tripletValid,
       Boolean occurrenceIdValid) {
+
+    long start = System.currentTimeMillis();
+
     MDC.put("datasetKey", datasetId);
     log.info(
         "Starting interpretation with tripleValid: {}, occurrenceIdValid: {}",
@@ -201,10 +204,10 @@ public class Interpretation {
         || !FsUtils.fileExists(
             HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
             outputPath + "/identifiers/_SUCCESS")) {
-      log.info("Processing identifiers - first interpretation run for this dataset and attempt");
+      log.debug("Processing identifiers - first interpretation run for this dataset and attempt");
       processIdentifiers(spark, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
     } else {
-      log.info("Skipping processing identifiers - re-using existing identifiers");
+      log.debug("Skipping processing identifiers - re-using existing identifiers");
     }
 
     // load identifiers
@@ -243,7 +246,7 @@ public class Interpretation {
             PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
         outputPath + "/verbatim-to-occurrence.yml");
 
-    log.info("Finished interpretation");
+    log.info("Finished interpretation in {} secs", (System.currentTimeMillis() - start) / 1000);
   }
 
   /**

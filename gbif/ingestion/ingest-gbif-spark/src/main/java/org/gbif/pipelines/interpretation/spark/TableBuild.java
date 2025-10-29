@@ -122,6 +122,7 @@ public class TableBuild {
       String master)
       throws Exception {
 
+    long start = System.currentTimeMillis();
     log.info("HDFS VIEW starting for dataset: " + datasetId);
 
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
@@ -218,7 +219,7 @@ public class TableBuild {
 
     spark.close();
 
-    log.info("HDFS VIEW complete for dataset: " + datasetId);
+    log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
   }
 
   // FIXME - the table definition needs to be loaded from elsewhere...
