@@ -37,7 +37,7 @@ public class IndexingCallback
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
-        "indexing_standalone_" + message.getDatasetUuid(),
+        "indexing_standalone",
         pipelinesConfig.getStandalone().getNumberOfShards(),
         0 // FIXME
         );
