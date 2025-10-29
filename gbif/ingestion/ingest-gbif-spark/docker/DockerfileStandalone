@@ -19,10 +19,17 @@ USER stackable:stackable
 
 # Ensure Spark jars are accessible to the JVM
 ENV SPARK_HOME=/opt/spark
-ENV PATH="${SPARK_HOME}/bin:${PATH}"
-ENV CLASSPATH="${SPARK_HOME}/jars/*:/jobs/ingest-gbif-spark.jar"
+ENV JVM_OPTIONS="-XX:+CrashOnOutOfMemoryError -XX:+PerfDisableSharedMem -XX:+UseShenandoahGC -Xms8G -Xmx16G"
 
 # Default runtime arguments
 CMD ["MODE", "PATH_TO_CONFIG"]
 
-ENTRYPOINT ["java", "--add-opens=java.base/java.net=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED", "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED", "--add-exports=java.base/sun.security.action=ALL-UNNAMED", "-cp", "/opt/spark/jars/*:/jobs/ingest-gbif-spark.jar", "org.gbif.pipelines.interpretation.standalone.Standalone"]
+ENTRYPOINT ["sh", "-c", "java $JVM_OPTIONS \
+  --add-opens=java.base/java.net=ALL-UNNAMED \
+  --add-opens=java.base/java.nio=ALL-UNNAMED \
+  --add-opens=java.base/java.lang.invoke=ALL-UNNAMED \
+  --add-opens=java.base/java.io=ALL-UNNAMED \
+  --add-exports=java.base/sun.nio.ch=ALL-UNNAMED \
+  --add-exports=java.base/sun.security.action=ALL-UNNAMED \
+  -cp /opt/spark/jars/*:/jobs/ingest-gbif-spark.jar \
+  org.gbif.pipelines.interpretation.standalone.Standalone \"$@\"", "sh"]
