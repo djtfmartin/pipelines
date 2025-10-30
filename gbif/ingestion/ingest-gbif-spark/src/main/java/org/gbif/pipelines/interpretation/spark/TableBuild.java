@@ -203,7 +203,10 @@ public class TableBuild {
     cleanHdfsPath(fileSystem, config, table);
 
     // 4. write metrics to yaml
-    writeMetricsYaml(fileSystem, Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted), outputPath + "/" + METRICS_FILENAME);
+    writeMetricsYaml(
+        fileSystem,
+        Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted),
+        outputPath + "/" + METRICS_FILENAME);
 
     log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
   }

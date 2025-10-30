@@ -177,9 +177,15 @@ public class Indexing {
     long indexCount = df.count();
 
     // write metrics to yaml
-    writeMetricsYaml(fileSystem, Map.of("parquetToJsonCountAttempted", indexCount), outputPath + "/" + METRICS_FILENAME);
+    writeMetricsYaml(
+        fileSystem,
+        Map.of("parquetToJsonCountAttempted", indexCount),
+        outputPath + "/" + METRICS_FILENAME);
 
-    log.info("Finished in {} secs, records indexed {}", (System.currentTimeMillis() - start) / 1000, indexCount);
+    log.info(
+        "Finished in {} secs, records indexed {}",
+        (System.currentTimeMillis() - start) / 1000,
+        indexCount);
   }
 
   @Builder
