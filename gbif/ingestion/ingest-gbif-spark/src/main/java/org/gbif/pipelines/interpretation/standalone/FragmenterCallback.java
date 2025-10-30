@@ -36,9 +36,12 @@ public class FragmenterCallback
         fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
-        message.getAttempt(),
-        "fragmenter_standalone_" + message.getDatasetUuid(),
-        "local[*]");
+        message.getAttempt());
+  }
+
+  @Override
+  protected String getMetaFileName() {
+    return Fragmenter.METRICS_FILENAME;
   }
 
   @Override

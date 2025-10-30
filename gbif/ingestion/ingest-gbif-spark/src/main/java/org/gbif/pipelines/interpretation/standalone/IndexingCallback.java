@@ -44,6 +44,11 @@ public class IndexingCallback
   }
 
   @Override
+  protected String getMetaFileName() {
+    return Indexing.METRICS_FILENAME;
+  }
+
+  @Override
   public Class<PipelinesInterpretedMessage> getMessageClass() {
     return PipelinesInterpretedMessage.class;
   }

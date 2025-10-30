@@ -1,20 +1,25 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * This pipeline loads the /hdfs directory for a dataset/attempt, creates a temporary table with the
@@ -22,6 +27,8 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
  */
 @Slf4j
 public class TableBuild {
+
+  public static final String METRICS_FILENAME = "occurrence-to-hdfs.yml";
 
   @Parameters(separators = "=")
   private static class Args {
@@ -70,26 +77,9 @@ public class TableBuild {
     int attempt = args.attempt;
 
     /* ############ standard init block ########## */
-    // spark
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
-    if (args.master != null) {
-      sparkBuilder = sparkBuilder.master(args.master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-    configSparkSession(sparkBuilder, config);
-    SparkSession spark = sparkBuilder.getOrCreate();
-
-    FileSystem fileSystem;
-    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
-      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
-      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
-      fileSystem = FileSystem.get(hadoopConf);
-    } else {
-      log.warn("Using local filesystem - this is suitable for local development only");
-      fileSystem = FileSystem.getLocal(hadoopConf);
-    }
+    SparkSession spark =
+        getSparkSession(args.master, args.appName, config, TableBuild::configSparkSession);
+    FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
     runTableBuild(spark, fileSystem, config, datasetId, attempt);
@@ -174,18 +164,15 @@ public class TableBuild {
     spark.sql("DROP TABLE IF EXISTS " + table);
 
     // Check HDFS for remnant DB files from failed attempts
-    Path warehousePath = new Path(config.getHdfsWarehousePath() + "/" + table);
-    log.debug("Checking warehouse path: {}", warehousePath);
-    if (fileSystem.exists(warehousePath)) {
-      log.debug("Deleting warehouse path: {}", warehousePath);
-      fileSystem.delete(warehousePath, true);
-      log.debug("Deletd warehouse path: {}", warehousePath);
-    }
+    cleanHdfsPath(fileSystem, config, table);
     hdfs.writeTo(table).create();
 
     log.debug("Created Iceberg table: " + table);
 
     // Display table schema and initial record count
+    Dataset<Row> result = spark.sql("SELECT COUNT(*) FROM " + table);
+    long avroToHdfsCountAttempted = result.collectAsList().get(0).getLong(0);
+
     if (log.isDebugEnabled()) {
       spark.sql("DESCRIBE TABLE " + table).show(false);
       spark.sql("SELECT COUNT(*) FROM " + table).show(false);
@@ -213,14 +200,24 @@ public class TableBuild {
     spark.sql("DROP TABLE " + table);
 
     log.debug("Dropped Iceberg table: " + table);
+    cleanHdfsPath(fileSystem, config, table);
+
+    // 4. write metrics to yaml
+    writeMetricsYaml(fileSystem, Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted), outputPath + "/" + METRICS_FILENAME);
+
+    log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
+  }
+
+  @NotNull
+  private static void cleanHdfsPath(FileSystem fileSystem, PipelinesConfig config, String table)
+      throws IOException {
+    Path warehousePath = new Path(config.getHdfsWarehousePath() + "/" + table);
     log.debug("Checking warehouse path: {}", warehousePath);
     if (fileSystem.exists(warehousePath)) {
       log.debug("Deleting warehouse path: {}", warehousePath);
       fileSystem.delete(warehousePath, true);
       log.debug("Deleted warehouse path: {}", warehousePath);
     }
-
-    log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
   }
 
   // FIXME - the table definition needs to be loaded from elsewhere...

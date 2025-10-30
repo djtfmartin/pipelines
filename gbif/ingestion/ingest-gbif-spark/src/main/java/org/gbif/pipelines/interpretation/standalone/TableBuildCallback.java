@@ -39,6 +39,11 @@ public class TableBuildCallback
   }
 
   @Override
+  protected String getMetaFileName() {
+    return TableBuild.METRICS_FILENAME;
+  }
+
+  @Override
   public PipelinesHdfsViewMessage createOutgoingMessage(PipelinesInterpretedMessage message) {
     return new PipelinesHdfsViewMessage(
         message.getDatasetUuid(), message.getAttempt(), message.getPipelineSteps(), null, null);

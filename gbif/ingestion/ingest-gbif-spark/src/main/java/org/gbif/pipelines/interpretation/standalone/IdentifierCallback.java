@@ -8,6 +8,7 @@ import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
+import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.spark.ValidateIdentifiers;
 
@@ -47,28 +48,32 @@ public class IdentifierCallback
             ? message.getValidationResult().isUseExtendedRecordId()
             : false);
 
-    //        IdentifierValidationResult validationResult =
-    //                PostprocessValidation.builder()
-    //                        .httpClient(httpClient)
-    //                        .message(message)
-    //                        .config(pipelinesConfig)
-    //                        .build()
-    //                        .validate();
-    //
-    //        if (validationResult.isResultValid()) {
-    //            log.info(validationResult.getValidationMessage());
-    //        } else {
-    //            historyClient.notifyAbsentIdentifiers(
-    //                    message.getDatasetUuid(),
-    //                    message.getAttempt(),
-    //                    message.getExecutionId(),
-    //                    validationResult.getValidationMessage());
-    //            log.error(validationResult.getValidationMessage());
-    ////            if (config.cleanAndMarkAsAborted) {
-    //            historyClient.markPipelineStatusAsAborted(message.getExecutionId());
-    ////            }
-    //            throw new PipelinesException(validationResult.getValidationMessage());
-    //        }
+    IdentifierValidationResult validationResult =
+        PostprocessValidation.builder()
+            .httpClient(this.httpClient)
+            .message(message)
+            .fileSystem(this.fileSystem)
+            .config(pipelinesConfig)
+            .build()
+            .validate();
+
+    if (validationResult.isResultValid()) {
+      log.info(validationResult.getValidationMessage());
+    } else {
+      historyClient.notifyAbsentIdentifiers(
+          message.getDatasetUuid(),
+          message.getAttempt(),
+          message.getExecutionId(),
+          validationResult.getValidationMessage());
+      log.error(validationResult.getValidationMessage());
+      historyClient.markPipelineStatusAsAborted(message.getExecutionId());
+      throw new PipelinesException(validationResult.getValidationMessage());
+    }
+  }
+
+  @Override
+  protected String getMetaFileName() {
+    return ValidateIdentifiers.METRICS_FILENAME;
   }
 
   @Override

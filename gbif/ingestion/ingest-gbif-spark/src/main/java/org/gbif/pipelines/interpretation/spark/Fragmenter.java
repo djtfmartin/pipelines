@@ -16,6 +16,8 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 @Slf4j
 public class Fragmenter {
 
+  public static final String METRICS_FILENAME = "fragmenter.yml";
+
   @Parameters(separators = "=")
   private static class Args {
 
@@ -84,8 +86,7 @@ public class Fragmenter {
     }
     /* ############ standard init block - end ########## */
 
-    runFragmenter(
-        spark, fileSystem, config, args.datasetId, args.attempt, args.appName, args.master);
+    runFragmenter(spark, fileSystem, config, args.datasetId, args.attempt);
 
     spark.stop();
     spark.close();
@@ -101,9 +102,7 @@ public class Fragmenter {
       FileSystem fileSystem,
       PipelinesConfig config,
       String datasetId,
-      Integer attempt,
-      String appName,
-      String master) {
+      Integer attempt) {
     log.info("Not implemented yet !");
   }
 }

@@ -45,6 +45,11 @@ public class InterpretationCallback
         message.getValidationResult().isOccurrenceIdValid());
   }
 
+  @Override
+  protected String getMetaFileName() {
+    return Interpretation.METRICS_FILENAME;
+  }
+
   public PipelinesInterpretedMessage createOutgoingMessage(PipelinesVerbatimMessage message) {
 
     Long recordsNumber = null;

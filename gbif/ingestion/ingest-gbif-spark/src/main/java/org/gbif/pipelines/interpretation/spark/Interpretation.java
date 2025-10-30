@@ -15,6 +15,8 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -22,9 +24,7 @@ import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
@@ -63,6 +63,8 @@ import scala.Tuple2;
 public class Interpretation {
 
   static final ObjectMapper MAPPER = new ObjectMapper();
+
+  public static final String METRICS_FILENAME = "verbatim-to-occurrence.yml";
 
   @Parameters(separators = "=")
   private static class Args {
@@ -128,26 +130,9 @@ public class Interpretation {
     int attempt = args.attempt;
 
     /* ############ standard init block ########## */
-    // spark
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
-    if (args.master != null) {
-      sparkBuilder = sparkBuilder.master(args.master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-    configSparkSession(sparkBuilder, config);
-    SparkSession spark = sparkBuilder.getOrCreate();
-
-    FileSystem fileSystem;
-    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
-      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
-      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
-      fileSystem = FileSystem.get(hadoopConf);
-    } else {
-      log.warn("Using local filesystem - this is suitable for local development only");
-      fileSystem = FileSystem.getLocal(hadoopConf);
-    }
+    SparkSession spark =
+        getSparkSession(args.master, args.appName, config, Interpretation::configSparkSession);
+    FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
     runInterpretation(
@@ -245,7 +230,7 @@ public class Interpretation {
             PipelinesVariables.Metrics.BASIC_RECORDS_COUNT,
                 identifiersCount, // need to check cli coordinator to use 1
             PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
-        outputPath + "/verbatim-to-occurrence.yml");
+        outputPath + "/" + METRICS_FILENAME);
 
     log.info(
         "Finished interpretation in {} secs, records: {}",

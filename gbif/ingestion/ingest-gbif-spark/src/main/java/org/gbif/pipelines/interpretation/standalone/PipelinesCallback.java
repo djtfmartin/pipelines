@@ -1,10 +1,15 @@
 package org.gbif.pipelines.interpretation.standalone;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.fasterxml.jackson.core.JsonParseException;
+import com.google.common.base.Strings;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -17,6 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.apache.spark.sql.SparkSession;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.api.model.pipelines.*;
@@ -42,6 +50,7 @@ public abstract class PipelinesCallback<
   protected final PipelinesConfig pipelinesConfig;
   protected final PipelinesHistoryClient historyClient;
   protected final MessagePublisher publisher;
+  protected final CloseableHttpClient httpClient;
   protected SparkSession sparkSession;
   protected FileSystem fileSystem;
 
@@ -96,6 +105,11 @@ public abstract class PipelinesCallback<
             .withExponentialBackoffRetry(Duration.ofSeconds(3L), 2d, 10)
             .withFormEncoder()
             .build(PipelinesHistoryClient.class);
+    this.httpClient =
+        HttpClients.custom()
+            .setDefaultRequestConfig(
+                RequestConfig.custom().setConnectTimeout(60_000).setSocketTimeout(60_000).build())
+            .build();
   }
 
   public void init() throws IOException {
@@ -142,6 +156,8 @@ public abstract class PipelinesCallback<
   }
 
   protected abstract void runPipeline(I message) throws Exception;
+
+  protected abstract String getMetaFileName();
 
   protected void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {}
 
@@ -268,19 +284,45 @@ public abstract class PipelinesCallback<
     return false;
   }
 
+  /**
+   * Reads a yaml file and returns all the values
+   *
+   * @param filePath to a yaml file
+   */
+  public static List<PipelineStep.MetricInfo> readMetricsFromMetaFile(
+      FileSystem fs, String filePath) {
+    Path fsPath = new Path(filePath);
+    try {
+      if (fs.exists(fsPath)) {
+        try (BufferedReader br =
+            new BufferedReader(new InputStreamReader(fs.open(fsPath), UTF_8))) {
+          return br.lines()
+              .map(x -> x.replace("\u0000", ""))
+              .filter(s -> !Strings.isNullOrEmpty(s))
+              .map(z -> z.split(":"))
+              .filter(s -> s.length > 1)
+              .map(v -> new PipelineStep.MetricInfo(v[0].trim(), v[1].trim()))
+              .collect(Collectors.toList());
+        }
+      }
+    } catch (IOException e) {
+      log.warn("Couldn't read meta file from {}", filePath, e);
+    }
+    return new ArrayList<>();
+  }
+
   private void updateTrackingStatus(
       TrackingInfo trackingInfo, I message, PipelineStep.Status status) {
 
-    //        String path =
-    //                HdfsUtils.buildOutputPathAsString(
-    //                        config.getRepositoryPath(), ti.datasetId, ti.attempt,
-    // config.getMetaFileName());
+    String path =
+        String.join(
+            "/",
+            pipelinesConfig.getOutputPath(),
+            trackingInfo.datasetId,
+            trackingInfo.attempt,
+            getMetaFileName());
 
-    //        HdfsConfigs hdfsConfigs =
-    //                HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-
-    //        List<PipelineStep.MetricInfo> metricInfos =
-    // HdfsUtils.readMetricsFromMetaFile(hdfsConfigs, path);
+    List<PipelineStep.MetricInfo> metricInfos = readMetricsFromMetaFile(fileSystem, path);
 
     Function<Long, PipelineStep> getPipelineStepFn =
         sk -> {
@@ -291,16 +333,16 @@ public abstract class PipelinesCallback<
         Retry.decorateFunction(RETRY, getPipelineStepFn).apply(trackingInfo.stepKey);
 
     pipelineStep.setState(status);
-    //        pipelineStep.setMetrics(new HashSet<>(metricInfos));
-    //
-    //        if (metricInfos.size() == 1) {
-    //            Optional.ofNullable(metricInfos.get(0).getValue())
-    //                    .filter(v -> !v.isEmpty())
-    //                    .map(Long::parseLong)
-    //                    .ifPresent(pipelineStep::setNumberRecords);
-    //        } else if (metricInfos.size() > 1) {
-    //            pipelineStep.setNumberRecords(-1L);
-    //        }
+    pipelineStep.setMetrics(new HashSet<>(metricInfos));
+
+    if (metricInfos.size() == 1) {
+      Optional.ofNullable(metricInfos.get(0).getValue())
+          .filter(v -> !v.isEmpty())
+          .map(Long::parseLong)
+          .ifPresent(pipelineStep::setNumberRecords);
+    } else if (metricInfos.size() > 1) {
+      pipelineStep.setNumberRecords(-1L);
+    }
 
     if (FINISHED_STATE_SET.contains(status)) {
       pipelineStep.setFinished(LocalDateTime.now());
@@ -444,8 +486,9 @@ public abstract class PipelinesCallback<
 
     if (PROCESSED_STATE_SET.contains(step.getState())) {
       log.error(
-          "Dataset is in the queue, please check the pipeline-ingestion monitoring tool - {}",
-          datasetUuid);
+          "Dataset is in the queue, please check the pipeline-ingestion monitoring tool - {}, running state {}",
+          datasetUuid,
+          step.getState());
       throw new PipelinesException(
           "Dataset is in the queue, please check the pipeline-ingestion monitoring tool");
     }
@@ -454,7 +497,7 @@ public abstract class PipelinesCallback<
         .setState(PipelineStep.Status.RUNNING)
         .setRunner(StepRunner.STANDALONE)
         .setStarted(LocalDateTime.now())
-        .setPipelinesVersion("SPARK_PIPELINES-1.0");
+        .setPipelinesVersion("SPARK_PIPELINES-1.0"); // FIXME
 
     Function<PipelineStep, Long> pipelineStepFn =
         s -> {

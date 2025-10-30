@@ -1,18 +1,20 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
@@ -29,6 +31,8 @@ import org.slf4j.MDC;
  */
 @Slf4j
 public class Indexing {
+
+  public static final String METRICS_FILENAME = "occurrence-to-index.yml";
 
   @Parameters(separators = "=")
   private static class Args {
@@ -91,26 +95,9 @@ public class Indexing {
     PipelinesConfig config = loadConfig(args.config);
 
     /* ############ standard init block ########## */
-    // spark
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
-    if (args.master != null) {
-      sparkBuilder = sparkBuilder.master(args.master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-    configSparkSession(sparkBuilder, config);
-    SparkSession spark = sparkBuilder.getOrCreate();
-
-    FileSystem fileSystem;
-    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
-      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
-      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
-      fileSystem = FileSystem.get(hadoopConf);
-    } else {
-      log.warn("Using local filesystem - this is suitable for local development only");
-      fileSystem = FileSystem.getLocal(hadoopConf);
-    }
+    SparkSession spark =
+        getSparkSession(args.master, args.appName, config, Indexing::configSparkSession);
+    FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
     runIndexing(
@@ -156,6 +143,8 @@ public class Indexing {
     String inputPath =
         String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
 
+    String outputPath = String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt);
+
     ElasticOptions options =
         ElasticOptions.fromArgsAndConfig(
             config, esIndexName, datasetId, attempt, indexNumberShards, indexNumberReplicas);
@@ -185,7 +174,12 @@ public class Indexing {
     EsIndexUtils.updateAlias(options, indices, config.getIndexLock());
     EsIndexUtils.refreshIndex(options);
 
-    log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
+    long indexCount = df.count();
+
+    // write metrics to yaml
+    writeMetricsYaml(fileSystem, Map.of("parquetToJsonCountAttempted", indexCount), outputPath + "/" + METRICS_FILENAME);
+
+    log.info("Finished in {} secs, records indexed {}", (System.currentTimeMillis() - start) / 1000, indexCount);
   }
 
   @Builder

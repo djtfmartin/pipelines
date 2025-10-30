@@ -6,6 +6,8 @@ import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.G
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_INVALID;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -16,16 +18,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.MapFunction;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.OccurrenceExtensionConverter;
@@ -54,6 +52,8 @@ import org.slf4j.MDC;
  */
 @Slf4j
 public class ValidateIdentifiers {
+
+  public static final String METRICS_FILENAME = "verbatim-to-identifier.yml";
 
   @Parameters(separators = "=")
   private static class Args {
@@ -98,12 +98,6 @@ public class ValidateIdentifiers {
     private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
-        names = "--metaFileName",
-        description = "The yaml metrics file to output",
-        required = false)
-    private String metaFileName = "verbatim-to-identifier.yml";
-
-    @Parameter(
         names = "--master",
         description = "Spark master - there for local dev only",
         required = false)
@@ -131,27 +125,11 @@ public class ValidateIdentifiers {
     PipelinesConfig config = loadConfig(args.config);
 
     /* ############ standard init block ########## */
-    // spark
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
-    if (args.master != null) {
-      sparkBuilder = sparkBuilder.master(args.master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-    configSparkSession(sparkBuilder, config);
-    SparkSession spark = sparkBuilder.getOrCreate();
-
-    FileSystem fileSystem;
-    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
-      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
-      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
-      fileSystem = FileSystem.get(hadoopConf);
-    } else {
-      log.warn("Using local filesystem - this is suitable for local development only");
-      fileSystem = FileSystem.getLocal(hadoopConf);
-    }
+    SparkSession spark =
+        getSparkSession(args.master, args.appName, config, ValidateIdentifiers::configSparkSession);
+    FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
+
     String datasetID = args.datasetId;
     int attempt = args.attempt;
     runValidation(
@@ -227,7 +205,7 @@ public class ValidateIdentifiers {
             recordsExpanded)
         .repartition(numberOfShards)
         .write()
-        .mode("overwrite")
+        .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/identifiers_transformed");
 
     Dataset<IdentifierRecord> identifiers =
@@ -247,16 +225,19 @@ public class ValidateIdentifiers {
     Dataset<IdentifierRecord> invalidIdentifiers = invalid(absentIdentifiers, metrics);
 
     // 1. write unique ids
-    validIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_valid");
+    validIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/identifiers_valid");
 
     // 2. write invalid ids
-    invalidIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_invalid");
+    invalidIdentifiers
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/identifiers_invalid");
 
     // 3. write absent ids
-    absentIdentifiers.write().mode("overwrite").parquet(outputPath + "/identifiers_absent");
+    absentIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/identifiers_absent");
 
     // 4. write metrics to yaml
-    writeMetricsYaml(fs, metrics, outputPath + "/verbatim-to-identifier.yml");
+    writeMetricsYaml(fs, metrics, outputPath + "/" + METRICS_FILENAME);
 
     // clean up
     fs.delete(new Path(outputPath + "/extended_records_expanded"), true);
@@ -288,8 +269,8 @@ public class ValidateIdentifiers {
     Long absentCount = absentRecords.count();
     Long identifiersCount = identifiers.count();
 
-    metrics.put(ABSENT_GBIF_ID_COUNT, absentRecords.count());
-    metrics.put(FILTERED_GBIF_IDS_COUNT, identifiersCount - absentCount);
+    metrics.put(ABSENT_GBIF_ID_COUNT + "Attempted", absentRecords.count());
+    metrics.put(FILTERED_GBIF_IDS_COUNT + "Attempted", identifiersCount - absentCount);
 
     return absentRecords;
   }
@@ -308,7 +289,7 @@ public class ValidateIdentifiers {
               }
             });
 
-    metrics.put(VALID_GBIF_ID_COUNT, validRecords.count());
+    metrics.put(VALID_GBIF_ID_COUNT + "Attempted", validRecords.count());
     return validRecords;
   }
 
@@ -324,7 +305,7 @@ public class ValidateIdentifiers {
                     && ir.getIssues().getIssueList().contains(GBIF_ID_INVALID);
               }
             });
-    metrics.put(INVALID_GBIF_ID_COUNT, invalidRecords.count());
+    metrics.put(INVALID_GBIF_ID_COUNT + "Attempted", invalidRecords.count());
     return invalidRecords;
   }
 
@@ -345,11 +326,11 @@ public class ValidateIdentifiers {
     long duplicateCount =
         duplicates.isEmpty() ? 0L : duplicates.agg(sum("count")).first().getLong(0);
 
-    metrics.put(DUPLICATE_IDS_COUNT, duplicateCount);
+    metrics.put(DUPLICATE_IDS_COUNT + "Attempted", duplicateCount);
 
     // Compute unique (non-duplicate) IDs
     long totalCount = records.count();
-    metrics.put(UNIQUE_IDS_COUNT, totalCount - duplicateCount);
+    metrics.put(UNIQUE_IDS_COUNT + "Attempted", totalCount - duplicateCount);
   }
 
   /**
