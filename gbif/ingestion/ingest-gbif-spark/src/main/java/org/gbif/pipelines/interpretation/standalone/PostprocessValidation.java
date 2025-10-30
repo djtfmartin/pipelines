@@ -80,7 +80,7 @@ public class PostprocessValidation {
     String attempt = Integer.toString(message.getAttempt());
     String metaFileName = ValidateIdentifiers.METRICS_FILENAME;
     String metaPath = String.join("/", config.getOutputPath(), datasetId, attempt, metaFileName);
-    log.info("Getting records number from the file - {}", metaPath);
+    log.debug("Getting records number from the file - {}", metaPath);
 
     Double threshold =
         getThresholdTagValue().orElse(config.getStandalone().getIdThresholdPercent());
@@ -176,7 +176,7 @@ public class PostprocessValidation {
     String installationKey = getInstallationKey(httpClient, datasetKey);
     boolean r = config.getStandalone().getSkipInstallationsList().contains(installationKey);
     if (r) {
-      log.info("Installation key {} is in the config skip list", datasetKey);
+      log.warn("Installation key {} is in the config skip list", datasetKey);
     }
     return r;
   }
