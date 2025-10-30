@@ -90,7 +90,7 @@ public class PostprocessValidation {
           try {
             String value =
                 getValueByKey(fileSystem, metaPath, metric + PipelinesVariables.Metrics.ATTEMPTED)
-                    .orElse("0L");
+                    .orElse("0");
             return Long.parseLong(value);
           } catch (IOException ex) {
             throw new PipelinesException(ex);

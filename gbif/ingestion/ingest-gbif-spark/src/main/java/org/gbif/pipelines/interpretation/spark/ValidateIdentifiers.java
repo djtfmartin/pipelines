@@ -331,6 +331,7 @@ public class ValidateIdentifiers {
     // Compute unique (non-duplicate) IDs
     long totalCount = records.count();
     metrics.put(UNIQUE_IDS_COUNT + "Attempted", totalCount - duplicateCount);
+    metrics.put(GBIF_ID_RECORDS_COUNT + "Attempted", totalCount);
   }
 
   /**
