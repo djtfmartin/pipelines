@@ -58,7 +58,7 @@ public class IdentifierCallback
             .validate();
 
     if (validationResult.isResultValid()) {
-      log.info(validationResult.getValidationMessage());
+      log.debug(validationResult.getValidationMessage());
     } else {
       historyClient.notifyAbsentIdentifiers(
           message.getDatasetUuid(),
