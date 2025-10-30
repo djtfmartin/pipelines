@@ -140,10 +140,12 @@ public class Indexing {
         indexNumberShards,
         indexNumberReplicas);
 
+    // where the pre-prepared json should be
     String inputPath =
         String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
 
-    String outputPath = String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt);
+    // output path for metrics
+    String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     ElasticOptions options =
         ElasticOptions.fromArgsAndConfig(
