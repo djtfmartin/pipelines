@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat2;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
@@ -81,13 +82,6 @@ public class Fragmenter {
         required = false,
         arity = 1)
     private boolean occurrenceIdValid = true;
-
-    @Parameter(
-        names = "--generateIds",
-        description = "DWCA validation from crawler, all occurrenceIds are unique",
-        required = false,
-        arity = 1)
-    private boolean generateIds = true;
 
     @Parameter(
         names = "--config",
@@ -209,12 +203,15 @@ public class Fragmenter {
                           Bytes.toBytes(record.getRecordBody()));
                       return new Tuple2<>(
                           new ImmutableBytesWritable(Bytes.toBytes(record.getKey())), put);
-                    });
+                    })
+            .repartitionAndSortWithinPartitions(
+                new SaltPrefixPartitioner(10) // FIXME
+                );
 
     cleanHdfsPath(fileSystem, config);
     String hfilePath = outputPath + "/fragment";
 
-    // 2️⃣ Configure HFile output
+    // Configure HFile output
     Configuration hbaseConf = HBaseConfiguration.create();
     hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
 
@@ -235,11 +232,7 @@ public class Fragmenter {
 
       LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
       loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
-      System.out.println(
-          "✅ Successfully loaded HFiles from "
-              + hfilePath
-              + " into table "
-              + config.getFragmentsTable());
+
     } catch (Exception ex) {
       log.error("Error while loading HFiles from " + config.getFragmentsTable(), ex);
     }
@@ -411,5 +404,25 @@ public class Fragmenter {
     private String recordBody;
     private String hashValue;
     private Long createdDate;
+  }
+
+  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
+  public static class SaltPrefixPartitioner extends Partitioner {
+    final int numPartitions;
+
+    public SaltPrefixPartitioner(int saltLength) {
+      numPartitions = Double.valueOf(Math.pow(10, saltLength)).intValue();
+    }
+
+    @Override
+    public int getPartition(Object key) {
+      String saltAsString = ((String) key).substring(0, ((String) key).indexOf(":"));
+      return Integer.parseInt(saltAsString);
+    }
+
+    @Override
+    public int numPartitions() {
+      return numPartitions;
+    }
   }
 }
