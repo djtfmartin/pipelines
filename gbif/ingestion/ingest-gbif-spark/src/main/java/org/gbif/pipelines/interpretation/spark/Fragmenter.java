@@ -215,6 +215,10 @@ public class Fragmenter {
     Configuration hbaseConf = HBaseConfiguration.create();
     hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
     hbaseConf.set("hbase.fs.tmp.dir", outputPath + "/hfile-staging");
+    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+      hbaseConf.addResource(new Path(config.getHdfsSiteConfig()));
+      hbaseConf.addResource(new Path(config.getCoreSiteConfig()));
+    }
 
     try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
         Admin admin = connection.getAdmin();
@@ -247,16 +251,16 @@ public class Fragmenter {
   }
 
   @NotNull
-  private static void cleanHdfsPath(FileSystem fileSystem, PipelinesConfig config, String outputPath)
-      throws IOException {
+  private static void cleanHdfsPath(
+      FileSystem fileSystem, PipelinesConfig config, String outputPath) throws IOException {
     Path fragmentPath = new Path(outputPath + "/fragment");
     if (fileSystem.exists(fragmentPath)) {
       fileSystem.delete(fragmentPath, true);
     }
-      Path hfilesPath = new Path(outputPath + "/hfile-staging");
-      if (fileSystem.exists(hfilesPath)) {
-          fileSystem.delete(hfilesPath, true);
-      }
+    Path hfilesPath = new Path(outputPath + "/hfile-staging");
+    if (fileSystem.exists(hfilesPath)) {
+      fileSystem.delete(hfilesPath, true);
+    }
   }
 
   private static Dataset<RawRecord> convertToRawRecords(
