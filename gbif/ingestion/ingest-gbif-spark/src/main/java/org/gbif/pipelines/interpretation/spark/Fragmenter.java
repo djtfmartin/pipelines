@@ -204,9 +204,7 @@ public class Fragmenter {
                       return new Tuple2<>(
                           new ImmutableBytesWritable(Bytes.toBytes(record.getKey())), put);
                     })
-            .repartitionAndSortWithinPartitions(
-                new SaltPrefixPartitioner(10) // FIXME
-                );
+            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
 
     cleanHdfsPath(fileSystem, config, outputPath);
     String hfilePath = outputPath + "/fragment";
