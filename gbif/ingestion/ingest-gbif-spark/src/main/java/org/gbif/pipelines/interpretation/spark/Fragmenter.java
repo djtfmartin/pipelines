@@ -10,6 +10,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.function.Predicate;
 import lombok.Builder;
@@ -28,6 +29,7 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.SnappyCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
@@ -178,43 +180,61 @@ public class Fragmenter {
     log.info("Count: {}", rawRecords.count());
 
     // write hfiles
-    JavaPairRDD<ImmutableBytesWritable, KeyValue> hbaseKvs =
+    JavaPairRDD<Tuple2<String, String>, String> hbaseKvs =
         rawRecords
             .javaRDD()
             .flatMapToPair(
                 record -> {
                   byte[] rowKey = Bytes.toBytes(record.getKey());
-                  ImmutableBytesWritable rowKeyWritable = new ImmutableBytesWritable(rowKey);
-                  List<KeyValue> kvList =
-                      Arrays.asList(
-                          new KeyValue(
-                              rowKey,
-                              Bytes.toBytes("fragment"),
-                              Bytes.toBytes("attempt"),
-                              Bytes.toBytes(String.valueOf(attempt))),
-                          new KeyValue(
-                              rowKey,
-                              Bytes.toBytes("fragment"),
-                              Bytes.toBytes("dateCreated"),
-                              Bytes.toBytes(record.getCreatedDate())),
-                          new KeyValue(
-                              rowKey,
-                              Bytes.toBytes("fragment"),
-                              Bytes.toBytes("protocol"),
-                              Bytes.toBytes(EndpointType.DWC_ARCHIVE.name())),
-                          new KeyValue(
-                              rowKey,
-                              Bytes.toBytes("fragment"),
-                              Bytes.toBytes("record"),
-                              Bytes.toBytes(record.getRecordBody()))
-                      );
+                  List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getKey(), "attempt"), String.valueOf(attempt)));
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getKey(), "dateCreated"),
+                          String.valueOf(record.getCreatedDate())));
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getKey(), "protocol"),
+                          EndpointType.DWC_ARCHIVE.name()));
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getKey(), "record"), record.getRecordBody()));
+                  return cells.iterator();
+                })
+            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
 
-                  List<Tuple2<ImmutableBytesWritable, KeyValue>> output = new ArrayList<>();
-                  for (KeyValue kv : kvList) {
-                      output.add(new Tuple2<>(rowKeyWritable, kv));
-                  }
-                  return output.iterator();
-                }).sortByKey();
+    //                  List<KeyValue> kvList =
+    //                      Arrays.asList(
+    //                          new KeyValue(
+    //                              rowKey,
+    //                              Bytes.toBytes("fragment"),
+    //                              Bytes.toBytes("attempt"),
+    //                              Bytes.toBytes(String.valueOf(attempt))),
+    //                          new KeyValue(
+    //                              rowKey,
+    //                              Bytes.toBytes("fragment"),
+    //                              Bytes.toBytes("dateCreated"),
+    //                              Bytes.toBytes(record.getCreatedDate())),
+    //                          new KeyValue(
+    //                              rowKey,
+    //                              Bytes.toBytes("fragment"),
+    //                              Bytes.toBytes("protocol"),
+    //                              Bytes.toBytes(EndpointType.DWC_ARCHIVE.name())),
+    //                          new KeyValue(
+    //                              rowKey,
+    //                              Bytes.toBytes("fragment"),
+    //                              Bytes.toBytes("record"),
+    //                              Bytes.toBytes(record.getRecordBody()))
+    //                      );
+    //
+    //                  List<Tuple2<ImmutableBytesWritable, KeyValue>> output = new ArrayList<>();
+    //                  for (KeyValue kv : kvList) {
+    //                      output.add(new Tuple2<>(rowKeyWritable, kv));
+    //                  }
+    //                  return output.iterator();
+    //                });
     //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
 
     cleanHdfsPath(fileSystem, config, outputPath);
@@ -244,12 +264,25 @@ public class Fragmenter {
       job.setMapOutputValueClass(org.apache.hadoop.hbase.KeyValue.class);
       HFileOutputFormat2.configureIncrementalLoad(job, table, regionLocator);
 
-      hbaseKvs.saveAsNewAPIHadoopFile(
-          hfilePath,
-          ImmutableBytesWritable.class,
-          KeyValue.class,
-          HFileOutputFormat2.class,
-          hbaseConf);
+      hbaseKvs
+          .mapToPair(
+              cell -> {
+                ImmutableBytesWritable k = new ImmutableBytesWritable(Bytes.toBytes(cell._1._1));
+                Cell row =
+                    new KeyValue(
+                        Bytes.toBytes(cell._1._1), // key
+                        Bytes.toBytes("fragment"), // column family
+                        Bytes.toBytes(cell._1._2), // cell
+                        Bytes.toBytes(cell._2) // cell value
+                        );
+                return new Tuple2<>(k, row);
+              })
+          .saveAsNewAPIHadoopFile(
+              hfilePath,
+              ImmutableBytesWritable.class,
+              KeyValue.class,
+              HFileOutputFormat2.class,
+              hbaseConf);
 
       LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
       loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
@@ -429,23 +462,31 @@ public class Fragmenter {
     private Long createdDate;
   }
 
-  //  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
-  //  public static class SaltPrefixPartitioner extends Partitioner {
-  //    final int numPartitions;
-  //
-  //    public SaltPrefixPartitioner(int saltLength) {
-  //      numPartitions = Double.valueOf(Math.pow(10, saltLength)).intValue();
-  //    }
-  //
-  //    @Override
-  //    public int getPartition(Object key) {
-  //      String saltAsString = ((String) key).substring(0, ((String) key).indexOf(":"));
-  //      return Integer.parseInt(saltAsString);
-  //    }
-  //
-  //    @Override
-  //    public int numPartitions() {
-  //      return numPartitions;
-  //    }
-  //  }
+  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
+  public static class SaltPrefixPartitioner extends Partitioner {
+    final int numPartitions;
+
+    public SaltPrefixPartitioner(int saltLength) {
+      numPartitions = Double.valueOf(Math.pow(10, saltLength)).intValue();
+    }
+
+    @Override
+    public int getPartition(Object key) {
+      String saltAsString = ((String) key).substring(0, ((String) key).indexOf(":"));
+      return Integer.parseInt(saltAsString);
+    }
+
+    @Override
+    public int numPartitions() {
+      return numPartitions;
+    }
+  }
+
+  /** Necessary as the Tuple2 does not implement a comparator in Java */
+  static class Tuple2StringComparator implements Comparator<Tuple2<String, String>>, Serializable {
+    @Override
+    public int compare(Tuple2<String, String> o1, Tuple2<String, String> o2) {
+      return o1._1.equals(o2._1) ? o1._2.compareTo(o2._2) : o1._1.compareTo(o2._1);
+    }
+  }
 }
