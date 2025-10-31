@@ -154,6 +154,8 @@ public class Fragmenter {
       boolean useOccurrenceId)
       throws Exception {
 
+    log.info("Starting to run fragmenter for dataset {}, attempt {}", datasetId, attempt);
+
     String outputPath = config.getOutputPath() + "/" + datasetId + "/" + attempt;
 
     // read verbatim records
