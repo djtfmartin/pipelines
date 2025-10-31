@@ -191,11 +191,6 @@ public class Fragmenter {
                           new KeyValue(
                               rowKey,
                               Bytes.toBytes("fragment"),
-                              Bytes.toBytes("protocol"),
-                              Bytes.toBytes(EndpointType.DWC_ARCHIVE.name())),
-                          new KeyValue(
-                              rowKey,
-                              Bytes.toBytes("fragment"),
                               Bytes.toBytes("attempt"),
                               Bytes.toBytes(String.valueOf(attempt))),
                           new KeyValue(
@@ -203,6 +198,11 @@ public class Fragmenter {
                               Bytes.toBytes("fragment"),
                               Bytes.toBytes("dateCreated"),
                               Bytes.toBytes(record.getCreatedDate())),
+                          new KeyValue(
+                              rowKey,
+                              Bytes.toBytes("fragment"),
+                              Bytes.toBytes("protocol"),
+                              Bytes.toBytes(EndpointType.DWC_ARCHIVE.name())),
                           new KeyValue(
                               rowKey,
                               Bytes.toBytes("fragment"),
