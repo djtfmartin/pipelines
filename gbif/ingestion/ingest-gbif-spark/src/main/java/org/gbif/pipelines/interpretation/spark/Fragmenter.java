@@ -19,13 +19,17 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat2;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.SnappyCodec;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.FilterFunction;
@@ -211,6 +215,8 @@ public class Fragmenter {
 
     // Configure HFile output
     Configuration hbaseConf = HBaseConfiguration.create();
+    hbaseConf.set(FileOutputFormat.COMPRESS, "true");
+    hbaseConf.setClass(FileOutputFormat.COMPRESS_CODEC, SnappyCodec.class, CompressionCodec.class);
     hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
     hbaseConf.set("hbase.fs.tmp.dir", outputPath + "/hfile-staging");
     hbaseConf.set("hbase.mapreduce.hfileoutputformat.table.name", config.getFragmentsTable());
@@ -233,7 +239,7 @@ public class Fragmenter {
 
       // 3️⃣ Write HFiles to disk
       hbasePuts.saveAsNewAPIHadoopFile(
-          hfilePath, ImmutableBytesWritable.class, Put.class, HFileOutputFormat2.class, hbaseConf);
+          hfilePath, ImmutableBytesWritable.class, KeyValue.class, HFileOutputFormat2.class, hbaseConf);
 
       LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
       loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
