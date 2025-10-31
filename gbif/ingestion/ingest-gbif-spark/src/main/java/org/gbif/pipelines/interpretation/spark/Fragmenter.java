@@ -220,15 +220,16 @@ public class Fragmenter {
 
       cleanHdfsPath(fileSystem, config);
 
+      String hfilePath = outputPath + "/fragment";
+
       // 3️⃣ Write HFiles to disk
       hbasePuts.saveAsNewAPIHadoopFile(
-          outputPath + "/fragment",
+          hfilePath,
           ImmutableBytesWritable.class,
           Put.class,
           HFileOutputFormat2.class,
           hbaseConf);
 
-      String hfilePath = outputPath + "/fragment";
       LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
       loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
       System.out.println(
