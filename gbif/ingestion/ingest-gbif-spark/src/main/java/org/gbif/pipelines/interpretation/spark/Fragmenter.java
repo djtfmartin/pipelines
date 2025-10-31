@@ -18,9 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat2;
@@ -30,7 +28,6 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.SnappyCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.spark.Partitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
@@ -182,7 +179,7 @@ public class Fragmenter {
     log.info("Count: {}", rawRecords.count());
 
     // write hfiles
-    JavaPairRDD<ImmutableBytesWritable, Put> hbasePuts =
+    JavaPairRDD<ImmutableBytesWritable, KeyValue> hbasePuts =
         rawRecords
             .javaRDD()
             .mapToPair(
@@ -207,8 +204,24 @@ public class Fragmenter {
                           Bytes.toBytes(record.getRecordBody()));
                       return new Tuple2<>(
                           new ImmutableBytesWritable(Bytes.toBytes(record.getKey())), put);
-                    });
-//            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
+                    })
+            .flatMapToPair(
+                tuple -> {
+                  Put put = tuple._2;
+                  List<Tuple2<ImmutableBytesWritable, KeyValue>> kvs = new ArrayList<>();
+                  for (Cell cell :
+                      put.getFamilyCellMap().values().stream()
+                          .flatMap(Collection::stream)
+                          .toList()) {
+                    kvs.add(
+                        new Tuple2<>(
+                            new ImmutableBytesWritable(CellUtil.cloneRow(cell)),
+                            KeyValueUtil.ensureKeyValue(cell)));
+                  }
+                  return kvs.iterator();
+                });
+    ;
+    //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
 
     cleanHdfsPath(fileSystem, config, outputPath);
     String hfilePath = outputPath + "/fragment";
@@ -239,7 +252,11 @@ public class Fragmenter {
 
       // 3️⃣ Write HFiles to disk
       hbasePuts.saveAsNewAPIHadoopFile(
-          hfilePath, ImmutableBytesWritable.class, KeyValue.class, HFileOutputFormat2.class, hbaseConf);
+          hfilePath,
+          ImmutableBytesWritable.class,
+          KeyValue.class,
+          HFileOutputFormat2.class,
+          hbaseConf);
 
       LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
       loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
@@ -419,23 +436,23 @@ public class Fragmenter {
     private Long createdDate;
   }
 
-//  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
-//  public static class SaltPrefixPartitioner extends Partitioner {
-//    final int numPartitions;
-//
-//    public SaltPrefixPartitioner(int saltLength) {
-//      numPartitions = Double.valueOf(Math.pow(10, saltLength)).intValue();
-//    }
-//
-//    @Override
-//    public int getPartition(Object key) {
-//      String saltAsString = ((String) key).substring(0, ((String) key).indexOf(":"));
-//      return Integer.parseInt(saltAsString);
-//    }
-//
-//    @Override
-//    public int numPartitions() {
-//      return numPartitions;
-//    }
-//  }
+  //  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
+  //  public static class SaltPrefixPartitioner extends Partitioner {
+  //    final int numPartitions;
+  //
+  //    public SaltPrefixPartitioner(int saltLength) {
+  //      numPartitions = Double.valueOf(Math.pow(10, saltLength)).intValue();
+  //    }
+  //
+  //    @Override
+  //    public int getPartition(Object key) {
+  //      String saltAsString = ((String) key).substring(0, ((String) key).indexOf(":"));
+  //      return Integer.parseInt(saltAsString);
+  //    }
+  //
+  //    @Override
+  //    public int numPartitions() {
+  //      return numPartitions;
+  //    }
+  //  }
 }
