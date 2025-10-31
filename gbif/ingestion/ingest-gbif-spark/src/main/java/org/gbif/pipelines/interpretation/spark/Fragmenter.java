@@ -214,7 +214,7 @@ public class Fragmenter {
     // Configure HFile output
     Configuration hbaseConf = HBaseConfiguration.create();
     hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
-    hbaseConf.set("hbase.bulkload.staging.dir", outputPath + "/hfile-staging");
+    hbaseConf.set("hbase.fs.tmp.dir", outputPath + "/hfile-staging");
 
     try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
         Admin admin = connection.getAdmin();
