@@ -240,7 +240,6 @@ public class ValidateIdentifiers {
     writeMetricsYaml(fs, metrics, outputPath + "/" + METRICS_FILENAME);
 
     // clean up
-    fs.delete(new Path(outputPath + "/extended_records_expanded"), true);
     fs.delete(new Path(outputPath + "/identifiers_transformed"), true);
 
     log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
@@ -382,13 +381,13 @@ public class ValidateIdentifiers {
             Encoders.bean(ExtendedRecord.class));
 
     // write out the expanded records for debugging/inspection
-    expanded.write().mode("overwrite").parquet(outputPath + "/extended_records_expanded");
+    expanded.write().mode("overwrite").parquet(outputPath + "/verbatim");
 
     // reload
     return spark
         .read()
         .format("parquet")
-        .load(outputPath + "/extended_records_expanded")
+        .load(outputPath + "/verbatim")
         .as(Encoders.bean(ExtendedRecord.class));
   }
 

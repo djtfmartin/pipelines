@@ -10,7 +10,6 @@ public class RawRecord {
   private final String key;
   private final String recordBody;
   private final String hashValue;
-
   @Setter private Long createdDate;
 
   public RawRecord(String key, String recordBody, String hashValue, Long createdDate) {

@@ -1,22 +1,54 @@
 package org.gbif.pipelines.interpretation.spark;
 
+import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
+import java.util.*;
+import java.util.function.Predicate;
+import lombok.Builder;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat2;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.function.FilterFunction;
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.gbif.api.vocabulary.EndpointType;
+import org.gbif.dwc.terms.DwcTerm;
+import org.gbif.dwc.terms.Term;
+import org.gbif.dwc.terms.TermFactory;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.functions.SerializableSupplier;
+import org.gbif.pipelines.interpretation.transform.utils.KeygenServiceFactory;
+import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.gbif.pipelines.keygen.HBaseLockingKey;
+import org.gbif.pipelines.keygen.Keygen;
+import org.gbif.pipelines.keygen.OccurrenceRecord;
+import org.gbif.pipelines.keygen.identifier.OccurrenceKeyBuilder;
+import scala.Tuple2;
 
 @Slf4j
 public class Fragmenter {
 
   public static final String METRICS_FILENAME = "fragmenter.yml";
+  private static final TermFactory TERM_FACTORY = TermFactory.instance();
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Parameters(separators = "=")
   private static class Args {
@@ -29,6 +61,27 @@ public class Fragmenter {
 
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
+
+    @Parameter(
+        names = "--tripletValid",
+        description = "DWCA validation from crawler, all triplets are unique",
+        required = false,
+        arity = 1)
+    private boolean tripletValid = false;
+
+    @Parameter(
+        names = "--occurrenceIdValid",
+        description = "DWCA validation from crawler, all occurrenceIds are unique",
+        required = false,
+        arity = 1)
+    private boolean occurrenceIdValid = true;
+
+    @Parameter(
+        names = "--generateIds",
+        description = "DWCA validation from crawler, all occurrenceIds are unique",
+        required = false,
+        arity = 1)
+    private boolean generateIds = true;
 
     @Parameter(
         names = "--config",
@@ -49,7 +102,7 @@ public class Fragmenter {
     boolean help;
   }
 
-  public static void main(String[] argsv) throws IOException {
+  public static void main(String[] argsv) throws Exception {
 
     Fragmenter.Args args = new Fragmenter.Args();
     JCommander jCommander = new JCommander(args);
@@ -61,33 +114,23 @@ public class Fragmenter {
       return;
     }
 
+    // get config, spark session and filesystem initialised
     PipelinesConfig config = loadConfig(args.config);
+    SparkSession spark =
+        getSparkSession(args.master, args.appName, config, Fragmenter::configSparkSession);
+    FileSystem fileSystem = getFileSystem(spark, config);
 
-    /* ############ standard init block ########## */
-    // spark
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName(args.appName);
-    if (args.master != null) {
-      sparkBuilder = sparkBuilder.master(args.master);
-      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
-    }
-    configSparkSession(sparkBuilder, config);
-    SparkSession spark = sparkBuilder.getOrCreate();
+    // run main pipeline
+    runFragmenter(
+        spark,
+        fileSystem,
+        config,
+        args.datasetId,
+        args.attempt,
+        args.tripletValid,
+        args.occurrenceIdValid);
 
-    FileSystem fileSystem;
-    Configuration hadoopConf = spark.sparkContext().hadoopConfiguration();
-    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
-      hadoopConf.addResource(new Path(config.getHdfsSiteConfig()));
-      hadoopConf.addResource(new Path(config.getCoreSiteConfig()));
-      fileSystem = FileSystem.get(hadoopConf);
-    } else {
-      log.warn("Using local filesystem - this is suitable for local development only");
-      fileSystem = FileSystem.getLocal(hadoopConf);
-    }
-    /* ############ standard init block - end ########## */
-
-    runFragmenter(spark, fileSystem, config, args.datasetId, args.attempt);
-
+    // shutdown
     spark.stop();
     spark.close();
     fileSystem.close();
@@ -102,7 +145,220 @@ public class Fragmenter {
       FileSystem fileSystem,
       PipelinesConfig config,
       String datasetId,
-      Integer attempt) {
-    log.info("Not implemented yet !");
+      Integer attempt,
+      boolean useTriplet,
+      boolean useOccurrenceId)
+      throws Exception {
+
+    String outputPath = config.getOutputPath() + "/" + datasetId + "/" + attempt;
+
+    // read verbatim records
+    Dataset<ExtendedRecord> verbatim =
+        spark
+            .read()
+            .format("parquet")
+            .load(outputPath + "/verbatim")
+            .as(Encoders.bean(ExtendedRecord.class));
+
+    // convert to dwca
+    SerializableSupplier<HBaseLockingKey> supplier =
+        new SerializableSupplier<HBaseLockingKey>() {
+          @Override
+          public HBaseLockingKey get() {
+            return KeygenServiceFactory.create(config, datasetId);
+          }
+        };
+
+    Dataset<RawRecord> rawRecords =
+        convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId);
+
+    log.info("Count: {}", rawRecords.count());
+
+    // write hfiles
+    JavaPairRDD<ImmutableBytesWritable, Put> hbasePuts =
+        rawRecords
+            .javaRDD()
+            .mapToPair(
+                (PairFunction<RawRecord, ImmutableBytesWritable, Put>)
+                    record -> {
+                      Put put = new Put(Bytes.toBytes(record.getKey()));
+                      put.addColumn(
+                          Bytes.toBytes("fragment"),
+                          Bytes.toBytes("protocol"),
+                          Bytes.toBytes(EndpointType.DWC_ARCHIVE.name()));
+                      put.addColumn(
+                          Bytes.toBytes("fragment"),
+                          Bytes.toBytes("attempt"),
+                          Bytes.toBytes(String.valueOf(attempt)));
+                      put.addColumn(
+                          Bytes.toBytes("fragment"),
+                          Bytes.toBytes("dateCreated"),
+                          Bytes.toBytes(record.getCreatedDate()));
+                      put.addColumn(
+                          Bytes.toBytes("fragment"),
+                          Bytes.toBytes("record"),
+                          Bytes.toBytes(record.getRecordBody()));
+                      return new Tuple2<>(
+                          new ImmutableBytesWritable(Bytes.toBytes(record.getKey())), put);
+                    });
+
+    // 2️⃣ Configure HFile output
+    Configuration hbaseConf = HBaseConfiguration.create();
+    // 3️⃣ Write HFiles to disk
+    hbasePuts.saveAsNewAPIHadoopFile(
+        outputPath + "/fragment",
+        ImmutableBytesWritable.class,
+        Put.class,
+        HFileOutputFormat2.class,
+        hbaseConf);
+  }
+
+  private static Dataset<RawRecord> convertToRawRecords(
+      Dataset<ExtendedRecord> verbatim,
+      SerializableSupplier<HBaseLockingKey> keygenService,
+      boolean useTriplet,
+      boolean useOccurrenceId) {
+    return verbatim
+        .map(
+            (MapFunction<ExtendedRecord, RawRecord>)
+                extendedRecord -> {
+                  String stringRecord = getStringRecord(extendedRecord);
+                  String tripletId = getTriplet(extendedRecord);
+                  String occurrenceId = getOccurrenceId(extendedRecord);
+
+                  DwcOccurrenceRecord dor =
+                      DwcOccurrenceRecord.builder()
+                          .occurrenceId(occurrenceId)
+                          .triplet(tripletId)
+                          .stringRecord(stringRecord)
+                          .build();
+
+                  Predicate<String> emptyValidator = s -> true;
+                  return convertToRawRecord(
+                      keygenService, emptyValidator, useTriplet, useOccurrenceId, dor);
+                },
+            Encoders.bean(RawRecord.class))
+        .filter((FilterFunction<RawRecord>) Objects::nonNull);
+  }
+
+  public static RawRecord convertToRawRecord(
+      SerializableSupplier<HBaseLockingKey> keygenService,
+      Predicate<String> validator,
+      boolean useTriplet,
+      boolean useOccurrenceId,
+      DwcOccurrenceRecord or) {
+
+    Optional<Long> key = Optional.of(Keygen.getErrorKey());
+    try {
+      key = Keygen.getKey(keygenService.get(), useTriplet, useOccurrenceId, false, or);
+    } catch (RuntimeException ex) {
+      log.error(ex.getMessage(), ex);
+    }
+
+    if (key.isEmpty()
+        || Keygen.getErrorKey().equals(key.get())
+        || !validator.test(key.toString())) {
+      return null;
+    }
+
+    return RawRecord.builder()
+        .key(Keygen.getSaltedKey(key.get()))
+        .recordBody(or.getStringRecord())
+        .build();
+  }
+
+  private static String getTriplet(ExtendedRecord er) {
+    String ic = extractNullAwareValue(er, DwcTerm.institutionCode);
+    String cc = extractNullAwareValue(er, DwcTerm.collectionCode);
+    String cn = extractNullAwareValue(er, DwcTerm.catalogNumber);
+    return OccurrenceKeyBuilder.buildKey(ic, cc, cn).orElse(null);
+  }
+
+  private static String getOccurrenceId(ExtendedRecord er) {
+    return extractNullAwareValue(er, DwcTerm.occurrenceID);
+  }
+
+  private static String getStringRecord(ExtendedRecord er) {
+    // we need alphabetically sorted maps to guarantee that identical records have identical JSON
+    Map<String, Object> data = new TreeMap<>();
+
+    data.put("id", er.getId());
+
+    // Put in all core terms
+    er.getCoreTerms()
+        .forEach(
+            (t, value) -> {
+              String ct = TERM_FACTORY.findTerm(t).simpleName();
+              data.put(ct, value);
+            });
+
+    if (!er.getExtensions().isEmpty()) {
+      Map<Term, List<Map<String, String>>> extensions =
+          new TreeMap<>(Comparator.comparing(Term::qualifiedName));
+      data.put("extensions", extensions);
+
+      // iterate over extensions
+      er.getExtensions()
+          .forEach(
+              (ex, values) -> {
+                List<Map<String, String>> records =
+                    new ArrayList<>(er.getExtensions().get(ex).size());
+
+                // iterate over extensions records
+                values.forEach(
+                    m -> {
+                      Map<String, String> edata = new TreeMap<>();
+
+                      m.forEach(
+                          (t, value) -> {
+                            String evt = TERM_FACTORY.findTerm(t).simpleName();
+                            edata.put(evt, value);
+                          });
+                      records.add(edata);
+                    });
+
+                Term et = TERM_FACTORY.findTerm(ex);
+                extensions.put(et, records);
+              });
+    }
+    // serialize to json
+    try {
+      return MAPPER.writeValueAsString(data);
+    } catch (IOException e) {
+      log.error("Cannot serialize star record data", e);
+    }
+    return "";
+  }
+
+  @Data
+  @Builder
+  public static class DwcOccurrenceRecord implements OccurrenceRecord {
+    private String triplet;
+    private String occurrenceId;
+    private String stringRecord;
+
+    @Override
+    public String getStringRecord() {
+      return stringRecord;
+    }
+
+    @Override
+    public Optional<String> getOccurrenceId() {
+      return Optional.ofNullable(occurrenceId);
+    }
+
+    @Override
+    public Optional<String> getTriplet() {
+      return Optional.ofNullable(triplet);
+    }
+  }
+
+  @Data
+  @Builder
+  public static class RawRecord {
+    private String key;
+    private String recordBody;
+    private String hashValue;
+    private Long createdDate;
   }
 }

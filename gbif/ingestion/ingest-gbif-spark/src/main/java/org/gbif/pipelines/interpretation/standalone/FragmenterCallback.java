@@ -36,7 +36,9 @@ public class FragmenterCallback
         fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
-        message.getAttempt());
+        message.getAttempt(),
+        message.getValidationResult().isTripletValid(),
+        message.getValidationResult().isOccurrenceIdValid());
   }
 
   @Override

@@ -24,11 +24,16 @@ public class Standalone {
   public static void main(String[] args) throws Exception {
 
     if (args.length != 2) {
-      throw new IllegalArgumentException("Expecting two arguments: <mode> <config-file>");
+      throw new IllegalArgumentException("Expecting two arguments: <mode> <config-file> <threads>");
     }
 
     Mode mode = Mode.valueOf(args[0].toUpperCase());
     PipelinesConfig config = loadConfig(args[1]);
+    Integer threads = 1;
+    if (args.length == 3) {
+      threads = Integer.parseInt(args[2]);
+    }
+
     switch (mode) {
       case IDENTIFIER:
         new Standalone()
@@ -38,7 +43,7 @@ public class Standalone {
                 "pipelines_occurrence_identifier_standalone",
                 "occurrence.pipelines.verbatim.finished.identifier",
                 "occurrence",
-                1,
+                threads,
                 (messagePublisher -> new IdentifierCallback(config, messagePublisher)));
         break;
       case INTERPRETATION:
@@ -50,7 +55,7 @@ public class Standalone {
                 // exchange/routingkey are used
                 "occurrence.pipelines.verbatim.finished",
                 "occurrence",
-                1,
+                threads,
                 (messagePublisher -> new InterpretationCallback(config, messagePublisher)));
         break;
       case TABLEBUILD:
@@ -61,7 +66,7 @@ public class Standalone {
                 "pipelines_occurrence_hdfs_view_standalone",
                 "occurrence.pipelines.interpretation.finished",
                 "occurrence",
-                1,
+                threads,
                 (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
         break;
       case INDEXING:
@@ -72,7 +77,7 @@ public class Standalone {
                 "pipelines_occurrence_indexing_standalone",
                 "occurrence.pipelines.interpretation.finished",
                 "occurrence",
-                1,
+                threads,
                 (messagePublisher -> new IndexingCallback(config, messagePublisher)));
         break;
       case FRAGMENTER:
@@ -83,7 +88,7 @@ public class Standalone {
                 "pipelines_occurrence_fragmenter_standalone",
                 "occurrence.pipelines.interpretation.finished",
                 "occurrence",
-                1,
+                threads,
                 (messagePublisher -> new FragmenterCallback(config, messagePublisher)));
         break;
       default:
@@ -142,8 +147,6 @@ public class Standalone {
   private static MessageListener createListener(PipelinesConfig pipelinesConfig)
       throws IOException {
     MessagingConfig messagingConfig = pipelinesConfig.getStandalone().getMessaging();
-
-    // String host, int port, String username, String password, String virtualHost
     return new MessageListener(
         new ConnectionParameters(
             messagingConfig.getHost(),
@@ -172,7 +175,7 @@ public class Standalone {
         .addShutdownHook(
             new Thread(
                 () -> {
-                  log.info("\nShutdown signal received. Cleaning up...");
+                  log.info("Shutdown signal received. Cleaning up...");
                   running = false;
                   log.info("Graceful shutdown complete.");
                 }));
