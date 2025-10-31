@@ -16,7 +16,9 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat2;
@@ -41,6 +43,7 @@ import org.gbif.pipelines.keygen.HBaseLockingKey;
 import org.gbif.pipelines.keygen.Keygen;
 import org.gbif.pipelines.keygen.OccurrenceRecord;
 import org.gbif.pipelines.keygen.identifier.OccurrenceKeyBuilder;
+import org.jetbrains.annotations.NotNull;
 import scala.Tuple2;
 
 @Slf4j
@@ -204,6 +207,13 @@ public class Fragmenter {
 
     // 2️⃣ Configure HFile output
     Configuration hbaseConf = HBaseConfiguration.create();
+    Connection connection = ConnectionFactory.createConnection(hbaseConf);
+    Table table = connection.getTable(TableName.valueOf(config.getFragmentsTable()));
+    RegionLocator regionLocator =
+        connection.getRegionLocator(TableName.valueOf(config.getFragmentsTable()));
+
+    cleanHdfsPath(fileSystem, config);
+
     // 3️⃣ Write HFiles to disk
     hbasePuts.saveAsNewAPIHadoopFile(
         outputPath + "/fragment",
@@ -211,6 +221,20 @@ public class Fragmenter {
         Put.class,
         HFileOutputFormat2.class,
         hbaseConf);
+
+    connection.close();
+  }
+
+  @NotNull
+  private static void cleanHdfsPath(FileSystem fileSystem, PipelinesConfig config)
+      throws IOException {
+    Path warehousePath = new Path(config.getHdfsWarehousePath() + "/fragment");
+    log.debug("Checking warehouse path: {}", warehousePath);
+    if (fileSystem.exists(warehousePath)) {
+      log.debug("Deleting warehouse path: {}", warehousePath);
+      fileSystem.delete(warehousePath, true);
+      log.debug("Deleted warehouse path: {}", warehousePath);
+    }
   }
 
   private static Dataset<RawRecord> convertToRawRecords(

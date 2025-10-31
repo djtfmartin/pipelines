@@ -30,6 +30,7 @@ content:
     - http://cms-search.gbif-dev.org:9200/
 amplification:
   wsUrl: http://blast.gbif-dev.org
+fragmentsTable: dev_occurrence_fragment
 keygen:
   occurrenceTable: dave_occurrence
   counterTable: dave_occurrence_counter
