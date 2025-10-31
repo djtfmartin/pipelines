@@ -23,6 +23,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat2;
+import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.FilterFunction;
@@ -211,22 +212,34 @@ public class Fragmenter {
 
     // 2️⃣ Configure HFile output
     Configuration hbaseConf = HBaseConfiguration.create();
-    Connection connection = ConnectionFactory.createConnection(hbaseConf);
-    Table table = connection.getTable(TableName.valueOf(config.getFragmentsTable()));
-    RegionLocator regionLocator =
-        connection.getRegionLocator(TableName.valueOf(config.getFragmentsTable()));
+    try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
+        Admin admin = connection.getAdmin();
+        Table table = connection.getTable(TableName.valueOf(config.getFragmentsTable()));
+        RegionLocator regionLocator =
+            connection.getRegionLocator(TableName.valueOf(config.getFragmentsTable()))) {
 
-    cleanHdfsPath(fileSystem, config);
+      cleanHdfsPath(fileSystem, config);
 
-    // 3️⃣ Write HFiles to disk
-    hbasePuts.saveAsNewAPIHadoopFile(
-        outputPath + "/fragment",
-        ImmutableBytesWritable.class,
-        Put.class,
-        HFileOutputFormat2.class,
-        hbaseConf);
+      // 3️⃣ Write HFiles to disk
+      hbasePuts.saveAsNewAPIHadoopFile(
+          outputPath + "/fragment",
+          ImmutableBytesWritable.class,
+          Put.class,
+          HFileOutputFormat2.class,
+          hbaseConf);
 
-    connection.close();
+      String hfilePath = outputPath + "/fragment";
+      LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
+      loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
+      System.out.println(
+          "✅ Successfully loaded HFiles from "
+              + hfilePath
+              + " into table "
+              + config.getFragmentsTable());
+    } catch (Exception ex) {
+      log.error("Error while loading HFiles from " + config.getFragmentsTable(), ex);
+    }
+
     log.info("Finished running fragmenter. Records {}", recordCount);
 
     writeMetricsYaml(

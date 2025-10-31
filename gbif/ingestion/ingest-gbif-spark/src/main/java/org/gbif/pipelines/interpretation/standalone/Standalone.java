@@ -86,7 +86,7 @@ public class Standalone {
                 mode,
                 config,
                 "pipelines_occurrence_fragmenter_standalone",
-                "occurrence.pipelines.interpretation.finished"  + ".*",
+                "occurrence.pipelines.interpretation.finished" + ".*",
                 "occurrence",
                 threads,
                 (messagePublisher -> new FragmenterCallback(config, messagePublisher)));
