@@ -203,8 +203,8 @@ public class Fragmenter {
                           Bytes.toBytes(record.getRecordBody()));
                       return new Tuple2<>(
                           new ImmutableBytesWritable(Bytes.toBytes(record.getKey())), put);
-                    })
-            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
+                    });
+//            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
 
     cleanHdfsPath(fileSystem, config, outputPath);
     String hfilePath = outputPath + "/fragment";
@@ -409,24 +409,24 @@ public class Fragmenter {
     private String hashValue;
     private Long createdDate;
   }
-
-  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
-  public static class SaltPrefixPartitioner extends Partitioner {
-    final int numPartitions;
-
-    public SaltPrefixPartitioner(int saltLength) {
-      numPartitions = Double.valueOf(Math.pow(10, saltLength)).intValue();
-    }
-
-    @Override
-    public int getPartition(Object key) {
-      String saltAsString = ((String) key).substring(0, ((String) key).indexOf(":"));
-      return Integer.parseInt(saltAsString);
-    }
-
-    @Override
-    public int numPartitions() {
-      return numPartitions;
-    }
-  }
+//
+//  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
+//  public static class SaltPrefixPartitioner extends Partitioner {
+//    final int numPartitions;
+//
+//    public SaltPrefixPartitioner(int saltLength) {
+//      numPartitions = Double.valueOf(Math.pow(10, saltLength)).intValue();
+//    }
+//
+//    @Override
+//    public int getPartition(Object key) {
+//      String saltAsString = ((String) key).substring(0, ((String) key).indexOf(":"));
+//      return Integer.parseInt(saltAsString);
+//    }
+//
+//    @Override
+//    public int numPartitions() {
+//      return numPartitions;
+//    }
+//  }
 }
