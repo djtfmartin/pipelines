@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat2;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
@@ -210,6 +211,9 @@ public class Fragmenter {
                           new ImmutableBytesWritable(Bytes.toBytes(record.getKey())), put);
                     });
 
+    cleanHdfsPath(fileSystem, config);
+    String hfilePath = outputPath + "/fragment";
+
     // 2️⃣ Configure HFile output
     Configuration hbaseConf = HBaseConfiguration.create();
     try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
@@ -218,17 +222,14 @@ public class Fragmenter {
         RegionLocator regionLocator =
             connection.getRegionLocator(TableName.valueOf(config.getFragmentsTable()))) {
 
-      cleanHdfsPath(fileSystem, config);
-
-      String hfilePath = outputPath + "/fragment";
+      Job job = Job.getInstance(hbaseConf);
+      job.setMapOutputKeyClass(ImmutableBytesWritable.class);
+      job.setMapOutputValueClass(org.apache.hadoop.hbase.KeyValue.class);
+      HFileOutputFormat2.configureIncrementalLoad(job, table, regionLocator);
 
       // 3️⃣ Write HFiles to disk
       hbasePuts.saveAsNewAPIHadoopFile(
-          hfilePath,
-          ImmutableBytesWritable.class,
-          Put.class,
-          HFileOutputFormat2.class,
-          hbaseConf);
+          hfilePath, ImmutableBytesWritable.class, Put.class, HFileOutputFormat2.class, hbaseConf);
 
       LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
       loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
