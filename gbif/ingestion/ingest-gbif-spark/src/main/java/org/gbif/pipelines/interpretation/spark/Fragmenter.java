@@ -214,7 +214,7 @@ public class Fragmenter {
                       output.add(new Tuple2<>(rowKeyWritable, kv));
                   }
                   return output.iterator();
-                });
+                }).sortByKey();
     //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
 
     cleanHdfsPath(fileSystem, config, outputPath);
