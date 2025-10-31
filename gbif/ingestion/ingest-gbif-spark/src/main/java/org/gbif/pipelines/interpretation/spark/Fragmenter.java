@@ -314,6 +314,7 @@ public class Fragmenter {
     return RawRecord.builder()
         .key(Keygen.getSaltedKey(key.get()))
         .recordBody(or.getStringRecord())
+        .createdDate(System.currentTimeMillis()) // FIXME - placeholder
         .build();
   }
 
