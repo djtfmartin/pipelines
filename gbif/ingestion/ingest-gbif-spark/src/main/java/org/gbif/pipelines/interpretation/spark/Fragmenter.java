@@ -216,6 +216,8 @@ public class Fragmenter {
 
     // 2️⃣ Configure HFile output
     Configuration hbaseConf = HBaseConfiguration.create();
+    hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
+
     try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
         Admin admin = connection.getAdmin();
         Table table = connection.getTable(TableName.valueOf(config.getFragmentsTable()));
