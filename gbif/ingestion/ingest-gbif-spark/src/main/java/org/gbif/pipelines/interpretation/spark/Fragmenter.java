@@ -185,7 +185,6 @@ public class Fragmenter {
                 record -> {
                   byte[] rowKey = Bytes.toBytes(record.getKey());
                   ImmutableBytesWritable rowKeyWritable = new ImmutableBytesWritable(rowKey);
-
                   List<KeyValue> kvList =
                       Arrays.asList(
                           new KeyValue(
@@ -207,9 +206,8 @@ public class Fragmenter {
                               rowKey,
                               Bytes.toBytes("fragment"),
                               Bytes.toBytes("record"),
-                              Bytes.toBytes(record.getRecordBody())));
-
-                  kvList.sort(new CellComparatorImpl().getSimpleComparator());
+                              Bytes.toBytes(record.getRecordBody()))
+                      );
 
                   List<Tuple2<ImmutableBytesWritable, KeyValue>> output = new ArrayList<>();
                   for (KeyValue kv : kvList) {
@@ -217,7 +215,6 @@ public class Fragmenter {
                   }
                   return output.iterator();
                 });
-    ;
     //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
 
     cleanHdfsPath(fileSystem, config, outputPath);
