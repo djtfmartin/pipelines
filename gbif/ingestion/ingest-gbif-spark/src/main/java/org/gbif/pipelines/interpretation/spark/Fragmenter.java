@@ -209,11 +209,12 @@ public class Fragmenter {
                               Bytes.toBytes("record"),
                               Bytes.toBytes(record.getRecordBody())));
 
+                  kvList.sort(new CellComparatorImpl().getSimpleComparator());
+
                   List<Tuple2<ImmutableBytesWritable, KeyValue>> output = new ArrayList<>();
                   for (KeyValue kv : kvList) {
-                    output.add(new Tuple2<>(rowKeyWritable, kv));
+                      output.add(new Tuple2<>(rowKeyWritable, kv));
                   }
-                  output.sort(new CellComparatorImpl().getSimpleComparator());
                   return output.iterator();
                 });
     ;
@@ -246,7 +247,6 @@ public class Fragmenter {
       job.setMapOutputValueClass(org.apache.hadoop.hbase.KeyValue.class);
       HFileOutputFormat2.configureIncrementalLoad(job, table, regionLocator);
 
-      // 3️⃣ Write HFiles to disk
       hbaseKvs.saveAsNewAPIHadoopFile(
           hfilePath,
           ImmutableBytesWritable.class,
