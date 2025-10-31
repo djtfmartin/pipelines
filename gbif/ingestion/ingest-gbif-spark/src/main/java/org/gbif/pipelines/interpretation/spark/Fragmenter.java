@@ -2,6 +2,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
@@ -175,6 +176,7 @@ public class Fragmenter {
     Dataset<RawRecord> rawRecords =
         convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId);
 
+    long recordCount = rawRecords.count();
     log.info("Count: {}", rawRecords.count());
 
     // write hfiles
@@ -223,6 +225,12 @@ public class Fragmenter {
         hbaseConf);
 
     connection.close();
+    log.info("Finished running fragmenter. Records {}", recordCount);
+
+    writeMetricsYaml(
+        fileSystem,
+        Map.of("fragmenterRecordsCountAttempted", recordCount),
+        outputPath + "/" + METRICS_FILENAME);
   }
 
   @NotNull
