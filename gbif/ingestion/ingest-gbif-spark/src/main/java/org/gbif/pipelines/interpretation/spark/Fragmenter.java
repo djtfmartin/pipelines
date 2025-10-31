@@ -213,6 +213,8 @@ public class Fragmenter {
     Configuration hbaseConf = HBaseConfiguration.create();
     hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
     hbaseConf.set("hbase.fs.tmp.dir", outputPath + "/hfile-staging");
+    hbaseConf.set("hbase.mapreduce.hfileoutputformat.table.name", config.getFragmentsTable());
+
     if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
       hbaseConf.addResource(new Path(config.getHdfsSiteConfig()));
       hbaseConf.addResource(new Path(config.getCoreSiteConfig()));
@@ -409,7 +411,7 @@ public class Fragmenter {
     private String hashValue;
     private Long createdDate;
   }
-//
+
 //  /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
 //  public static class SaltPrefixPartitioner extends Partitioner {
 //    final int numPartitions;
