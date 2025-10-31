@@ -213,6 +213,7 @@ public class Fragmenter {
                   for (KeyValue kv : kvList) {
                     output.add(new Tuple2<>(rowKeyWritable, kv));
                   }
+                  output.sort(new CellComparatorImpl().getSimpleComparator());
                   return output.iterator();
                 });
     ;
