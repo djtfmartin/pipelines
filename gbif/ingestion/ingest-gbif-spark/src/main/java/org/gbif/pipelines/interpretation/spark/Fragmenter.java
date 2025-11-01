@@ -191,7 +191,6 @@ public class Fragmenter {
             .flatMapToPair(
             record -> {
 
-              log.info("Creating cells for record {}", record);
               List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
               cells.add(
                   new Tuple2<>(
@@ -210,7 +209,6 @@ public class Fragmenter {
               return cells.iterator();
             });
 //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
-
 
     cleanHdfsPath(fileSystem, config, outputPath);
     String hfilePath = outputPath + "/fragment";
@@ -299,16 +297,12 @@ public class Fragmenter {
                   String stringRecord = getStringRecord(extendedRecord);
                   String tripletId = getTriplet(extendedRecord);
                   String occurrenceId = getOccurrenceId(extendedRecord);
-
-                  log.info("Converting to raw {}, {}", occurrenceId, tripletId);
-
                   DwcOccurrenceRecord dor =
                       DwcOccurrenceRecord.builder()
                           .occurrenceId(occurrenceId)
                           .triplet(tripletId)
                           .stringRecord(stringRecord)
                           .build();
-
                   Predicate<String> emptyValidator = s -> true;
                   return convertToRawRecord(
                       keygenService, emptyValidator, useTriplet, useOccurrenceId, dor);
