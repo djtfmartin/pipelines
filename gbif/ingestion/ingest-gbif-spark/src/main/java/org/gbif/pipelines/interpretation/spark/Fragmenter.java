@@ -185,6 +185,7 @@ public class Fragmenter {
     // write hfiles
     JavaPairRDD<Tuple2<String, String>, String> hbaseKvs =
         rawRecords
+            .sort("key")
             .javaRDD()
             .flatMapToPair(
             record -> {
