@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.function.Predicate;
 import lombok.Builder;
 import lombok.Data;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -50,6 +51,7 @@ import org.gbif.pipelines.keygen.Keygen;
 import org.gbif.pipelines.keygen.OccurrenceRecord;
 import org.gbif.pipelines.keygen.identifier.OccurrenceKeyBuilder;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.MDC;
 import scala.Tuple2;
 
 @Slf4j
@@ -152,6 +154,7 @@ public class Fragmenter {
       boolean useOccurrenceId)
       throws Exception {
 
+    MDC.put("datasetKey", datasetId);
     log.info("Starting to run fragmenter for dataset {}, attempt {}", datasetId, attempt);
 
     String outputPath = config.getOutputPath() + "/" + datasetId + "/" + attempt;
@@ -184,58 +187,28 @@ public class Fragmenter {
         rawRecords
             .javaRDD()
             .flatMapToPair(
-                record -> {
-                  byte[] rowKey = Bytes.toBytes(record.getKey());
-                  List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getKey(), "attempt"), String.valueOf(attempt)));
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getKey(), "dateCreated"),
-                          String.valueOf(record.getCreatedDate())));
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getKey(), "protocol"),
-                          EndpointType.DWC_ARCHIVE.name()));
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getKey(), "record"), record.getRecordBody()));
-                  return cells.iterator();
-                })
-            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
+            record -> {
 
-    //                  List<KeyValue> kvList =
-    //                      Arrays.asList(
-    //                          new KeyValue(
-    //                              rowKey,
-    //                              Bytes.toBytes("fragment"),
-    //                              Bytes.toBytes("attempt"),
-    //                              Bytes.toBytes(String.valueOf(attempt))),
-    //                          new KeyValue(
-    //                              rowKey,
-    //                              Bytes.toBytes("fragment"),
-    //                              Bytes.toBytes("dateCreated"),
-    //                              Bytes.toBytes(record.getCreatedDate())),
-    //                          new KeyValue(
-    //                              rowKey,
-    //                              Bytes.toBytes("fragment"),
-    //                              Bytes.toBytes("protocol"),
-    //                              Bytes.toBytes(EndpointType.DWC_ARCHIVE.name())),
-    //                          new KeyValue(
-    //                              rowKey,
-    //                              Bytes.toBytes("fragment"),
-    //                              Bytes.toBytes("record"),
-    //                              Bytes.toBytes(record.getRecordBody()))
-    //                      );
-    //
-    //                  List<Tuple2<ImmutableBytesWritable, KeyValue>> output = new ArrayList<>();
-    //                  for (KeyValue kv : kvList) {
-    //                      output.add(new Tuple2<>(rowKeyWritable, kv));
-    //                  }
-    //                  return output.iterator();
-    //                });
-    //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10)); // FIXME
+              log.info("Creating cells for record {}", record);
+              List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
+              cells.add(
+                  new Tuple2<>(
+                      new Tuple2<>(record.getKey(), "attempt"), String.valueOf(attempt)));
+              cells.add(
+                  new Tuple2<>(
+                      new Tuple2<>(record.getKey(), "dateCreated"),
+                      String.valueOf(record.getCreatedDate())));
+              cells.add(
+                  new Tuple2<>(
+                      new Tuple2<>(record.getKey(), "protocol"),
+                      EndpointType.DWC_ARCHIVE.name()));
+              cells.add(
+                  new Tuple2<>(
+                      new Tuple2<>(record.getKey(), "record"), record.getRecordBody()));
+              return cells.iterator();
+            });
+//            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
+
 
     cleanHdfsPath(fileSystem, config, outputPath);
     String hfilePath = outputPath + "/fragment";
@@ -276,7 +249,7 @@ public class Fragmenter {
                         Bytes.toBytes(cell._2) // cell value
                         );
                 return new Tuple2<>(k, row);
-              })
+          })
           .saveAsNewAPIHadoopFile(
               hfilePath,
               ImmutableBytesWritable.class,
@@ -321,9 +294,13 @@ public class Fragmenter {
         .map(
             (MapFunction<ExtendedRecord, RawRecord>)
                 extendedRecord -> {
+
+
                   String stringRecord = getStringRecord(extendedRecord);
                   String tripletId = getTriplet(extendedRecord);
                   String occurrenceId = getOccurrenceId(extendedRecord);
+
+                  log.info("Converting to raw {}, {}", occurrenceId, tripletId);
 
                   DwcOccurrenceRecord dor =
                       DwcOccurrenceRecord.builder()
@@ -455,6 +432,7 @@ public class Fragmenter {
 
   @Data
   @Builder
+  @ToString
   public static class RawRecord {
     private String key;
     private String recordBody;
