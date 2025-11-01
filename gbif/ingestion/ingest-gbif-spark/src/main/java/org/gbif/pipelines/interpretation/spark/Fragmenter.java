@@ -199,7 +199,7 @@ public class Fragmenter {
               cells.add(
                   new Tuple2<>(
                       new Tuple2<>(record.getAs("key"), "dateCreated"),
-                          record.getAs("createdDate")));
+                          ((Long) record.getAs("createdDate")).toString()));
               cells.add(
                   new Tuple2<>(
                       new Tuple2<>(record.getAs("key"), "protocol"),
