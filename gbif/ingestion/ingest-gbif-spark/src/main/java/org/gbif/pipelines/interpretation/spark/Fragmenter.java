@@ -432,16 +432,6 @@ public class Fragmenter {
     }
   }
 
-  @Data
-  @Builder
-  @ToString
-  public static class RawRecord {
-    private String key;
-    private String recordBody;
-    private String hashValue;
-    private Long createdDate;
-  }
-
   /** Partitions by the salt prefix on the given key (which aligns to HBase regions). */
   public static class SaltPrefixPartitioner extends Partitioner {
     final int numPartitions;
