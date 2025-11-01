@@ -177,8 +177,9 @@ public class Fragmenter {
           }
         };
 
-    Dataset<RawRecord> rawRecords =
-        convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId);
+    Dataset<org.apache.spark.sql.Row> rawRecords =
+        convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId)
+                .toDF().orderBy("key");
 
     long recordCount = rawRecords.count();
     log.info("Count: {}", rawRecords.count());
@@ -186,7 +187,6 @@ public class Fragmenter {
     // write hfiles
     JavaPairRDD<Tuple2<String, String>, String> hbaseKvs =
         rawRecords
-            .orderBy(functions.col("key"))
             .javaRDD()
             .flatMapToPair(
             record -> {
@@ -195,18 +195,18 @@ public class Fragmenter {
               List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
               cells.add(
                   new Tuple2<>(
-                      new Tuple2<>(record.getKey(), "attempt"), String.valueOf(attempt)));
+                      new Tuple2<>(record.getAs("key"), "attempt"), String.valueOf(attempt)));
               cells.add(
                   new Tuple2<>(
-                      new Tuple2<>(record.getKey(), "dateCreated"),
-                      String.valueOf(record.getCreatedDate())));
+                      new Tuple2<>(record.getAs("key"), "dateCreated"),
+                          record.getAs("createdDate")));
               cells.add(
                   new Tuple2<>(
-                      new Tuple2<>(record.getKey(), "protocol"),
+                      new Tuple2<>(record.getAs("key"), "protocol"),
                       EndpointType.DWC_ARCHIVE.name()));
               cells.add(
                   new Tuple2<>(
-                      new Tuple2<>(record.getKey(), "record"), record.getRecordBody()));
+                      new Tuple2<>(record.getAs("key"), "record"), record.getAs("recordBody")));
               return cells.iterator();
             });
 //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
@@ -296,8 +296,6 @@ public class Fragmenter {
         .map(
             (MapFunction<ExtendedRecord, RawRecord>)
                 extendedRecord -> {
-
-
                   String stringRecord = getStringRecord(extendedRecord);
                   String tripletId = getTriplet(extendedRecord);
                   String occurrenceId = getOccurrenceId(extendedRecord);
