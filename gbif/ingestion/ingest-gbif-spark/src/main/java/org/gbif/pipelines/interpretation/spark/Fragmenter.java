@@ -37,6 +37,7 @@ import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.functions;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.api.vocabulary.EndpointType;
 import org.gbif.dwc.terms.DwcTerm;
@@ -185,7 +186,7 @@ public class Fragmenter {
     // write hfiles
     JavaPairRDD<Tuple2<String, String>, String> hbaseKvs =
         rawRecords
-            .sort("key")
+            .orderBy(functions.col("key"))
             .javaRDD()
             .flatMapToPair(
             record -> {
