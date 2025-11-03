@@ -38,9 +38,8 @@ public class IndexingCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         "indexing_standalone",
-        pipelinesConfig.getStandalone().getNumberOfShards(),
-        0 // FIXME
-        );
+        pipelinesConfig.getStandalone().getNumberOfShards()
+    );
   }
 
   @Override
