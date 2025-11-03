@@ -5,6 +5,7 @@ import static org.gbif.pipelines.common.ValidatorPredicate.isValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
 import lombok.Builder;
@@ -20,11 +21,8 @@ import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.indexing.IndexSettings;
-import org.gbif.pipelines.common.process.AirflowSparkLauncher;
-import org.gbif.pipelines.common.process.BeamParametersBuilder;
+import org.gbif.pipelines.common.process.*;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
-import org.gbif.pipelines.common.process.RecordCountReader;
-import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.ingest.java.pipelines.InterpretedToEsIndexExtendedPipeline;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
@@ -203,22 +201,18 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
   private void runDistributed(
       PipelinesInterpretedMessage message, BeamParameters beamParameters, long recordsNumber) {
 
-    // Spark dynamic settings
-    boolean useMemoryExtraCoef =
-        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
-    SparkDynamicSettings sparkSettings =
-        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
-
     // App name
     String sparkAppName =
         AppName.get(getType(message), message.getDatasetUuid(), message.getAttempt());
 
+    // create the airflow conf
+      AirflowConfFactory.Conf conf =
+              AirflowConfFactory.createConf(recordsNumber, List.of());
+
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .sparkStaticConfiguration(config.sparkConfig)
-        .sparkDynamicSettings(sparkSettings)
-        .beamParameters(beamParameters)
+        .conf(conf)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

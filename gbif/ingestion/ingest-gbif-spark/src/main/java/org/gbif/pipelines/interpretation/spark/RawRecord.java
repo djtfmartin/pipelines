@@ -8,8 +8,8 @@ import lombok.ToString;
 @Builder
 @ToString
 public class RawRecord {
-    private String key;
-    private String recordBody;
-    private String hashValue;
-    private Long createdDate;
+  private String key;
+  private String recordBody;
+  private String hashValue;
+  private Long createdDate;
 }

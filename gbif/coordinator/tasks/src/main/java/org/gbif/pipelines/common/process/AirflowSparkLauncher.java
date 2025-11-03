@@ -18,8 +18,6 @@ import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.airflow.AirflowBody;
 import org.gbif.pipelines.common.airflow.AirflowClient;
 import org.gbif.pipelines.common.configs.AirflowConfiguration;
-import org.gbif.pipelines.common.configs.SparkConfiguration;
-import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
 
 @Slf4j
 public class AirflowSparkLauncher {
@@ -39,83 +37,29 @@ public class AirflowSparkLauncher {
                       Duration.ofSeconds(1), 2d, Duration.ofSeconds(40)))
               .build());
 
-  private final SparkConfiguration sparkStaticConfiguration;
   private final AirflowClient airflowClient;
   private final AirflowConfiguration airflowConfiguration;
-  private final SparkDynamicSettings sparkDynamicSettings;
-  private final BeamParameters beamParameters;
+  private final AirflowConfFactory.Conf conf;
   private final String sparkAppName;
 
   @Builder
   public AirflowSparkLauncher(
-      SparkConfiguration sparkStaticConfiguration,
       AirflowConfiguration airflowConfiguration,
-      SparkDynamicSettings sparkDynamicSettings,
-      BeamParameters beamParameters,
+      AirflowConfFactory.Conf conf,
       String sparkAppName) {
-    this.sparkStaticConfiguration = sparkStaticConfiguration;
     this.airflowConfiguration = airflowConfiguration;
-    this.sparkDynamicSettings = sparkDynamicSettings;
-    this.beamParameters = beamParameters;
     this.sparkAppName = sparkAppName;
+    this.conf = conf;
     this.airflowClient = AirflowClient.builder().configuration(airflowConfiguration).build();
-
-    // add the app name to the beam params
-    beamParameters.put("appName", sparkAppName);
   }
 
-  private AirflowBody getAirflowBody(String dagId) {
-
-    int driverMemory = sparkStaticConfiguration.driverMemoryLimit * 1024;
-    int driverCpu = Integer.parseInt(sparkStaticConfiguration.driverCpuMin.replace("m", ""));
-    int executorMemory = sparkDynamicSettings.getExecutorMemory() * 1024;
-    int executorCpu = Integer.parseInt(sparkStaticConfiguration.executorCpuMin.replace("m", ""));
-    int memoryOverhead = sparkStaticConfiguration.memoryOverheadMb;
-    // Given as megabytes (Mi)
-    int vectorMemory = sparkStaticConfiguration.vectorMemoryMb;
-    // Given as whole CPUs
-    int vectorCpu = sparkStaticConfiguration.vectorCpu;
-    // Calculate values for Yunikorn annotation
-    // Driver
-    int driverMinResourceMemory =
-        Double.valueOf(Math.ceil((driverMemory + vectorMemory) / 1024d)).intValue();
-    int driverMinResourceCpu = driverCpu + vectorCpu;
-    // Executor
-    int executorMinResourceMemory =
-        Double.valueOf(Math.ceil((executorMemory + memoryOverhead + vectorMemory) / 1024d))
-            .intValue();
-    int executorMinResourceCpu = executorCpu + vectorCpu;
-
-    return AirflowBody.builder()
-        .conf(
-            AirflowBody.Conf.builder()
-                .args(beamParameters.toList())
-                // Driver
-                .driverMinCpu(sparkStaticConfiguration.driverCpuMin)
-                .driverMaxCpu(sparkStaticConfiguration.driverCpuMax)
-                .driverLimitMemory(sparkStaticConfiguration.driverMemoryLimit + "Gi")
-                .driverMinResourceMemory(driverMinResourceMemory + "Gi")
-                .driverMinResourceCpu(driverMinResourceCpu + "m")
-                // Executor
-                .memoryOverhead(String.valueOf(sparkStaticConfiguration.memoryOverheadMb))
-                .executorMinResourceMemory(executorMinResourceMemory + "Gi")
-                .executorMinResourceCpu(executorMinResourceCpu + "m")
-                .executorMinCpu(sparkStaticConfiguration.executorCpuMin)
-                .executorMaxCpu(sparkStaticConfiguration.executorCpuMax)
-                .executorLimitMemory(sparkDynamicSettings.getExecutorMemory() + "Gi")
-                // dynamicAllocation
-                .initialExecutors(sparkDynamicSettings.getExecutorNumbers())
-                .minExecutors(sparkStaticConfiguration.executorInstancesMin)
-                .maxExecutors(sparkDynamicSettings.getExecutorNumbers())
-                // Extra
-                .build())
-        .dagRunId(dagId)
-        .build();
+  private AirflowBody getAirflowBody(String dagId, AirflowConfFactory.Conf conf) {
+    return AirflowBody.builder().conf(conf).dagRunId(dagId).build();
   }
 
   public Optional<Status> submitAwait() {
     try {
-      AirflowBody airflowBody = getAirflowBody(sparkAppName);
+      AirflowBody airflowBody = getAirflowBody(sparkAppName, conf);
 
       log.info("Running Airflow DAG ID {}: {}", airflowBody.getDagRunId(), airflowBody);
       Retry.decorateFunction(AIRFLOW_RETRY, airflowClient::createRun).apply(airflowBody);

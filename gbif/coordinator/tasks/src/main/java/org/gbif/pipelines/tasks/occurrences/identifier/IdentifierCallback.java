@@ -3,6 +3,7 @@ package org.gbif.pipelines.tasks.occurrences.identifier;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
@@ -20,11 +21,8 @@ import org.gbif.pipelines.common.PipelinesVariables.Pipeline;
 import org.gbif.pipelines.common.PipelinesVariables.Pipeline.Conversion;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.hdfs.HdfsViewSettings;
-import org.gbif.pipelines.common.process.AirflowSparkLauncher;
-import org.gbif.pipelines.common.process.BeamParametersBuilder;
+import org.gbif.pipelines.common.process.*;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
-import org.gbif.pipelines.common.process.RecordCountReader;
-import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.ingest.java.pipelines.VerbatimToIdentifierPipeline;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
@@ -183,20 +181,17 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
             .build()
             .get();
 
-    boolean useMemoryExtraCoef =
-        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
-    SparkDynamicSettings sparkSettings =
-        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
-
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
+
+    // create the airflow conf
+      AirflowConfFactory.Conf conf =
+              AirflowConfFactory.createConf(recordsNumber, List.of());
 
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .sparkStaticConfiguration(config.sparkConfig)
-        .sparkDynamicSettings(sparkSettings)
-        .beamParameters(beamParameters)
+        .conf(conf)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

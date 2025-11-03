@@ -10,8 +10,7 @@ spec:
     repo: stackable-docker.gbif.org/stackable
     custom: docker.gbif.org/extended-stackable/spark-k8s-celeborn:3.5.1-stackable24.7.0
   mode: cluster
-#  mainApplicationFile: local:///stackable/spark/jobs/ingest-gbif-spark.jar
-  mainApplicationFile: hdfs://gbif-hdfs/user/dave/ingest-gbif-spark-3.2.7-SNAPSHOT-3.5.6.jar
+  mainApplicationFile: local:///stackable/spark/jobs/ingest-gbif-spark.jar
   mainClass: org.gbif.pipelines.interpretation.spark.Interpretation
   vectorAggregatorConfigMapName: gbif-vector-aggregator-discovery
   s3connection:
@@ -20,20 +19,20 @@ spec:
       port: 9000
       accessStyle: Path
       credentials:
-        secretClass: gbif-spark-history-test-credentials-class
+        secretClass: gbif-spark-history-dev-credentials-class
   logFileDirectory:
     s3:
       prefix: /
       bucket:
         inline:
-          bucketName: spark-history-test-bucket
+          bucketName: spark-history-dev-bucket
   args:
     - "--appName=interpretation-spark-inaturalist"
     - "--datasetId=50c9509d-22c7-4a22-a47d-8c48425ef4a7"
-    - "--attempt=236"
+    - "--attempt=553"
     - "--numberOfShards=1200"
   sparkConf:
-    "spark.jars.packages": "org.apache.celeborn:celeborn-client-spark-3-shaded_2.12:0.5.4,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0,org.apache.spark:spark-avro_2.12:3.5.1"
+    "spark.jars.packages": "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0,org.apache.spark:spark-avro_2.12:3.5.1"
     "spark.driver.extraJavaOptions": "-XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=35"
     "spark.executor.extraJavaOptions": "-XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=35 -XX:ConcGCThread=20"
     "spark.dynamicAllocation.enabled": "false"
@@ -42,16 +41,11 @@ spec:
     "spark.storage.decommission.rddBlocks.enabled": "false"
     "spark.shuffle.readHostLocalDisk": "false"
     "spark.shuffle.service.enabled": "false"
-    "spark.shuffle.manager": "org.apache.spark.shuffle.celeborn.SparkShuffleManager"
     "spark.serializer": "org.apache.spark.serializer.KryoSerializer"
-    "spark.celeborn.client.spark.shuffle.writer": "hash"
-    "spark.celeborn.client.push.replicate.enabled": "true"
     "spark.sql.adaptive.localShuffleReader.enabled": "false"
     "spark.sql.shuffle.partitions": "1200"
     "spark.sql.adaptive.enabled": "true"
     "spark.sql.adaptive.skewJoin.enabled": "true"
-    "spark.shuffle.sort.io.plugin.class": "org.apache.spark.shuffle.celeborn.CelebornShuffleDataIO"
-    "spark.celeborn.master.endpoints": "gbif-shuffle-service-celeborn-master-0.gbif-shuffle-service-celeborn-master-svc.test:9097,gbif-shuffle-service-celeborn-master-1.gbif-shuffle-service-celeborn-master-svc.test:9097,gbif-shuffle-service-celeborn-master-2.gbif-shuffle-service-celeborn-master-svc.test:9097"
     "spark.files.fetchTimeout": "300s"
     "spark.default.parallelism": "1200"
     "spark.jars.ivy": "/tmp"
@@ -69,8 +63,8 @@ spec:
     "spark.executor.extraClassPath": "/etc/hadoop/conf/:/etc/gbif/:/stackable/spark/extra-jars/*:/stackable/spark/jobs/"
     "spark.kubernetes.allocation.batch.size": "5"
     "spark.kubernetes.scheduler.name": "yunikorn"
-    "spark.kubernetes.executor.label.queue": "root.test.pipelines"
-    "spark.kubernetes.submit.label.queue": "root.test.pipelines"
+    "spark.kubernetes.executor.label.queue": "root.dev.pipelines"
+    "spark.kubernetes.submit.label.queue": "root.dev.pipelines"
     "spark.kubernetes.memoryOverheadFactor": "0.15"
     "spark.executor.instances": "30"
     "spark.executor.cores": "10"
@@ -130,7 +124,7 @@ spec:
     podOverrides:
       metadata:
         labels:
-          queue: "root.test.pipelines"
+          queue: "root.dev.pipelines"
     config:
       volumeMounts:
         - name: ivy-settings
@@ -139,19 +133,8 @@ spec:
   driver:
     podOverrides:
       metadata:
-        annotations:
-          yunikorn.apache.org/task-group-name: "spark-driver"
-          yunikorn.apache.org/task-groups: |-
-            [{
-              "name": "spark-driver",
-              "minMember": 1,
-              "minResource": {
-                "cpu": "2250m",
-                "memory": "4Gi"
-              }
-            }]
         labels:
-          queue: "root.test.pipelines"
+          queue: "root.dev.pipelines"
       spec:
         initContainers:
           - name: job
@@ -207,7 +190,7 @@ spec:
     podOverrides:
       metadata:
         labels:
-          queue: "root.test.pipelines"
+          queue: "root.dev.pipelines"
       spec:
         initContainers:
           - name: job

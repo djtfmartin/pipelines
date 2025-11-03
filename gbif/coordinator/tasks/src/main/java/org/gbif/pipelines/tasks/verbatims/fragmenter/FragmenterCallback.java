@@ -6,6 +6,7 @@ import static org.gbif.pipelines.common.utils.PathUtil.buildXmlInputPath;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -22,11 +23,8 @@ import org.gbif.common.messaging.api.messages.PipelinesFragmenterMessage;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
-import org.gbif.pipelines.common.process.AirflowSparkLauncher;
-import org.gbif.pipelines.common.process.BeamParametersBuilder;
+import org.gbif.pipelines.common.process.*;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
-import org.gbif.pipelines.common.process.RecordCountReader;
-import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.core.factory.FileSystemFactory;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.utils.DatasetTypePredicate;
@@ -111,23 +109,18 @@ public class FragmenterCallback extends AbstractMessageCallback<PipelinesInterpr
   }
 
   private void runDistributed(PipelinesInterpretedMessage message, long recordsNumber) {
-    BeamParameters beamParameters = BeamParametersBuilder.verbatimFragmenter(config, message);
-
-    // Spark dynamic settings
-    boolean useMemoryExtraCoef =
-        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
-    SparkDynamicSettings sparkDynamicSettings =
-        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
+//    BeamParameters beamParameters = BeamParametersBuilder.verbatimFragmenter(config, message);
 
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
+    AirflowConfFactory.Conf conf =
+        AirflowConfFactory.createConf(recordsNumber, List.of());
+
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .sparkStaticConfiguration(config.sparkConfig)
-        .sparkDynamicSettings(sparkDynamicSettings)
-        .beamParameters(beamParameters)
+        .conf(conf)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

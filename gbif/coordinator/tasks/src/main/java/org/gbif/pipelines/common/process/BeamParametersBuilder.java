@@ -191,7 +191,6 @@ public class BeamParametersBuilder {
         .putRequireNonNull("properties", config.pipelinesConfig)
         .put("numberOfShards", numberOfShards)
         .putRequireNonNull("interpretationTypes", String.join(",", message.getInterpretTypes()))
-        .put("experiments", "use_deprecated_read")
         .putCondition(config.recordType == RecordType.EVENT, "coreRecordType", "EVENT");
   }
 
@@ -296,8 +295,7 @@ public class BeamParametersBuilder {
           .putRequireNonNull("hdfsSiteConfig", stepConfig.hdfsSiteConfig)
           .putRequireNonNull("coreSiteConfig", stepConfig.coreSiteConfig)
           .putRequireNonNull("properties", pipelinesConfigPath)
-          .put("numberOfShards", numberOfShards)
-          .put("experiments", "use_deprecated_read");
+          .put("numberOfShards", numberOfShards);
     }
   }
 
@@ -327,7 +325,6 @@ public class BeamParametersBuilder {
           .putRequireNonNull("esHosts", String.join(",", esConfig.hosts))
           .putRequireNonNull("properties", pipelinesConfigPath)
           .putRequireNonNull("esIndexName", esIndexName)
-          .put("experiments", "use_deprecated_read")
           .putIfPresent("esAlias", indexConfig.occurrenceAlias)
           .putIfPresent("esMaxBatchSizeBytes", esConfig.maxBatchSizeBytes)
           .putIfPresent("esMaxBatchSize", esConfig.maxBatchSize)

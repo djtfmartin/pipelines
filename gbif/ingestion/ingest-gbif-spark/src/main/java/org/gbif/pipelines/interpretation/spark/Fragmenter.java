@@ -15,7 +15,6 @@ import java.util.*;
 import java.util.function.Predicate;
 import lombok.Builder;
 import lombok.Data;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -37,7 +36,6 @@ import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.functions;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.api.vocabulary.EndpointType;
 import org.gbif.dwc.terms.DwcTerm;
@@ -178,37 +176,35 @@ public class Fragmenter {
         };
 
     Dataset<org.apache.spark.sql.Row> rawRecords =
-        convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId)
-                .toDF().orderBy("key");
+        convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId).toDF().orderBy("key");
 
     long recordCount = rawRecords.count();
-    log.info("Count: {}", rawRecords.count());
+    log.debug("Count: {}", rawRecords.count());
 
     // write hfiles
     JavaPairRDD<Tuple2<String, String>, String> hbaseKvs =
         rawRecords
             .javaRDD()
             .flatMapToPair(
-            record -> {
-
-              List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
-              cells.add(
-                  new Tuple2<>(
-                      new Tuple2<>(record.getAs("key"), "attempt"), String.valueOf(attempt)));
-              cells.add(
-                  new Tuple2<>(
-                      new Tuple2<>(record.getAs("key"), "dateCreated"),
+                record -> {
+                  List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getAs("key"), "attempt"), String.valueOf(attempt)));
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getAs("key"), "dateCreated"),
                           ((Long) record.getAs("createdDate")).toString()));
-              cells.add(
-                  new Tuple2<>(
-                      new Tuple2<>(record.getAs("key"), "protocol"),
-                      EndpointType.DWC_ARCHIVE.name()));
-              cells.add(
-                  new Tuple2<>(
-                      new Tuple2<>(record.getAs("key"), "record"), record.getAs("recordBody")));
-              return cells.iterator();
-            });
-//            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getAs("key"), "protocol"),
+                          EndpointType.DWC_ARCHIVE.name()));
+                  cells.add(
+                      new Tuple2<>(
+                          new Tuple2<>(record.getAs("key"), "record"), record.getAs("recordBody")));
+                  return cells.iterator();
+                });
+    //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
 
     cleanHdfsPath(fileSystem, config, outputPath);
     String hfilePath = outputPath + "/fragment";
@@ -249,7 +245,7 @@ public class Fragmenter {
                         Bytes.toBytes(cell._2) // cell value
                         );
                 return new Tuple2<>(k, row);
-          })
+              })
           .saveAsNewAPIHadoopFile(
               hfilePath,
               ImmutableBytesWritable.class,
