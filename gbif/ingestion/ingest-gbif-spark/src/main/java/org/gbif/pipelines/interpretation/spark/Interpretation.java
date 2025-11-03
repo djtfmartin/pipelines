@@ -243,18 +243,26 @@ public class Interpretation {
   }
 
   private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {
-    long recordsWithEmptyInternalId =
-        identifiers
-            .filter(
-                new FilterFunction<IdentifierRecord>() {
-                  @Override
-                  public boolean call(IdentifierRecord identifierRecord) throws Exception {
-                    return identifierRecord.getInternalId() == null;
-                  }
-                })
-            .count();
+
+    Dataset<IdentifierRecord> missingId =
+        identifiers.filter(
+            new FilterFunction<IdentifierRecord>() {
+              @Override
+              public boolean call(IdentifierRecord identifierRecord) throws Exception {
+                return identifierRecord.getInternalId() == null;
+              }
+            });
+
+    long recordsWithEmptyInternalId = missingId.count();
 
     if (recordsWithEmptyInternalId > 0) {
+      IdentifierRecord record = missingId.first();
+      log.error(
+          "Records with empty internal identifiers: "
+              + recordsWithEmptyInternalId
+              + ". "
+              + "Example record: "
+              + record.toString());
       throw new PipelinesException(
           "Records with empty internal identifiers: " + recordsWithEmptyInternalId);
     }
