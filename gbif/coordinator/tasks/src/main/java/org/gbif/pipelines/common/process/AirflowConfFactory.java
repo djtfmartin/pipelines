@@ -62,7 +62,7 @@ public class AirflowConfFactory {
           .driverMemoryOverheadFactor("0.10")
           .executorMemoryOverheadFactor("0.15")
           .driverCores(4)
-          .executorInstances(6)
+          .executorInstances(10)
           .executorCores(10)
           .defaultParallelism(100)
           .driverMinCpu("2000m")
