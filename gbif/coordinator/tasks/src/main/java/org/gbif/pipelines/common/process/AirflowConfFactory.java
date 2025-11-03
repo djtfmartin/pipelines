@@ -88,7 +88,6 @@ public class AirflowConfFactory {
           .executorMaxCpu("8000m")
           .executorLimitMemory("30Gi")
           .executorMinResourceMemory("34Gi")
-          .kubernetesMemoryOverheadFactor("0.15")
           .build();
 
   /** 50 million to 500 million - iNaturalist * */
@@ -108,7 +107,6 @@ public class AirflowConfFactory {
           .executorMaxCpu("8000m")
           .executorLimitMemory("30Gi")
           .executorMinResourceMemory("34Gi")
-          .kubernetesMemoryOverheadFactor("0.15")
           .build();
 
   public static final Conf LEVEL_3 =
@@ -127,7 +125,6 @@ public class AirflowConfFactory {
           .executorMaxCpu("8000m")
           .executorLimitMemory("30Gi")
           .executorMinResourceMemory("34Gi")
-          .kubernetesMemoryOverheadFactor("0.15")
           .build();
 
   @Data
@@ -156,7 +153,5 @@ public class AirflowConfFactory {
     public final String executorLimitMemory;
     // Sum of memoryOverhead + executorLimitMemory + vector request memory
     public final String executorMinResourceMemory;
-
-    public final String kubernetesMemoryOverheadFactor;
   }
 }

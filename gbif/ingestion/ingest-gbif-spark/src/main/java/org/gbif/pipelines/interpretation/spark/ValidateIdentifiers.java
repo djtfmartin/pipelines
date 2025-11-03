@@ -208,6 +208,7 @@ public class ValidateIdentifiers {
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/identifiers_transformed");
 
+    // reload
     Dataset<IdentifierRecord> identifiers =
         spark
             .read()

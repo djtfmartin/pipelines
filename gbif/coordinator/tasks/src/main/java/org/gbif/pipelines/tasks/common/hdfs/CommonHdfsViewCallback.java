@@ -53,8 +53,8 @@ public class CommonHdfsViewCallback {
         log.info("Start the process. Message - {}", message);
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
           runDistributed(message, beamParameters);
-        } else if (runnerPr.test(StepRunner.STANDALONE)) {
-          runLocal(beamParameters);
+        } else {
+          throw new PipelinesException("This call back only expects DISTRIBUTED");
         }
       } catch (Exception ex) {
         log.error(ex.getMessage(), ex);

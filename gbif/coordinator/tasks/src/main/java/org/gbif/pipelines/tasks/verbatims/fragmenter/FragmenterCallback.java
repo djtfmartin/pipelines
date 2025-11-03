@@ -21,6 +21,7 @@ import org.gbif.common.messaging.AbstractMessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelinesFragmenterMessage;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
+import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.process.*;
@@ -92,12 +93,10 @@ public class FragmenterCallback extends AbstractMessageCallback<PipelinesInterpr
                 .get();
 
         log.info("Start the process. Message - {}", message);
-        if (StepRunner.DISTRIBUTED.name().equalsIgnoreCase(message.getRunner())
-            && DatasetTypePredicate.isEndpointDwca(message.getEndpointType())
-            && config.switchRecordsNumber <= recordsNumber) {
+        if (StepRunner.DISTRIBUTED.name().equalsIgnoreCase(message.getRunner())) {
           runDistributed(message, recordsNumber);
         } else {
-          runLocal(message);
+          throw new PipelinesException("This call back only expects DISTRIBUTED");
         }
       } catch (Exception ex) {
         log.error(ex.getMessage(), ex);

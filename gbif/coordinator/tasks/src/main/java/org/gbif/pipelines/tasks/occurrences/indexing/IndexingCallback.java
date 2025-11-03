@@ -171,9 +171,9 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
 
         log.info("Start the process. Message - {}", message);
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
-          runDistributed(message, beamParameters, recordsNumber);
-        } else if (runnerPr.test(StepRunner.STANDALONE)) {
-          runLocal(beamParameters);
+          runDistributed(message, recordsNumber);
+        } else {
+          throw new PipelinesException("This call back only expects DISTRIBUTED");
         }
       } catch (Exception ex) {
         log.error(ex.getMessage(), ex);
@@ -198,8 +198,7 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
     InterpretedToEsIndexExtendedPipeline.run(beamParameters.toArray(), executor);
   }
 
-  private void runDistributed(
-      PipelinesInterpretedMessage message, BeamParameters beamParameters, long recordsNumber) {
+  private void runDistributed(PipelinesInterpretedMessage message, long recordsNumber) {
 
     // App name
     String sparkAppName =

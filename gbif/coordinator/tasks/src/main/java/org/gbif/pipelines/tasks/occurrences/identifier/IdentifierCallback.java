@@ -98,9 +98,9 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
 
         log.info("Start the process. Message - {}", message);
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
-          runDistributed(message, beamParameters);
-        } else if (runnerPr.test(StepRunner.STANDALONE)) {
-          runLocal(beamParameters);
+          runDistributed(message);
+        } else {
+          throw new PipelinesException("This call back only expects DISTRIBUTED");
         }
 
         IdentifierValidationResult validationResult =
@@ -159,8 +159,7 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
         message.getDatasetType());
   }
 
-  private void runDistributed(PipelinesVerbatimMessage message, BeamParameters beamParameters)
-      throws IOException {
+  private void runDistributed(PipelinesVerbatimMessage message) throws IOException {
 
     // Spark dynamic settings
     Long messageNumber =
