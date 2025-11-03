@@ -3,16 +3,19 @@ kind: Deployment
 metadata:
   name: fragmenter-standalone
   labels:
-    app: fragmenter-standalone
+    app: standalone
+    type: standalone
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: fragmenter-standalone
+      type: standalone
   template:
     metadata:
       labels:
         app: fragmenter-standalone
+        type: standalone
     spec:
       containers:
         - name: fragmenter-standalone

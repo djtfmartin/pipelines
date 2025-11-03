@@ -1,14 +1,7 @@
 package org.gbif.pipelines.interpretation.standalone;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
-@Getter
-@AllArgsConstructor(staticName = "create")
-public class IdentifierValidationResult {
-
-  private final double totalRecords;
-  private final double absentIdentifierRecords;
-  private final boolean isResultValid;
-  private final String validationMessage;
-}
+public record IdentifierValidationResult(
+    double totalRecords,
+    double absentIdentifierRecords,
+    boolean isResultValid,
+    String validationMessage) {}

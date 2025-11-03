@@ -69,7 +69,7 @@ public class PostprocessValidation {
   public IdentifierValidationResult validate() throws IOException {
     if (useThresholdSkipTagValue() || ignoreChecklists() || skipInstallationKey()) {
       String validationMessage = "Skip validation because machine tag id_threshold_skip=true";
-      return IdentifierValidationResult.create(0d, 0d, true, validationMessage);
+      return new IdentifierValidationResult(0d, 0d, true, validationMessage);
     } else {
       return validateThreshold();
     }
@@ -131,7 +131,7 @@ public class PostprocessValidation {
           String.format("Dataset has no API records, but %.0f%% of IDs aren't new", absentPercent);
       isValid = false;
     }
-    return IdentifierValidationResult.create(totalCount, absentIdCount, isValid, validationMessage);
+    return new IdentifierValidationResult(totalCount, absentIdCount, isValid, validationMessage);
   }
 
   /**

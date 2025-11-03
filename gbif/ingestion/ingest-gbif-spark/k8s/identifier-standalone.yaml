@@ -3,16 +3,19 @@ kind: Deployment
 metadata:
   name: identifier-standalone
   labels:
-    app: identifier-standalone
+    app: standalone
+    type: standalone
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: identifier-standalone
+      type: standalone
   template:
     metadata:
       labels:
         app: identifier-standalone
+        type: standalone
     spec:
       containers:
         - name: identifier-standalone

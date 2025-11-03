@@ -58,16 +58,16 @@ public class IdentifierCallback
             .validate();
 
     if (validationResult.isResultValid()) {
-      log.debug(validationResult.getValidationMessage());
+      log.debug(validationResult.validationMessage());
     } else {
       historyClient.notifyAbsentIdentifiers(
           message.getDatasetUuid(),
           message.getAttempt(),
           message.getExecutionId(),
-          validationResult.getValidationMessage());
-      log.error(validationResult.getValidationMessage());
+          validationResult.validationMessage());
+      log.error(validationResult.validationMessage());
       historyClient.markPipelineStatusAsAborted(message.getExecutionId());
-      throw new PipelinesException(validationResult.getValidationMessage());
+      throw new PipelinesException(validationResult.validationMessage());
     }
   }
 

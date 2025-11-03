@@ -4,15 +4,18 @@ metadata:
   name: tablebuild-standalone
   labels:
     app: tablebuild-standalone
+    type: standalone
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: tablebuild-standalone
+      type: standalone
   template:
     metadata:
       labels:
         app: tablebuild-standalone
+        type: standalone
     spec:
       containers:
         - name: tablebuild-standalone

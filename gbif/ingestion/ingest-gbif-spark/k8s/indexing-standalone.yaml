@@ -4,15 +4,18 @@ metadata:
   name: indexing-standalone
   labels:
     app: indexing-standalone
+    type: standalone
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: indexing-standalone
+      type: standalone
   template:
     metadata:
       labels:
         app: indexing-standalone
+        type: standalone
     spec:
       containers:
         - name: indexing-standalone

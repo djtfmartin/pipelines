@@ -4,15 +4,18 @@ metadata:
   name: interpretation-standalone
   labels:
     app: interpretation-standalone
+    type: standalone
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: interpretation-standalone
+      type: standalone
   template:
     metadata:
       labels:
         app: interpretation-standalone
+        type: standalone
     spec:
       containers:
         - name: interpretation-standalone
