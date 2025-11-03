@@ -1,5 +1,6 @@
 package org.gbif.pipelines.tasks.events.interpretation;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +25,6 @@ import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
 import org.gbif.registry.ws.client.DatasetClient;
 import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
-
-import java.util.List;
 
 /** Callback which is called when the {@link PipelinesEventsMessage} is received. */
 @Slf4j
@@ -124,8 +123,7 @@ public class EventsInterpretationCallback extends AbstractMessageCallback<Pipeli
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-      AirflowConfFactory.Conf conf =
-              AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
 
     // Submit
     AirflowSparkLauncher.builder()

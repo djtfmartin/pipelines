@@ -185,8 +185,7 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-      AirflowConfFactory.Conf conf =
-              AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
 
     // Submit
     AirflowSparkLauncher.builder()

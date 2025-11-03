@@ -206,8 +206,7 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
         AppName.get(getType(message), message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-      AirflowConfFactory.Conf conf =
-              AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
 
     // Submit
     AirflowSparkLauncher.builder()

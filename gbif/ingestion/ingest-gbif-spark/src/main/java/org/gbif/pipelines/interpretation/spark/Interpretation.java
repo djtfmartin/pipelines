@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
+import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.MultimediaConverter;
@@ -200,6 +201,9 @@ public class Interpretation {
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
     long identifiersCount = identifiers.count();
 
+    // check all identifier records have a valid internal ID
+    checkIdentifiers(identifiers);
+
     // join extended records and identifiers
     Dataset<Occurrence> simpleRecords =
         joinRecordsAndIdentifiers(extendedRecords, identifiers, outputPath, spark);
@@ -236,6 +240,24 @@ public class Interpretation {
         "Finished interpretation in {} secs, records: {}",
         (System.currentTimeMillis() - start) / 1000,
         identifiersCount);
+  }
+
+  private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {
+    long recordsWithEmptyInternalId =
+        identifiers
+            .filter(
+                new FilterFunction<IdentifierRecord>() {
+                  @Override
+                  public boolean call(IdentifierRecord identifierRecord) throws Exception {
+                    return identifierRecord.getInternalId() == null;
+                  }
+                })
+            .count();
+
+    if (recordsWithEmptyInternalId > 0) {
+      throw new PipelinesException(
+          "Records with empty internal identifiers: " + recordsWithEmptyInternalId);
+    }
   }
 
   /**

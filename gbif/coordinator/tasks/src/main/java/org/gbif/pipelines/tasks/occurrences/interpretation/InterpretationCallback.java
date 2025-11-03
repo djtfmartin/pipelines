@@ -233,8 +233,7 @@ public class InterpretationCallback extends AbstractMessageCallback<PipelinesVer
         AppName.get(getType(message), message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-      AirflowConfFactory.Conf conf =
-              AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
 
     // Submit
     AirflowSparkLauncher.builder()

@@ -24,7 +24,6 @@ import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.process.*;
-import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
 import org.gbif.pipelines.core.factory.FileSystemFactory;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.utils.DatasetTypePredicate;
@@ -109,13 +108,12 @@ public class FragmenterCallback extends AbstractMessageCallback<PipelinesInterpr
   }
 
   private void runDistributed(PipelinesInterpretedMessage message, long recordsNumber) {
-//    BeamParameters beamParameters = BeamParametersBuilder.verbatimFragmenter(config, message);
+    //    BeamParameters beamParameters = BeamParametersBuilder.verbatimFragmenter(config, message);
 
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
 
     // Submit
     AirflowSparkLauncher.builder()
