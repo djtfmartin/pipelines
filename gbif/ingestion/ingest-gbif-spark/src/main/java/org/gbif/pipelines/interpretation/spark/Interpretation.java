@@ -28,7 +28,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
-import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.MultimediaConverter;
@@ -296,9 +295,8 @@ public class Interpretation {
                       .identifier(MAPPER.writeValueAsString(ir))
                       .build();
                 },
-            Encoders.bean(Occurrence.class)
-        )
-        //only include records with ids
+            Encoders.bean(Occurrence.class))
+        // only include records with ids
         .filter((FilterFunction<Occurrence>) occurrence -> occurrence.getInternalId() != null)
         .write()
         .mode(SaveMode.Overwrite)

@@ -21,6 +21,7 @@ public class EsConfig implements Serializable {
   private Integer indexMaxResultWindow;
   private String unassignedNodeDelay;
   private Boolean useSlowlog;
+  private Integer indexNumberReplicas;
   private String indexSearchSlowlogThresholdQueryWarn;
   private String indexSearchSlowlogThresholdQueryInfo;
   private String indexSearchSlowlogThresholdFetchWarn;

@@ -5,6 +5,7 @@ import static org.gbif.pipelines.common.ValidatorPredicate.isValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
 import lombok.Builder;
@@ -22,7 +23,6 @@ import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.indexing.IndexSettings;
 import org.gbif.pipelines.common.process.*;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
-import org.gbif.pipelines.ingest.java.pipelines.InterpretedToEsIndexExtendedPipeline;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
 import org.gbif.pipelines.tasks.occurrences.interpretation.InterpreterConfiguration;
@@ -170,7 +170,11 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
 
         log.info("Start the process. Message - {}", message);
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
-          runDistributed(message, recordsNumber);
+          runDistributed(
+              message,
+              recordsNumber,
+              indexSettings.getIndexName(),
+              indexSettings.getNumberOfShards());
         } else {
           throw new PipelinesException("This call back only expects DISTRIBUTED");
         }
@@ -193,11 +197,11 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
         message.getEndpointType());
   }
 
-  private void runLocal(BeamParameters beamParameters) {
-    InterpretedToEsIndexExtendedPipeline.run(beamParameters.toArray(), executor);
-  }
-
-  private void runDistributed(PipelinesInterpretedMessage message, long recordsNumber) {
+  private void runDistributed(
+      PipelinesInterpretedMessage message,
+      long recordsNumber,
+      String indexName,
+      Integer numberOfShards) {
 
     // App name
     String sparkAppName =
@@ -206,7 +210,11 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
     // create the airflow conf
     AirflowConfFactory.Conf conf =
         AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
+            message.getDatasetUuid().toString(),
+            message.getAttempt(),
+            sparkAppName,
+            recordsNumber,
+            List.of("--esIndexName=" + indexName, "--indexNumberShards=" + numberOfShards));
 
     // Submit
     AirflowSparkLauncher.builder()

@@ -57,11 +57,6 @@ public class Indexing {
     private Integer indexNumberShards = 3;
 
     @Parameter(
-        names = "--indexNumberReplicas",
-        description = "Number of replica shards per primary shard in the target index. Default = 1")
-    private Integer indexNumberReplicas = 1;
-
-    @Parameter(
         names = "--config",
         description = "Path to YAML configuration file",
         required = false)
@@ -107,8 +102,7 @@ public class Indexing {
         args.datasetId,
         args.attempt,
         args.esIndexName,
-        args.indexNumberShards,
-        args.indexNumberReplicas);
+        args.indexNumberShards);
 
     spark.stop();
     spark.close();
@@ -129,16 +123,14 @@ public class Indexing {
       String datasetId,
       Integer attempt,
       String esIndexName,
-      Integer indexNumberShards,
-      Integer indexNumberReplicas) {
+      Integer indexNumberShards) {
 
     long start = System.currentTimeMillis();
     MDC.put("datasetKey", datasetId);
     log.info(
-        "Starting index with esIndexName: {}, indexNumberShards: {}, indexNumberReplicas: {}",
+        "Starting index with esIndexName: {}, indexNumberShards: {}",
         esIndexName,
-        indexNumberShards,
-        indexNumberReplicas);
+        indexNumberShards);
 
     // where the pre-prepared json should be
     String inputPath =
@@ -149,7 +141,7 @@ public class Indexing {
 
     ElasticOptions options =
         ElasticOptions.fromArgsAndConfig(
-            config, esIndexName, datasetId, attempt, indexNumberShards, indexNumberReplicas);
+            config, esIndexName, datasetId, attempt, indexNumberShards);
 
     // Create ES index and alias if not exists
     EsIndexUtils.createIndexAndAliasForDefault(options);
@@ -218,14 +210,14 @@ public class Indexing {
         String esIndexName,
         String datasetId,
         Integer attempt,
-        Integer indexNumberShards,
-        Integer indexNumberReplicas) {
+        Integer indexNumberShards) {
+
       EsConfig esConfig = config.getElastic();
       ElasticOptionsBuilder builder =
           ElasticOptions.builder()
               .esIndexName(esIndexName)
               .indexNumberShards(indexNumberShards)
-              .indexNumberReplicas(indexNumberReplicas)
+              .indexNumberReplicas(esConfig.getIndexNumberReplicas())
               .esAlias(new String[] {esConfig.getEsAlias()})
               .datasetId(datasetId)
               .attempt(attempt)

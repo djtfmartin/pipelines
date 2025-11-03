@@ -13,6 +13,15 @@ public class AirflowConfFactory {
 
   public static Conf createConf(
       String datasetId, int attempt, String sparkAppName, long recordsNumber) {
+    return createConf(datasetId, attempt, sparkAppName, recordsNumber, List.of());
+  }
+
+  public static Conf createConf(
+      String datasetId,
+      int attempt,
+      String sparkAppName,
+      long recordsNumber,
+      List<String> extraArgs) {
 
     Conf baseConf = null;
     if (recordsNumber < 0) {
@@ -32,7 +41,7 @@ public class AirflowConfFactory {
       baseConf = LEVEL_3;
     }
 
-    List<String> combinedArgs = new ArrayList<>();
+    List<String> combinedArgs = new ArrayList<>(extraArgs);
     combinedArgs.add("--datasetId=" + datasetId);
     combinedArgs.add("--attempt=" + attempt);
     combinedArgs.add("--appName=" + sparkAppName);
