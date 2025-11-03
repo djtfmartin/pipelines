@@ -11,7 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AirflowConfFactory {
 
-  public static Conf createConf(long recordsNumber, List<String> args) {
+  public static Conf createConf(
+      String datasetId, int attempt, String sparkAppName, long recordsNumber) {
 
     Conf baseConf = null;
     if (recordsNumber < 0) {
@@ -31,7 +32,10 @@ public class AirflowConfFactory {
       baseConf = LEVEL_3;
     }
 
-    List<String> combinedArgs = new ArrayList<>(args);
+    List<String> combinedArgs = new ArrayList<>();
+    combinedArgs.add("--datasetId=" + datasetId);
+    combinedArgs.add("--attempt=" + attempt);
+    combinedArgs.add("--appName=" + sparkAppName);
     combinedArgs.addAll(baseConf.getArgs());
 
     return Conf.builder()
@@ -48,7 +52,6 @@ public class AirflowConfFactory {
         .executorMinCpu(baseConf.executorMinCpu)
         .executorMaxCpu(baseConf.executorMaxCpu)
         .executorLimitMemory(baseConf.executorLimitMemory)
-        .executorMinResourceMemory(baseConf.executorMinResourceMemory)
         .build();
   }
 
@@ -59,7 +62,7 @@ public class AirflowConfFactory {
           .driverMemoryOverheadFactor("0.10")
           .executorMemoryOverheadFactor("0.15")
           .driverCores(4)
-          .executorInstances(10)
+          .executorInstances(6)
           .executorCores(10)
           .defaultParallelism(100)
           .driverMinCpu("2000m")
@@ -68,7 +71,6 @@ public class AirflowConfFactory {
           .executorMinCpu("1000m")
           .executorMaxCpu("8000m")
           .executorLimitMemory("30Gi")
-          .executorMinResourceMemory("34Gi")
           .build();
 
   /** 10 million records to 50 million * */
@@ -87,7 +89,6 @@ public class AirflowConfFactory {
           .executorMinCpu("1000m")
           .executorMaxCpu("8000m")
           .executorLimitMemory("30Gi")
-          .executorMinResourceMemory("34Gi")
           .build();
 
   /** 50 million to 500 million - iNaturalist * */
@@ -106,7 +107,6 @@ public class AirflowConfFactory {
           .executorMinCpu("1000m")
           .executorMaxCpu("8000m")
           .executorLimitMemory("30Gi")
-          .executorMinResourceMemory("34Gi")
           .build();
 
   public static final Conf LEVEL_3 =
@@ -124,7 +124,6 @@ public class AirflowConfFactory {
           .executorMinCpu("1000m")
           .executorMaxCpu("8000m")
           .executorLimitMemory("30Gi")
-          .executorMinResourceMemory("34Gi")
           .build();
 
   @Data
@@ -151,7 +150,5 @@ public class AirflowConfFactory {
     public final String executorMaxCpu;
 
     public final String executorLimitMemory;
-    // Sum of memoryOverhead + executorLimitMemory + vector request memory
-    public final String executorMinResourceMemory;
   }
 }

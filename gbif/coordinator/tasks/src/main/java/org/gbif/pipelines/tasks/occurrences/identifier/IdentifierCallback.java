@@ -3,7 +3,6 @@ package org.gbif.pipelines.tasks.occurrences.identifier;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
@@ -184,7 +183,9 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf =
+        AirflowConfFactory.createConf(
+            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()

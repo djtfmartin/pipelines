@@ -6,7 +6,6 @@ import static org.gbif.pipelines.common.utils.PathUtil.buildXmlInputPath;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -107,12 +106,13 @@ public class FragmenterCallback extends AbstractMessageCallback<PipelinesInterpr
   }
 
   private void runDistributed(PipelinesInterpretedMessage message, long recordsNumber) {
-    //    BeamParameters beamParameters = BeamParametersBuilder.verbatimFragmenter(config, message);
 
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
-
-    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
+    // create the airflow conf
+    AirflowConfFactory.Conf conf =
+        AirflowConfFactory.createConf(
+            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()

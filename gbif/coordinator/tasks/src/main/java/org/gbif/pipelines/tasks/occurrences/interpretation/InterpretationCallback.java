@@ -9,7 +9,6 @@ import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
@@ -213,7 +212,9 @@ public class InterpretationCallback extends AbstractMessageCallback<PipelinesVer
         AppName.get(getType(message), message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf =
+        AirflowConfFactory.createConf(
+            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()

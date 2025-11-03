@@ -1,7 +1,6 @@
 package org.gbif.pipelines.tasks.events.indexing;
 
 import java.io.IOException;
-import java.util.List;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpClient;
@@ -117,7 +116,9 @@ public class EventsIndexingCallback
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf =
+        AirflowConfFactory.createConf(
+            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()

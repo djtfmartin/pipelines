@@ -3,7 +3,6 @@ package org.gbif.pipelines.tasks.common.hdfs;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
@@ -145,7 +144,9 @@ public class CommonHdfsViewCallback {
         AppName.get(config.stepType, message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf =
+        AirflowConfFactory.createConf(
+            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()

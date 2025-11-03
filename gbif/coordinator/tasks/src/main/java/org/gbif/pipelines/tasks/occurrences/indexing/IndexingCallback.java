@@ -5,7 +5,6 @@ import static org.gbif.pipelines.common.ValidatorPredicate.isValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
 import lombok.Builder;
@@ -205,7 +204,9 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
         AppName.get(getType(message), message.getDatasetUuid(), message.getAttempt());
 
     // create the airflow conf
-    AirflowConfFactory.Conf conf = AirflowConfFactory.createConf(recordsNumber, List.of());
+    AirflowConfFactory.Conf conf =
+        AirflowConfFactory.createConf(
+            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()

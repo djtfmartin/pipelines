@@ -254,17 +254,14 @@ public class Interpretation {
             });
 
     long recordsWithEmptyInternalId = missingId.count();
-
     if (recordsWithEmptyInternalId > 0) {
       IdentifierRecord record = missingId.first();
-      log.error(
+      log.warn(
           "Records with empty internal identifiers: "
               + recordsWithEmptyInternalId
               + ". "
               + "Example record: "
               + record.toString());
-      throw new PipelinesException(
-          "Records with empty internal identifiers: " + recordsWithEmptyInternalId);
     }
   }
 
@@ -283,6 +280,7 @@ public class Interpretation {
       Dataset<IdentifierRecord> identifiers,
       String outputPath,
       SparkSession spark) {
+
     extendedRecords
         .as("extendedRecord")
         .joinWith(identifiers, extendedRecords.col("id").equalTo(identifiers.col("id")))
@@ -293,11 +291,15 @@ public class Interpretation {
                   IdentifierRecord ir = row._2;
                   return Occurrence.builder()
                       .id(er.getId())
+                      .internalId(ir.getInternalId())
                       .verbatim(MAPPER.writeValueAsString(er))
                       .identifier(MAPPER.writeValueAsString(ir))
                       .build();
                 },
-            Encoders.bean(Occurrence.class))
+            Encoders.bean(Occurrence.class)
+        )
+        //only include records with ids
+        .filter((FilterFunction<Occurrence>) occurrence -> occurrence.getInternalId() != null)
         .write()
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/extended-identifiers");
