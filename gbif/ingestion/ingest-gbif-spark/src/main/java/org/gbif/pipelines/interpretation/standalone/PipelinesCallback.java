@@ -1,6 +1,7 @@
 package org.gbif.pipelines.interpretation.standalone;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.gbif.api.model.pipelines.PipelineStep.Status.RUNNING;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.google.common.base.Strings;
@@ -64,7 +65,7 @@ public abstract class PipelinesCallback<
   private static final Set<PipelineStep.Status> PROCESSED_STATE_SET =
       new HashSet<>(
           Arrays.asList(
-              PipelineStep.Status.RUNNING,
+              RUNNING,
               PipelineStep.Status.FAILED,
               PipelineStep.Status.COMPLETED,
               PipelineStep.Status.ABORTED));
@@ -484,7 +485,9 @@ public abstract class PipelinesCallback<
                     new PipelinesException(
                         "History service doesn't contain stepType: " + getStepType()));
 
-    if (PROCESSED_STATE_SET.contains(step.getState())) {
+    // if its in a running state already, it could be it was re-queued after a
+    //failure or shutdown
+    if (step.getState() != RUNNING &&  PROCESSED_STATE_SET.contains(step.getState())) {
       log.error(
           "Dataset is in the queue, please check the pipeline-ingestion monitoring tool - {}, running state {}",
           datasetUuid,
@@ -494,7 +497,7 @@ public abstract class PipelinesCallback<
     }
 
     step.setMessage(OBJECT_MAPPER.writeValueAsString(message))
-        .setState(PipelineStep.Status.RUNNING)
+        .setState(RUNNING)
         .setRunner(StepRunner.STANDALONE)
         .setStarted(LocalDateTime.now())
         .setPipelinesVersion("SPARK_PIPELINES-1.0"); // FIXME
