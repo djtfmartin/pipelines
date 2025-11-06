@@ -23,13 +23,13 @@ public class Standalone {
 
   public static void main(String[] args) throws Exception {
 
-    if (args.length != 2) {
+    if (args.length >= 2) {
       throw new IllegalArgumentException("Expecting two arguments: <mode> <config-file> <threads>");
     }
 
     Mode mode = Mode.valueOf(args[0].toUpperCase());
     PipelinesConfig config = loadConfig(args[1]);
-    Integer threads = 1;
+    int threads = 1;
     if (args.length == 3) {
       threads = Integer.parseInt(args[2]);
     }
