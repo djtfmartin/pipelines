@@ -21,7 +21,7 @@ spec:
         - name: tablebuild-standalone
           image: docker.gbif.org/ingest-gbif-spark-standalone:3.2.7-SNAPSHOT
           imagePullPolicy: Always
-          args: ["TABLEBUILD", "/tmp/pipelines-spark.yaml"]
+          args: ["TABLEBUILD", "/tmp/pipelines-spark.yaml", "1"]
           resources:
             limits:
               memory: "16Gi"

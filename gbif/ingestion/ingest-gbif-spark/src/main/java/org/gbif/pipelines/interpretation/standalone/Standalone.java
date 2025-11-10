@@ -24,7 +24,7 @@ public class Standalone {
   public static void main(String[] args) throws Exception {
 
     if (args.length >= 2) {
-      throw new IllegalArgumentException("Expecting two arguments: <mode> <config-file> <threads>");
+      throw new IllegalArgumentException("Expecting two or more arguments: <mode> <config-file> <threads>");
     }
 
     Mode mode = Mode.valueOf(args[0].toUpperCase());

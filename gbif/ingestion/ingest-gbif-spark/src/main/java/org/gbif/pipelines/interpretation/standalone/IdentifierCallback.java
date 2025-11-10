@@ -53,7 +53,8 @@ public class IdentifierCallback
             .httpClient(this.httpClient)
             .message(message)
             .fileSystem(this.fileSystem)
-            .config(pipelinesConfig)
+            .config(pipelinesConfig.getStandalone())
+            .outputPath(pipelinesConfig.getOutputPath())
             .build()
             .validate();
 

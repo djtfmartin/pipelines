@@ -21,7 +21,7 @@ spec:
         - name: interpretation-standalone
           image: docker.gbif.org/ingest-gbif-spark-standalone:3.2.7-SNAPSHOT
           imagePullPolicy: Always
-          args: ["INTERPRETATION", "/tmp/pipelines-spark.yaml"]
+          args: ["INTERPRETATION", "/tmp/pipelines-spark.yaml", "1"]
           resources:
             limits:
               memory: "16Gi"

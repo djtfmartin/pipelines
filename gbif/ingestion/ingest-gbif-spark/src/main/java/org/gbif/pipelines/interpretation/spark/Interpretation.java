@@ -295,7 +295,8 @@ public class Interpretation {
                       .identifier(MAPPER.writeValueAsString(ir))
                       .build();
                 },
-            Encoders.bean(Occurrence.class))
+            Encoders.bean(Occurrence.class)
+        )
         // only include records with ids
         .filter((FilterFunction<Occurrence>) occurrence -> occurrence.getInternalId() != null)
         .write()

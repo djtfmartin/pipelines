@@ -38,7 +38,7 @@ import org.gbif.api.vocabulary.DatasetType;
 import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
 import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables;
-import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.config.model.StandaloneConfig;
 import org.gbif.pipelines.interpretation.spark.ValidateIdentifiers;
 
 @Slf4j
@@ -46,10 +46,11 @@ import org.gbif.pipelines.interpretation.spark.ValidateIdentifiers;
 public class PostprocessValidation {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private final PipelinesConfig config;
+  private final StandaloneConfig config;
   private final PipelinesVerbatimMessage message;
   private final CloseableHttpClient httpClient;
   private final FileSystem fileSystem;
+  private final String outputPath;
 
   private static final Retry RETRY =
       Retry.of(
@@ -79,11 +80,11 @@ public class PostprocessValidation {
     String datasetId = message.getDatasetUuid().toString();
     String attempt = Integer.toString(message.getAttempt());
     String metaFileName = ValidateIdentifiers.METRICS_FILENAME;
-    String metaPath = String.join("/", config.getOutputPath(), datasetId, attempt, metaFileName);
+    String metaPath = String.join("/", outputPath, datasetId, attempt, metaFileName);
     log.debug("Getting records number from the file - {}", metaPath);
 
     Double threshold =
-        getThresholdTagValue().orElse(config.getStandalone().getIdThresholdPercent());
+        getThresholdTagValue().orElse(config.getIdThresholdPercent());
 
     ToLongFunction<String> getMetricFn =
         metric -> {
@@ -174,7 +175,7 @@ public class PostprocessValidation {
   private boolean skipInstallationKey() {
     String datasetKey = message.getDatasetUuid().toString();
     String installationKey = getInstallationKey(httpClient, datasetKey);
-    boolean r = config.getStandalone().getSkipInstallationsList().contains(installationKey);
+    boolean r = config.getSkipInstallationsList().contains(installationKey);
     if (r) {
       log.warn("Installation key {} is in the config skip list", datasetKey);
     }
@@ -196,7 +197,7 @@ public class PostprocessValidation {
   public long getIndexSize(HttpClient httpClient, String datasetId) {
     int nano = LocalDateTime.now().getNano();
     String url =
-        config.getStandalone().getRegistry().getWsUrl()
+        config.getRegistry().getWsUrl()
             + "/occurrence/search?limit=0&datasetKey="
             + datasetId
             + "&_"
@@ -209,7 +210,7 @@ public class PostprocessValidation {
   public Optional<String> getMachineTagValue(
       HttpClient httpClient, String datasetId, String tagName) {
     String url =
-        config.getStandalone().getRegistry().getWsUrl() + "/dataset/" + datasetId + "/machineTag";
+        config.getRegistry().getWsUrl() + "/dataset/" + datasetId + "/machineTag";
     HttpResponse response = executeGet(httpClient, url);
 
     List<MachineTag> machineTags =
@@ -223,7 +224,7 @@ public class PostprocessValidation {
 
   @SneakyThrows
   public String getInstallationKey(HttpClient httpClient, String datasetId) {
-    String url = config.getStandalone().getRegistry().getWsUrl() + "/dataset/" + datasetId;
+    String url = config.getRegistry().getWsUrl() + "/dataset/" + datasetId;
     HttpResponse response = executeGet(httpClient, url);
 
     Dataset dataset = MAPPER.readValue(response.getEntity().getContent(), Dataset.class);
