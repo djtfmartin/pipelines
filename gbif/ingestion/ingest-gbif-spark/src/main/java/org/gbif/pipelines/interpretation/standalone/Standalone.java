@@ -3,6 +3,7 @@ package org.gbif.pipelines.interpretation.standalone;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -23,7 +24,8 @@ public class Standalone {
 
   public static void main(String[] args) throws Exception {
 
-    if (args.length >= 2) {
+    if (args.length < 2) {
+      log.error("Received arguments {}", Arrays.asList(args));
       throw new IllegalArgumentException("Expecting two or more arguments: <mode> <config-file> <threads>");
     }
 
