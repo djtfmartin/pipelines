@@ -22,6 +22,9 @@ spec:
           image: docker.gbif.org/ingest-gbif-spark-standalone:3.2.7-SNAPSHOT
           imagePullPolicy: Always
           args: ["IDENTIFIER", "/tmp/pipelines-spark.yaml", "1"]
+          env:
+            - name: JVM_OPTIONS
+              value: "-XX:+CrashOnOutOfMemoryError -XX:+PerfDisableSharedMem -XX:+UseShenandoahGC -Xms8G -Xmx12G"
           resources:
             limits:
               memory: "16Gi"
