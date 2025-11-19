@@ -259,7 +259,7 @@ public class Fragmenter {
       loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
 
     } catch (Exception ex) {
-      log.error("Error while loading HFiles from " + config.getFragmentsTable(), ex);
+      log.error("Error while loading HFiles from {}", config.getFragmentsTable(), ex);
     }
 
     writeMetricsYaml(

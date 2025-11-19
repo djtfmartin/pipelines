@@ -194,7 +194,7 @@ public class TableBuild {
             config.getHiveDB(),
             table);
 
-    log.debug("Inserting data into occurrence table: " + insertQuery);
+    log.debug("Inserting data into occurrence table: {}", insertQuery);
 
     // Execute the insert
     spark.sql(insertQuery);
@@ -202,7 +202,7 @@ public class TableBuild {
     // Drop the temporary table
     spark.sql("DROP TABLE " + table);
 
-    log.debug("Dropped Iceberg table: " + table);
+    log.debug("Dropped Iceberg table: {}", table);
     cleanHdfsPath(fileSystem, config, table);
 
     // 4. write metrics to yaml
