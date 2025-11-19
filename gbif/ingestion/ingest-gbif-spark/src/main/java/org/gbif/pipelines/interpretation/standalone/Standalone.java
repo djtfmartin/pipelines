@@ -7,6 +7,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.common.messaging.ConnectionParameters;
 import org.gbif.common.messaging.DefaultMessagePublisher;
@@ -56,35 +58,53 @@ public class Standalone {
     PipelinesConfig config = loadConfig(args.config);
 
     new Standalone()
-        .start(
-            mode,
-            config,
-            args.queueName,
-            args.routingKey,
-            args.exchange,
-            args.threads,
-            (messagePublisher -> new IdentifierCallback(config, messagePublisher)));
+        .start(mode, config, args.queueName, args.routingKey, args.exchange, args.threads);
   }
 
   public void start(
       Mode mode,
-      PipelinesConfig pipelinesConfig,
+      PipelinesConfig config,
       String queueName,
       String routingKey,
       String exchange,
-      int threads,
-      Function<MessagePublisher, PipelinesCallback> callbackCreateFcn) {
+      int threads) {
+
+    Function<MessagePublisher, PipelinesCallback> callbackFn = null;
+
+    switch (mode) {
+      case IDENTIFIER:
+        callbackFn = (messagePublisher -> new IdentifierCallback(config, messagePublisher));
+        break;
+      case INTERPRETATION:
+        callbackFn = (messagePublisher -> new InterpretationCallback(config, messagePublisher));
+        break;
+      case TABLEBUILD:
+        callbackFn = (messagePublisher -> new TableBuildCallback(config, messagePublisher));
+        break;
+      case INDEXING:
+        callbackFn = (messagePublisher -> new IndexingCallback(config, messagePublisher));
+        break;
+      case FRAGMENTER:
+        callbackFn = (messagePublisher -> new FragmenterCallback(config, messagePublisher));
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "Unknown mode: "
+                + mode
+                + ". Recognized modes are: "
+                + Stream.of(Mode.values()).map(Enum::name).collect(Collectors.joining(",")));
+    }
 
     log.info(
         "Running {}, listening to queue: {} on virtual host {}",
         mode,
         queueName,
-        pipelinesConfig.getStandalone().getMessaging().getVirtualHost());
+        config.getStandalone().getMessaging().getVirtualHost());
     setupShutdown();
 
-    try (MessageListener listener = createListener(pipelinesConfig);
-        DefaultMessagePublisher publisher = createPublisher(pipelinesConfig);
-        PipelinesCallback callback = callbackCreateFcn.apply(publisher)) {
+    try (MessageListener listener = createListener(config);
+        DefaultMessagePublisher publisher = createPublisher(config);
+        PipelinesCallback callback = callbackFn.apply(publisher)) {
 
       // initialise spark session & filesystem
       callback.init();
