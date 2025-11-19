@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MessagingConfig implements Serializable {
-  String queueName;
   String host;
   Integer port;
   String virtualHost;

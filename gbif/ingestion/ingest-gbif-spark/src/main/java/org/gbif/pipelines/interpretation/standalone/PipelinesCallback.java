@@ -486,8 +486,8 @@ public abstract class PipelinesCallback<
                         "History service doesn't contain stepType: " + getStepType()));
 
     // if its in a running state already, it could be it was re-queued after a
-    //failure or shutdown
-    if (step.getState() != RUNNING &&  PROCESSED_STATE_SET.contains(step.getState())) {
+    // failure or shutdown
+    if (step.getState() != RUNNING && PROCESSED_STATE_SET.contains(step.getState())) {
       log.error(
           "Dataset is in the queue, please check the pipeline-ingestion monitoring tool - {}, running state {}",
           datasetUuid,

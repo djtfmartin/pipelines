@@ -2,11 +2,11 @@ package org.gbif.pipelines.interpretation.standalone;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.common.messaging.ConnectionParameters;
 import org.gbif.common.messaging.DefaultMessagePublisher;
@@ -22,85 +22,48 @@ public class Standalone {
 
   private volatile boolean running = true;
 
-  public static void main(String[] args) throws Exception {
+  @Parameters(separators = "=")
+  private static class Args {
 
-    if (args.length < 2) {
-      log.error("Received arguments {}", Arrays.asList(args));
-      throw new IllegalArgumentException(
-          "Expecting two or more arguments: <mode> <config-file> <threads>");
-    }
+    @Parameter(names = "--mode", description = "mode", required = true)
+    private String mode;
 
-    Mode mode = Mode.valueOf(args[0].toUpperCase());
-    PipelinesConfig config = loadConfig(args[1]);
-    int threads = 1;
-    if (args.length == 3) {
-      threads = Integer.parseInt(args[2]);
-    }
+    @Parameter(
+        names = "--config",
+        description = "Path to YAML configuration file",
+        required = false)
+    private String config = "/tmp/pipelines-spark.yaml";
 
-    switch (mode) {
-      case IDENTIFIER:
-        new Standalone()
-            .start(
-                mode,
-                config,
-                "pipelines_occurrence_identifier_standalone",
-                "occurrence.pipelines.verbatim.finished.identifier",
-                "occurrence",
-                threads,
-                (messagePublisher -> new IdentifierCallback(config, messagePublisher)));
-        break;
-      case INTERPRETATION:
-        new Standalone()
-            .start(
-                mode,
-                config,
-                "pipelines_occurrence_interpretation_standalone", // FIXME used ?
-                // exchange/routingkey are used
-                "occurrence.pipelines.verbatim.finished",
-                "occurrence",
-                threads,
-                (messagePublisher -> new InterpretationCallback(config, messagePublisher)));
-        break;
-      case TABLEBUILD:
-        new Standalone()
-            .start(
-                mode,
-                config,
-                "pipelines_occurrence_hdfs_view_standalone",
-                "occurrence.pipelines.interpretation.finished",
-                "occurrence",
-                threads,
-                (messagePublisher -> new TableBuildCallback(config, messagePublisher)));
-        break;
-      case INDEXING:
-        new Standalone()
-            .start(
-                mode,
-                config,
-                "pipelines_occurrence_indexing_standalone",
-                "occurrence.pipelines.interpretation.finished",
-                "occurrence",
-                threads,
-                (messagePublisher -> new IndexingCallback(config, messagePublisher)));
-        break;
-      case FRAGMENTER:
-        new Standalone()
-            .start(
-                mode,
-                config,
-                "pipelines_occurrence_fragmenter_standalone",
-                "occurrence.pipelines.interpretation.finished" + ".*",
-                "occurrence",
-                threads,
-                (messagePublisher -> new FragmenterCallback(config, messagePublisher)));
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Unknown mode: "
-                + args[0]
-                + ". Recognized modes are: "
-                + Stream.of(Mode.values()).map(Enum::name).collect(Collectors.joining(",")));
-    }
+    @Parameter(names = "--threads", description = "Number of threads", required = false)
+    private int threads = 1;
+
+    @Parameter(names = "--queueName", description = "queueName", required = true)
+    private String queueName;
+
+    @Parameter(names = "--routingKey", description = "routingKey", required = true)
+    private String routingKey;
+
+    @Parameter(names = "--exchange", description = "exchange", required = true)
+    private String exchange = "occurrence";
+  }
+
+  public static void main(String[] argsv) throws Exception {
+
+    Standalone.Args args = new Standalone.Args();
+    JCommander jCommander = new JCommander(args);
+    jCommander.parse(argsv);
+    Mode mode = Mode.valueOf(args.mode);
+    PipelinesConfig config = loadConfig(args.config);
+
+    new Standalone()
+        .start(
+            mode,
+            config,
+            args.queueName,
+            args.routingKey,
+            args.exchange,
+            args.threads,
+            (messagePublisher -> new IdentifierCallback(config, messagePublisher)));
   }
 
   public void start(

@@ -83,8 +83,7 @@ public class PostprocessValidation {
     String metaPath = String.join("/", outputPath, datasetId, attempt, metaFileName);
     log.debug("Getting records number from the file - {}", metaPath);
 
-    Double threshold =
-        getThresholdTagValue().orElse(config.getIdThresholdPercent());
+    Double threshold = getThresholdTagValue().orElse(config.getIdThresholdPercent());
 
     ToLongFunction<String> getMetricFn =
         metric -> {
@@ -209,8 +208,7 @@ public class PostprocessValidation {
   @SneakyThrows
   public Optional<String> getMachineTagValue(
       HttpClient httpClient, String datasetId, String tagName) {
-    String url =
-        config.getRegistry().getWsUrl() + "/dataset/" + datasetId + "/machineTag";
+    String url = config.getRegistry().getWsUrl() + "/dataset/" + datasetId + "/machineTag";
     HttpResponse response = executeGet(httpClient, url);
 
     List<MachineTag> machineTags =

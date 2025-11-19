@@ -98,7 +98,6 @@ public class PipelinesVariables {
 
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
     public static class Identifier {
-      public static final String GBIF_ID_EMPTY = "GBIF_ID_EMPTY";
       public static final String GBIF_ID_INVALID = "GBIF_ID_INVALID";
       public static final String GBIF_ID_ABSENT = "GBIF_ID_ABSENT";
     }

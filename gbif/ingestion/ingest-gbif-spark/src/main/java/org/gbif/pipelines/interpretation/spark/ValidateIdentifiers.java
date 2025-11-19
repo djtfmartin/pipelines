@@ -283,9 +283,9 @@ public class ValidateIdentifiers {
             new FilterFunction<IdentifierRecord>() {
               @Override
               public boolean call(IdentifierRecord ir) throws Exception {
-                  return ir.getInternalId() != null
-                          && !ir.getIssues().getIssueList().contains(GBIF_ID_INVALID)
-                          && !ir.getIssues().getIssueList().contains(GBIF_ID_ABSENT);
+                return ir.getInternalId() != null
+                    && !ir.getIssues().getIssueList().contains(GBIF_ID_INVALID)
+                    && !ir.getIssues().getIssueList().contains(GBIF_ID_ABSENT);
               }
             });
 
