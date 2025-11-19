@@ -26,7 +26,8 @@ public class Standalone {
 
     if (args.length < 2) {
       log.error("Received arguments {}", Arrays.asList(args));
-      throw new IllegalArgumentException("Expecting two or more arguments: <mode> <config-file> <threads>");
+      throw new IllegalArgumentException(
+          "Expecting two or more arguments: <mode> <config-file> <threads>");
     }
 
     Mode mode = Mode.valueOf(args[0].toUpperCase());
@@ -111,7 +112,11 @@ public class Standalone {
       int threads,
       Function<MessagePublisher, PipelinesCallback> callbackCreateFcn) {
 
-    log.info("Starting standalone mode: {}, listening to queue: {}", mode, queueName);
+    log.info(
+        "Running {}, listening to queue: {} on virtual host {}",
+        mode,
+        queueName,
+        pipelinesConfig.getStandalone().getMessaging().getVirtualHost());
     setupShutdown();
 
     try (MessageListener listener = createListener(pipelinesConfig);
