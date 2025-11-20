@@ -31,13 +31,16 @@ public class IndexingCallback
 
   @Override
   protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
+    if (pipelinesConfig.getStandalone().getIndexName() == null){
+        throw new RuntimeException("Index Name is null");
+    }
     Indexing.runIndexing(
         sparkSession,
         fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
-        "indexing_standalone",
+        pipelinesConfig.getStandalone().getIndexName(),
         pipelinesConfig.getStandalone().getNumberOfShards());
   }
 
