@@ -31,8 +31,8 @@ public class IndexingCallback
 
   @Override
   protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
-    if (pipelinesConfig.getStandalone().getIndexName() == null){
-        throw new RuntimeException("Index Name is null");
+    if (pipelinesConfig.getStandalone().getIndexName() == null) {
+      throw new RuntimeException("Index Name is null");
     }
     Indexing.runIndexing(
         sparkSession,

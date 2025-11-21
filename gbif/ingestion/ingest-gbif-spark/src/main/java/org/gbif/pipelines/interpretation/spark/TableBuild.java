@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * This pipeline loads the /hdfs directory for a dataset/attempt, creates a temporary table with the
- * parquet, and then loads into the main occurrence table which is partitioned by datasetKey/
+ * parquet, and then loads into the main occurrence table which is partitioned by datasetKey
  */
 @Slf4j
 public class TableBuild {

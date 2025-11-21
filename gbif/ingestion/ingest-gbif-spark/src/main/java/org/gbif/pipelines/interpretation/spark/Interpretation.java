@@ -117,7 +117,7 @@ public class Interpretation {
   public static void main(String[] argsv) throws Exception {
     Args args = new Args();
     JCommander jCommander = new JCommander(args);
-    jCommander.setAcceptUnknownOptions(true); // FIXME to ease airflow/registry integration
+    jCommander.setAcceptUnknownOptions(true);
     jCommander.parse(argsv);
 
     if (args.help) {
@@ -315,7 +315,7 @@ public class Interpretation {
    * @param datasetId The dataset ID.
    * @return The metadata record for the dataset.
    */
-  private static MetadataRecord getMetadataRecord(PipelinesConfig config, String datasetId) {
+  static MetadataRecord getMetadataRecord(PipelinesConfig config, String datasetId) {
     MetadataServiceClient metadataServiceClient =
         MetadataServiceClient.create(config.getGbifApi(), config.getContent());
     final MetadataRecord metadata = MetadataRecord.newBuilder().setDatasetKey(datasetId).build();
@@ -362,7 +362,7 @@ public class Interpretation {
                       MAPPER.readValue(simpleRecord.getIdentifier(), IdentifierRecord.class);
 
                   // Apply all transforms
-                  er = defaultValuesTransform.convert(er);
+                  ExtendedRecord verbatim = defaultValuesTransform.convert(er);
                   MultiTaxonRecord tr = taxonomyTransform.convert(er);
                   LocationRecord lr = locationTransform.convert(er, metadata);
                   GrscicollRecord gr = grscicollTransform.convert(er, metadata);
@@ -378,9 +378,9 @@ public class Interpretation {
                   MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
                   return Occurrence.builder()
-                      .id(er.getId())
+                      .id(verbatim.getId())
                       .identifier(simpleRecord.getIdentifier())
-                      .verbatim(simpleRecord.getVerbatim())
+                      .verbatim(MAPPER.writeValueAsString(verbatim))
                       .basic(MAPPER.writeValueAsString(br))
                       .taxon(MAPPER.writeValueAsString(tr))
                       .location(MAPPER.writeValueAsString(lr))
