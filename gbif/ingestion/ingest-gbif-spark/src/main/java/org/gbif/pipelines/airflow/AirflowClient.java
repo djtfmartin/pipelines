@@ -49,11 +49,15 @@ public class AirflowClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private String getUri(AirflowConfig config) {
-    return String.join("/", config.getAddress(), "dags", dagName, "dagRuns");
+    String uri = String.join("/", config.getAddress(), "dags", dagName, "dagRuns");
+    log.info("Get Airflow Run ID: {}", uri);
+    return uri;
   }
 
   private String getUri(AirflowConfig config, String paths) {
-    return String.join("/", getUri(config), paths);
+    String uri =  String.join("/", getUri(config), paths);
+    log.info("Get Airflow Run ID with path: {}", uri);
+    return uri;
   }
 
   @SneakyThrows
