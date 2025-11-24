@@ -75,7 +75,7 @@ public class AirflowClient {
       }
 
       log.info("Submit dag_run_id {}", body.getDagRunId());
-      HttpPost post = new HttpPost(getUri(config, dagName));
+      HttpPost post = new HttpPost(getUri(config, body.getDagRunId()));
       StringEntity input = new StringEntity(MAPPER.writeValueAsString(body));
       input.setContentType(ContentType.APPLICATION_JSON.toString());
       post.setEntity(input);
