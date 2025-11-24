@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
@@ -72,47 +70,49 @@ public class AirflowConfFactory {
         .build();
   }
 
-    public static boolean evaluate(String expression, long value) {
-        // Remove spaces
-        expression = expression.replace(" ", "");
+  public static boolean evaluate(String expression, long value) {
+    // Remove spaces
+    expression = expression.replace(" ", "");
 
-        Long lower = null;
-        Long upper = null;
-        boolean lowerInclusive = true;
-        boolean upperInclusive = false;
+    Long lower = null;
+    Long upper = null;
+    boolean lowerInclusive = true;
+    boolean upperInclusive = false;
 
-        if (expression.contains("<=") && expression.contains("<") && expression.indexOf("<=") < expression.lastIndexOf("<")) {
-            // A <= x < B
-            String[] parts = expression.split("<=|<");
-            lower = Long.parseLong(parts[0]);
-            upper = Long.parseLong(parts[2]);
-            lowerInclusive = true;
-            upperInclusive = false;
-        } else if (expression.contains("<=")) {
-            // A <= x
-            String[] parts = expression.split("<=");
-            lower = Long.parseLong(parts[0]);
-            lowerInclusive = true;
-        } else if (expression.contains("<")) {
-            // x < B
-            String[] parts = expression.split("<");
-            upper = Long.parseLong(parts[1]);
-            upperInclusive = false;
-        } else if (expression.contains(">")) {
-            // x > B
-            String[] parts = expression.split(">");
-            lower = Long.parseLong(parts[1]);
-            lowerInclusive = false;
-        } else {
-            throw new IllegalArgumentException("Invalid expression: " + expression);
-        }
-
-        boolean ok = true;
-        if (lower != null) ok &= lowerInclusive ? (lower <= value) : (lower < value);
-        if (upper != null) ok &= upperInclusive ? (value <= upper) : (value < upper);
-
-        return ok;
+    if (expression.contains("<=")
+        && expression.contains("<")
+        && expression.indexOf("<=") < expression.lastIndexOf("<")) {
+      // A <= x < B
+      String[] parts = expression.split("<=|<");
+      lower = Long.parseLong(parts[0]);
+      upper = Long.parseLong(parts[2]);
+      lowerInclusive = true;
+      upperInclusive = false;
+    } else if (expression.contains("<=")) {
+      // A <= x
+      String[] parts = expression.split("<=");
+      lower = Long.parseLong(parts[0]);
+      lowerInclusive = true;
+    } else if (expression.contains("<")) {
+      // x < B
+      String[] parts = expression.split("<");
+      upper = Long.parseLong(parts[1]);
+      upperInclusive = false;
+    } else if (expression.contains(">")) {
+      // x > B
+      String[] parts = expression.split(">");
+      lower = Long.parseLong(parts[1]);
+      lowerInclusive = false;
+    } else {
+      throw new IllegalArgumentException("Invalid expression: " + expression);
     }
+
+    boolean ok = true;
+    if (lower != null) ok &= lowerInclusive ? (lower <= value) : (lower < value);
+    if (upper != null) ok &= upperInclusive ? (value <= upper) : (value < upper);
+
+    return ok;
+  }
 
   @Data
   @Builder
@@ -141,14 +141,13 @@ public class AirflowConfFactory {
   }
 
   public static void main(String[] args) throws Exception {
-      int recordNumber = 1234;
+    int recordNumber = 1234;
 
-      System.out.println(evaluate("0 <= recordNumber < 5000", recordNumber));   // true
-      System.out.println(evaluate("5000 <= recordNumber < 50000", recordNumber)); // false
-      System.out.println(evaluate("1000 <= recordNumber", recordNumber));        // true
-      System.out.println(evaluate("recordNumber < 2000", recordNumber));         // true
-      System.out.println(evaluate("recordNumber > 1000", recordNumber));         // true
-      System.out.println(evaluate("recordNumber > 2000", recordNumber));         // false
-
+    System.out.println(evaluate("0 <= recordNumber < 5000", recordNumber)); // true
+    System.out.println(evaluate("5000 <= recordNumber < 50000", recordNumber)); // false
+    System.out.println(evaluate("1000 <= recordNumber", recordNumber)); // true
+    System.out.println(evaluate("recordNumber < 2000", recordNumber)); // true
+    System.out.println(evaluate("recordNumber > 1000", recordNumber)); // true
+    System.out.println(evaluate("recordNumber > 2000", recordNumber)); // false
   }
 }
