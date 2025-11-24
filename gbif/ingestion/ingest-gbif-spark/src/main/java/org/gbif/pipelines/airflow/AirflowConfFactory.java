@@ -43,7 +43,7 @@ public class AirflowConfFactory {
 
     Set<String> expressions = configs.keySet();
     for (String expression : expressions) {
-      if (match(expression, recordsNumber)) {
+      if (evaluate(expression, recordsNumber)) {
         baseConf = configs.get(expression);
         break;
       }
@@ -72,18 +72,47 @@ public class AirflowConfFactory {
         .build();
   }
 
-  private static boolean match(String expression, Long numberOfRecords) {
-    try {
-      // Substitute variable
-      expression = expression.replace("numberOfRecords", String.valueOf(numberOfRecords));
+    public static boolean evaluate(String expression, long value) {
+        // Remove spaces
+        expression = expression.replace(" ", "");
 
-      ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
-      return (Boolean) engine.eval(expression);
-    } catch (Exception e) {
-      log.error("Error evaluating expression {}", expression, e);
-      throw new RuntimeException(e);
+        Long lower = null;
+        Long upper = null;
+        boolean lowerInclusive = true;
+        boolean upperInclusive = false;
+
+        if (expression.contains("<=") && expression.contains("<") && expression.indexOf("<=") < expression.lastIndexOf("<")) {
+            // A <= x < B
+            String[] parts = expression.split("<=|<");
+            lower = Long.parseLong(parts[0]);
+            upper = Long.parseLong(parts[2]);
+            lowerInclusive = true;
+            upperInclusive = false;
+        } else if (expression.contains("<=")) {
+            // A <= x
+            String[] parts = expression.split("<=");
+            lower = Long.parseLong(parts[0]);
+            lowerInclusive = true;
+        } else if (expression.contains("<")) {
+            // x < B
+            String[] parts = expression.split("<");
+            upper = Long.parseLong(parts[1]);
+            upperInclusive = false;
+        } else if (expression.contains(">")) {
+            // x > B
+            String[] parts = expression.split(">");
+            lower = Long.parseLong(parts[1]);
+            lowerInclusive = false;
+        } else {
+            throw new IllegalArgumentException("Invalid expression: " + expression);
+        }
+
+        boolean ok = true;
+        if (lower != null) ok &= lowerInclusive ? (lower <= value) : (lower < value);
+        if (upper != null) ok &= upperInclusive ? (value <= upper) : (value < upper);
+
+        return ok;
     }
-  }
 
   @Data
   @Builder
@@ -109,5 +138,17 @@ public class AirflowConfFactory {
     public final String executorMaxCpu;
 
     public final String executorLimitMemory;
+  }
+
+  public static void main(String[] args) throws Exception {
+      int recordNumber = 1234;
+
+      System.out.println(evaluate("0 <= recordNumber < 5000", recordNumber));   // true
+      System.out.println(evaluate("5000 <= recordNumber < 50000", recordNumber)); // false
+      System.out.println(evaluate("1000 <= recordNumber", recordNumber));        // true
+      System.out.println(evaluate("recordNumber < 2000", recordNumber));         // true
+      System.out.println(evaluate("recordNumber > 1000", recordNumber));         // true
+      System.out.println(evaluate("recordNumber > 2000", recordNumber));         // false
+
   }
 }
