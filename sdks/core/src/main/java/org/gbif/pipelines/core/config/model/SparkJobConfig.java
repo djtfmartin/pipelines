@@ -1,6 +1,8 @@
 package org.gbif.pipelines.core.config.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.io.Serializable;
 import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class SparkJobConfig {
+public class SparkJobConfig implements Serializable {
 
   // command line args
   private List<String> args;

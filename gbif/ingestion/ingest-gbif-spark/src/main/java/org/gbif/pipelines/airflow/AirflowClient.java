@@ -50,13 +50,13 @@ public class AirflowClient {
 
   private String getUri(AirflowConfig config) {
     String uri = String.join("/", config.getAddress(), "dags", dagName, "dagRuns");
-    log.info("Get Airflow Run ID: {}", uri);
+    log.debug("Get Airflow Run ID: {}", uri);
     return uri;
   }
 
   private String getUri(AirflowConfig config, String paths) {
     String uri = String.join("/", getUri(config), paths);
-    log.info("Get Airflow Run ID with path: {}", uri);
+    log.debug("Get Airflow Run ID with path: {}", uri);
     return uri;
   }
 
@@ -67,14 +67,14 @@ public class AirflowClient {
 
       // Delete dag_run_id to avoid issues with params cache
       if (dagRun.has(DAG_RUN_ID) && dagRun.get(DAG_RUN_ID).asText().equals(body.getDagRunId())) {
-        log.info(
+        log.debug(
             "dag_run_id {} exists. Deleting the run to avoid caching issues", body.getDagRunId());
         HttpDelete delete = new HttpDelete(getUri(config, body.getDagRunId()));
         delete.setHeaders(getHeaders(config));
         checkUnavailableService(client.execute(delete));
       }
 
-      log.info("Submit dag_run_id {}", body.getDagRunId());
+      log.debug("Submit dag_run_id {}", body.getDagRunId());
       HttpPost post = new HttpPost(getUri(config));
       StringEntity input = new StringEntity(MAPPER.writeValueAsString(body));
       input.setContentType(ContentType.APPLICATION_JSON.toString());
@@ -82,7 +82,7 @@ public class AirflowClient {
       post.setHeaders(getHeaders(config));
 
       HttpResponse response = checkUnavailableService(client.execute(post));
-      log.info(
+      log.debug(
           "Submit dag_run_id {} response code {}, reason {}",
           body.getDagRunId(),
           response.getStatusLine().getStatusCode(),
