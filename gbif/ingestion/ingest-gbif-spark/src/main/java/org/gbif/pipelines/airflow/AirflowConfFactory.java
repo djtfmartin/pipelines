@@ -84,24 +84,24 @@ public class AirflowConfFactory {
         && expression.indexOf("<=") < expression.lastIndexOf("<")) {
       // A <= x < B
       String[] parts = expression.split("<=|<");
-      lower = Long.parseLong(parts[0]);
-      upper = Long.parseLong(parts[2]);
+      lower = Long.parseLong(parts[0].replace("_", ""));
+      upper = Long.parseLong(parts[2].replace("_", ""));
       lowerInclusive = true;
       upperInclusive = false;
     } else if (expression.contains("<=")) {
       // A <= x
       String[] parts = expression.split("<=");
-      lower = Long.parseLong(parts[0]);
+      lower = Long.parseLong(parts[0].replace("_", ""));
       lowerInclusive = true;
     } else if (expression.contains("<")) {
       // x < B
       String[] parts = expression.split("<");
-      upper = Long.parseLong(parts[1]);
+      upper = Long.parseLong(parts[1].replace("_", ""));
       upperInclusive = false;
     } else if (expression.contains(">")) {
       // x > B
       String[] parts = expression.split(">");
-      lower = Long.parseLong(parts[1]);
+      lower = Long.parseLong(parts[1].replace("_", ""));
       lowerInclusive = false;
     } else {
       throw new IllegalArgumentException("Invalid expression: " + expression);
@@ -144,7 +144,7 @@ public class AirflowConfFactory {
     int recordNumber = 1234;
 
     System.out.println(evaluate("0 <= recordNumber < 5000", recordNumber)); // true
-    System.out.println(evaluate("5000 <= recordNumber < 50000", recordNumber)); // false
+    System.out.println(evaluate("5000 <= recordNumber < 50_000", recordNumber)); // false
     System.out.println(evaluate("1000 <= recordNumber", recordNumber)); // true
     System.out.println(evaluate("recordNumber < 2000", recordNumber)); // true
     System.out.println(evaluate("recordNumber > 1000", recordNumber)); // true
