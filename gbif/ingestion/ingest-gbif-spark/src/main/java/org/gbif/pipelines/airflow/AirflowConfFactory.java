@@ -47,6 +47,12 @@ public class AirflowConfFactory {
       }
     }
 
+    if (baseConf == null) {
+      throw new RuntimeException(
+          String.format(
+              "No base configuration found for dataset {}, records {}", datasetId, recordsNumber));
+    }
+
     List<String> combinedArgs = new ArrayList<>(extraArgs);
     combinedArgs.add("--datasetId=" + datasetId);
     combinedArgs.add("--attempt=" + attempt);
