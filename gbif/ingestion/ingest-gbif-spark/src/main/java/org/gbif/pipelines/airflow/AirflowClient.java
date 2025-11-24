@@ -55,7 +55,7 @@ public class AirflowClient {
   }
 
   private String getUri(AirflowConfig config, String paths) {
-    String uri =  String.join("/", getUri(config), paths);
+    String uri = String.join("/", getUri(config), paths);
     log.info("Get Airflow Run ID with path: {}", uri);
     return uri;
   }
@@ -80,8 +80,15 @@ public class AirflowClient {
       input.setContentType(ContentType.APPLICATION_JSON.toString());
       post.setEntity(input);
       post.setHeaders(getHeaders(config));
-      return MAPPER.readTree(
-          checkUnavailableService(client.execute(post)).getEntity().getContent());
+
+      HttpResponse response = checkUnavailableService(client.execute(post));
+      log.info(
+          "Submit dag_run_id {} response code {}, reason {}",
+          body.getDagRunId(),
+          response.getStatusLine().getStatusCode(),
+          response.getStatusLine().getReasonPhrase());
+
+      return MAPPER.readTree(response.getEntity().getContent());
     }
   }
 

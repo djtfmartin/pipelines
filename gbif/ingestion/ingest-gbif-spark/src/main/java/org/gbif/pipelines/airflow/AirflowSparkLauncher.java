@@ -49,9 +49,8 @@ public class AirflowSparkLauncher {
     this.airflowConfig = airflowConfig;
     this.sparkAppName = sparkAppName;
     this.conf = conf;
-    this.airflowClient = AirflowClient.builder()
-            .config(this.airflowConfig)
-            .dagName(dagName).build();
+    this.airflowClient =
+        AirflowClient.builder().config(this.airflowConfig).dagName(dagName).build();
   }
 
   private AirflowBody getAirflowBody(String dagId, AirflowConfFactory.Conf conf) {
