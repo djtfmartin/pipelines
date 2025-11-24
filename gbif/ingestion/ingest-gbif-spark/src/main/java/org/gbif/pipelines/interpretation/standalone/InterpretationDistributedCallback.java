@@ -48,7 +48,11 @@ public class InterpretationDistributedCallback extends InterpretationCallback {
     // create the airflow conf
     AirflowConfFactory.Conf conf =
         AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
+            pipelinesConfig,
+            message.getDatasetUuid().toString(),
+            message.getAttempt(),
+            sparkAppName,
+            recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()

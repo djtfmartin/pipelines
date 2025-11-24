@@ -2,43 +2,51 @@ package org.gbif.pipelines.airflow;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.core.config.model.SparkJobConfig;
 
 @Getter
 @Slf4j
 public class AirflowConfFactory {
 
   public static Conf createConf(
-      String datasetId, int attempt, String sparkAppName, long recordsNumber) {
-    return createConf(datasetId, attempt, sparkAppName, recordsNumber, List.of());
+      PipelinesConfig pipelinesConfig,
+      String datasetId,
+      int attempt,
+      String sparkAppName,
+      long recordsNumber) {
+    return createConf(pipelinesConfig, datasetId, attempt, sparkAppName, recordsNumber, List.of());
   }
 
   public static Conf createConf(
+      PipelinesConfig pipelinesConfig,
       String datasetId,
       int attempt,
       String sparkAppName,
       long recordsNumber,
       List<String> extraArgs) {
 
-    Conf baseConf = null;
+    Map<String, SparkJobConfig> configs = pipelinesConfig.getProcessingConfigs();
+
+    SparkJobConfig baseConf = null;
     if (recordsNumber < 0) {
       throw new IllegalArgumentException("Number of records must be greater than zero");
     }
-    if (recordsNumber < 10_000_000) {
-      // Naturalis
-      baseConf = LEVEL_0;
-    } else if (recordsNumber < 50_000_000) {
-      // Bird life Denmark
-      baseConf = LEVEL_1;
-    } else if (recordsNumber < 300_000_000) {
-      // Inaturalist, Artportalen, Observation.org etc
-      baseConf = LEVEL_2;
-    } else {
-      // eBird
-      baseConf = LEVEL_3;
+
+    Set<String> expressions = configs.keySet();
+    for (String expression : expressions) {
+      if (match(expression, recordsNumber)) {
+        baseConf = configs.get(expression);
+        break;
+      }
     }
 
     List<String> combinedArgs = new ArrayList<>(extraArgs);
@@ -64,76 +72,18 @@ public class AirflowConfFactory {
         .build();
   }
 
-  /** 100k to 10 million * */
-  public static final Conf LEVEL_0 =
-      new Conf.ConfBuilder()
-          .args(List.of("--numberOfShards=100"))
-          .driverMemoryOverheadFactor("0.10")
-          .executorMemoryOverheadFactor("0.15")
-          .driverCores(4)
-          .executorInstances(10)
-          .executorCores(10)
-          .defaultParallelism(100)
-          .driverMinCpu("2000m")
-          .driverMaxCpu("8000m")
-          .driverLimitMemory("4Gi")
-          .executorMinCpu("1000m")
-          .executorMaxCpu("8000m")
-          .executorLimitMemory("30Gi")
-          .build();
+  private static boolean match(String expression, Long numberOfRecords) {
+    try {
+      // Substitute variable
+      expression = expression.replace("numberOfRecords", String.valueOf(numberOfRecords));
 
-  /** 10 million records to 50 million * */
-  public static final Conf LEVEL_1 =
-      new Conf.ConfBuilder()
-          .args(List.of("--numberOfShards=200"))
-          .driverMemoryOverheadFactor("0.10")
-          .executorMemoryOverheadFactor("0.15")
-          .driverCores(4)
-          .executorInstances(20)
-          .executorCores(10)
-          .defaultParallelism(200)
-          .driverMinCpu("2000m")
-          .driverMaxCpu("8000m")
-          .driverLimitMemory("4Gi")
-          .executorMinCpu("1000m")
-          .executorMaxCpu("8000m")
-          .executorLimitMemory("30Gi")
-          .build();
-
-  /** 50 million to 500 million - iNaturalist * */
-  public static final Conf LEVEL_2 =
-      new Conf.ConfBuilder()
-          .args(List.of("--numberOfShards=500"))
-          .driverMemoryOverheadFactor("0.10")
-          .executorMemoryOverheadFactor("0.15")
-          .driverCores(4)
-          .executorInstances(30)
-          .executorCores(10)
-          .defaultParallelism(500)
-          .driverMinCpu("2000m")
-          .driverMaxCpu("8000m")
-          .driverLimitMemory("4Gi")
-          .executorMinCpu("1000m")
-          .executorMaxCpu("8000m")
-          .executorLimitMemory("30Gi")
-          .build();
-
-  public static final Conf LEVEL_3 =
-      new Conf.ConfBuilder()
-          .args(List.of("--numberOfShards=1000"))
-          .driverMemoryOverheadFactor("0.10")
-          .executorMemoryOverheadFactor("0.15")
-          .driverCores(4)
-          .executorInstances(40)
-          .executorCores(10)
-          .defaultParallelism(1000)
-          .driverMinCpu("2000m")
-          .driverMaxCpu("8000m")
-          .driverLimitMemory("4Gi")
-          .executorMinCpu("1000m")
-          .executorMaxCpu("8000m")
-          .executorLimitMemory("30Gi")
-          .build();
+      ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
+      return (Boolean) engine.eval(expression);
+    } catch (Exception e) {
+      log.error("Error evaluating expression {}", expression, e);
+      throw new RuntimeException(e);
+    }
+  }
 
   @Data
   @Builder

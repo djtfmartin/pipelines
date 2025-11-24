@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -81,4 +82,6 @@ public class PipelinesConfig implements Serializable {
   private StandaloneConfig standalone;
 
   private AirflowConfig airflowConfig;
+
+  private Map<String, SparkJobConfig> processingConfigs;
 }
