@@ -78,6 +78,10 @@ public class Standalone {
       case INTERPRETATION:
         callbackFn = (messagePublisher -> new InterpretationCallback(config, messagePublisher));
         break;
+      case INTERPRETATION_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher -> new InterpretationDistributedCallback(config, messagePublisher));
+        break;
       case TABLEBUILD:
         callbackFn = (messagePublisher -> new TableBuildCallback(config, messagePublisher));
         break;
@@ -110,12 +114,7 @@ public class Standalone {
       callback.init();
 
       // start the listener
-      listener.listen(
-          queueName, // is this used ? - exchange / routing key are used
-          routingKey,
-          exchange,
-          threads,
-          callback);
+      listener.listen(queueName, routingKey, exchange, threads, callback);
 
       // 5. Keep running until shutdown
       while (running) {
@@ -173,6 +172,7 @@ public class Standalone {
 
   public enum Mode {
     INTERPRETATION,
+    INTERPRETATION_DISTRIBUTED,
     IDENTIFIER,
     TABLEBUILD,
     INDEXING,

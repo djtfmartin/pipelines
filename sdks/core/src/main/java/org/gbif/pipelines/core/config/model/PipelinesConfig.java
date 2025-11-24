@@ -79,4 +79,6 @@ public class PipelinesConfig implements Serializable {
   private String fragmentsTable;
 
   private StandaloneConfig standalone;
+
+  private AirflowConfig airflowConfig;
 }
