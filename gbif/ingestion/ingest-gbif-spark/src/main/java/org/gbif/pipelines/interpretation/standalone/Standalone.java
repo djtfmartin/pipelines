@@ -75,6 +75,10 @@ public class Standalone {
       case IDENTIFIER:
         callbackFn = (messagePublisher -> new IdentifierCallback(config, messagePublisher));
         break;
+      case IDENTIFIER_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher -> new IdentifierDistributedCallback(config, messagePublisher));
+        break;
       case INTERPRETATION:
         callbackFn = (messagePublisher -> new InterpretationCallback(config, messagePublisher));
         break;
@@ -85,11 +89,23 @@ public class Standalone {
       case TABLEBUILD:
         callbackFn = (messagePublisher -> new TableBuildCallback(config, messagePublisher));
         break;
+      case TABLEBUILD_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher -> new TableBuildDistributedCallback(config, messagePublisher));
+        break;
       case INDEXING:
         callbackFn = (messagePublisher -> new IndexingCallback(config, messagePublisher));
         break;
+      case INDEXING_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher -> new IndexingDistributedCallback(config, messagePublisher));
+        break;
       case FRAGMENTER:
         callbackFn = (messagePublisher -> new FragmenterCallback(config, messagePublisher));
+        break;
+      case FRAGMENTER_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher -> new FragmenterDistributedCallback(config, messagePublisher));
         break;
       default:
         throw new IllegalArgumentException(
@@ -171,11 +187,15 @@ public class Standalone {
   }
 
   public enum Mode {
+    IDENTIFIER,
+    IDENTIFIER_DISTRIBUTED,
     INTERPRETATION,
     INTERPRETATION_DISTRIBUTED,
-    IDENTIFIER,
     TABLEBUILD,
+    TABLEBUILD_DISTRIBUTED,
     INDEXING,
-    FRAGMENTER
+    INDEXING_DISTRIBUTED,
+    FRAGMENTER,
+    FRAGMENTER_DISTRIBUTED
   }
 }

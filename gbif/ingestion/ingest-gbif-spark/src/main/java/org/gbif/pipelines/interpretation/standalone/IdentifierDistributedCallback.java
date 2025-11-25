@@ -7,24 +7,23 @@ import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 
 @Slf4j
-public class InterpretationDistributedCallback extends InterpretationCallback {
+public class IdentifierDistributedCallback extends IdentifierCallback {
 
-  private static final String DAG_NAME = "gbif_pipelines_occurrence_interpretation_dag";
+  private static final String DAG_NAME = "gbif_pipelines_occurrence_identifiers_dag";
 
-  public InterpretationDistributedCallback(
+  public IdentifierDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     super(pipelinesConfig, publisher);
   }
 
   @Override
   protected void runPipeline(PipelinesVerbatimMessage message) throws Exception {
-
     DistributedUtil.runPipeline(
         pipelinesConfig,
         message,
-        "interpretation",
+        "identifiers",
         fileSystem,
         DAG_NAME,
-        StepType.VERBATIM_TO_INTERPRETED);
+        StepType.VERBATIM_TO_IDENTIFIER);
   }
 }
