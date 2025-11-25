@@ -34,6 +34,9 @@ public class Indexing {
 
   public static final String METRICS_FILENAME = "occurrence-to-index.yml";
 
+  public static final String ES_INDEX_NAME_ARG = "--esIndexName";
+  public static final String ES_INDEX_NUMBER_OF_SHARDS_ARG = "--indexNumberShards";
+
   @Parameters(separators = "=")
   private static class Args {
 
@@ -47,12 +50,12 @@ public class Indexing {
     private int attempt;
 
     @Parameter(
-        names = "--esIndexName",
+        names = ES_INDEX_NAME_ARG,
         description = "Name of the Elasticsearch index that will be used to index the records")
     private String esIndexName;
 
     @Parameter(
-        names = "--indexNumberShards",
+        names = ES_INDEX_NUMBER_OF_SHARDS_ARG,
         description = "Number of primary shards in the target index. Default = 3")
     private Integer indexNumberShards = 3;
 

@@ -2,6 +2,8 @@ package org.gbif.pipelines.interpretation.standalone;
 
 import static org.gbif.pipelines.interpretation.standalone.PostprocessValidation.getValueByKey;
 
+import java.io.IOException;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.gbif.api.model.pipelines.StepType;
@@ -11,6 +13,7 @@ import org.gbif.pipelines.airflow.AirflowSparkLauncher;
 import org.gbif.pipelines.airflow.AppName;
 import org.gbif.pipelines.common.PipelinesVariables;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.MDC;
 
 @Slf4j(topic = "Pipeline")
@@ -24,26 +27,23 @@ public class DistributedUtil {
       String dagName,
       StepType stepType)
       throws Exception {
+    runPipeline(pipelinesConfig, message, jobName, fileSystem, dagName, stepType, List.of());
+  }
+
+  public static void runPipeline(
+      PipelinesConfig pipelinesConfig,
+      PipelineBasedMessage message,
+      String jobName,
+      FileSystem fileSystem,
+      String dagName,
+      StepType stepType,
+      List<String> extraArgs)
+      throws Exception {
 
     MDC.put("datasetKey", message.getDatasetUuid().toString());
     log.info("Starting {}", jobName);
 
-    String metaPath =
-        String.join(
-            "/",
-            pipelinesConfig.getOutputPath(),
-            message.getDatasetUuid().toString(),
-            message.getAttempt().toString(),
-            "archive-to-verbatim.yml");
-
-    Long recordsNumber =
-        Long.parseLong(
-            getValueByKey(
-                    fileSystem,
-                    metaPath,
-                    PipelinesVariables.Metrics.ARCHIVE_TO_OCC_COUNT
-                        + PipelinesVariables.Metrics.ATTEMPTED)
-                .orElse("0"));
+    Long recordsNumber = getRecordsNumber(pipelinesConfig, message, fileSystem);
 
     // App name
     String sparkAppName = AppName.get(stepType, message.getDatasetUuid(), message.getAttempt());
@@ -55,7 +55,8 @@ public class DistributedUtil {
             message.getDatasetUuid().toString(),
             message.getAttempt(),
             sparkAppName,
-            recordsNumber);
+            recordsNumber,
+            extraArgs);
 
     // Submit
     AirflowSparkLauncher.builder()
@@ -68,5 +69,26 @@ public class DistributedUtil {
 
     MDC.put("datasetKey", message.getDatasetUuid().toString());
     log.info("Finished {}", jobName);
+  }
+
+  @NotNull
+  public static Long getRecordsNumber(
+      PipelinesConfig pipelinesConfig, PipelineBasedMessage message, FileSystem fileSystem)
+      throws IOException {
+    String metaPath =
+        String.join(
+            "/",
+            pipelinesConfig.getOutputPath(),
+            message.getDatasetUuid().toString(),
+            message.getAttempt().toString(),
+            "archive-to-verbatim.yml");
+
+    return Long.parseLong(
+        getValueByKey(
+                fileSystem,
+                metaPath,
+                PipelinesVariables.Metrics.ARCHIVE_TO_OCC_COUNT
+                    + PipelinesVariables.Metrics.ATTEMPTED)
+            .orElse("0"));
   }
 }

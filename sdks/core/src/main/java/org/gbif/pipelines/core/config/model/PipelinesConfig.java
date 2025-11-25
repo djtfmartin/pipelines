@@ -84,4 +84,6 @@ public class PipelinesConfig implements Serializable {
   private AirflowConfig airflowConfig;
 
   private Map<String, SparkJobConfig> processingConfigs;
+
+  private IndexConfig indexConfig;
 }
