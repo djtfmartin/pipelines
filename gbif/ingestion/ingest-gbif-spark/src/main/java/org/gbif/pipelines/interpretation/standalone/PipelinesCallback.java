@@ -115,6 +115,7 @@ public abstract class PipelinesCallback<
 
   public void init() throws IOException {
 
+    Configuration hadoopConf = null;
     if (isStandalone()) {
       SparkSession.Builder sparkBuilder = SparkSession.builder().appName("pipelines_standalone");
       sparkBuilder = sparkBuilder.master("local[*]");
@@ -126,9 +127,12 @@ public abstract class PipelinesCallback<
       configSparkSession(sparkBuilder, pipelinesConfig);
 
       this.sparkSession = sparkBuilder.getOrCreate();
+
+      hadoopConf = this.sparkSession.sparkContext().hadoopConfiguration();
+    } else {
+      hadoopConf = new Configuration();
     }
 
-    Configuration hadoopConf = this.sparkSession.sparkContext().hadoopConfiguration();
     if (pipelinesConfig.getHdfsSiteConfig() != null
         && pipelinesConfig.getCoreSiteConfig() != null) {
       hadoopConf.addResource(new Path(pipelinesConfig.getHdfsSiteConfig()));
