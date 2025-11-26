@@ -5,7 +5,7 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
-import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.longTimeAndRecPerSecond;
+import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.timeAndRecPerSecond;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -267,7 +267,7 @@ public class Fragmenter {
         Map.of("fragmenterRecordsCountAttempted", recordCount),
         outputPath + "/" + METRICS_FILENAME);
 
-    longTimeAndRecPerSecond("fragmenter", start, recordCount);
+    log.info(timeAndRecPerSecond("fragmenter", start, recordCount));
   }
 
   @NotNull

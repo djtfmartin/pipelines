@@ -72,10 +72,10 @@ public class DistributedUtil {
         .submitAwaitVoid();
 
     MDC.put("datasetKey", message.getDatasetUuid().toString());
-    longTimeAndRecPerSecond(jobName, start, recordsNumber);
+    log.info(timeAndRecPerSecond(jobName, start, recordsNumber));
   }
 
-  public static void longTimeAndRecPerSecond(String jobName, long start, long recordsNumber) {
+  public static String timeAndRecPerSecond(String jobName, long start, long recordsNumber) {
     long end = System.currentTimeMillis();
     Duration d = Duration.between(Instant.ofEpochMilli(start), Instant.ofEpochMilli(end));
 
@@ -86,7 +86,7 @@ public class DistributedUtil {
     double secs = Math.max(d.toMillis() / 1000.0, 0.000001);
     double recPerSec = (double) recordsNumber / secs;
 
-    log.info(
+    return String.format(
         "Finished {} in {}h {}m {}s. Rec/s: {}",
         jobName,
         hours,

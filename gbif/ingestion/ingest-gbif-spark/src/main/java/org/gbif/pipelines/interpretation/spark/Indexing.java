@@ -4,7 +4,7 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
-import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.longTimeAndRecPerSecond;
+import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.timeAndRecPerSecond;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -180,7 +180,7 @@ public class Indexing {
         Map.of("parquetToJsonCountAttempted", indexCount),
         outputPath + "/" + METRICS_FILENAME);
 
-    longTimeAndRecPerSecond("indexing", start, indexCount);
+    log.info(timeAndRecPerSecond("indexing", start, indexCount));
   }
 
   @Builder
