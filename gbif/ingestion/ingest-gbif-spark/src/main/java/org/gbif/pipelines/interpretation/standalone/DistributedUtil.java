@@ -84,12 +84,18 @@ public class DistributedUtil {
             message.getAttempt().toString(),
             "archive-to-verbatim.yml");
 
-    return Long.parseLong(
-        getValueByKey(
-                fileSystem,
-                metaPath,
-                PipelinesVariables.Metrics.ARCHIVE_TO_OCC_COUNT
-                    + PipelinesVariables.Metrics.ATTEMPTED)
-            .orElse("0"));
+    log.info("Reading path for record number {}", metaPath);
+
+    // archiveToOccurrenceCount
+    long occCount =
+        Long.parseLong(
+            getValueByKey(fileSystem, metaPath, PipelinesVariables.Metrics.ARCHIVE_TO_OCC_COUNT)
+                .orElse("0"));
+
+    long erCount =
+        Long.parseLong(
+            getValueByKey(fileSystem, metaPath, PipelinesVariables.Metrics.ARCHIVE_TO_ER_COUNT)
+                .orElse("0"));
+    return Math.max(occCount, erCount);
   }
 }
