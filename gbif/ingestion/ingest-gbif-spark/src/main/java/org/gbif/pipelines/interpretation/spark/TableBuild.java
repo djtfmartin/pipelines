@@ -209,7 +209,7 @@ public class TableBuild {
         Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted),
         outputPath + "/" + METRICS_FILENAME);
 
-      longTimeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted);
+    longTimeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted);
   }
 
   @NotNull

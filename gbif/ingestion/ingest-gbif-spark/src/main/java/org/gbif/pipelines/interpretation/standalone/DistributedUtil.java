@@ -75,25 +75,24 @@ public class DistributedUtil {
     longTimeAndRecPerSecond(jobName, start, recordsNumber);
   }
 
-  public static void longTimeAndRecPerSecond(String jobName, long start, long recordsNumber){
-      long end = System.currentTimeMillis();
-      Duration d = Duration.between(Instant.ofEpochMilli(start), Instant.ofEpochMilli(end));
+  public static void longTimeAndRecPerSecond(String jobName, long start, long recordsNumber) {
+    long end = System.currentTimeMillis();
+    Duration d = Duration.between(Instant.ofEpochMilli(start), Instant.ofEpochMilli(end));
 
-      long hours = d.toHours();
-      long minutes = d.toMinutesPart();
-      long seconds = d.toSecondsPart();
+    long hours = d.toHours();
+    long minutes = d.toMinutesPart();
+    long seconds = d.toSecondsPart();
 
-      double secs = Math.max(d.toMillis() / 1000.0, 0.000001);
-      double recPerSec = (double) recordsNumber / secs;
+    double secs = Math.max(d.toMillis() / 1000.0, 0.000001);
+    double recPerSec = (double) recordsNumber / secs;
 
-      log.info(
-              "Finished {} in {}h {}m {}s. Rec/s: {}",
-              jobName,
-              hours,
-              minutes,
-              seconds,
-              String.format("%.2f", recPerSec)
-      );
+    log.info(
+        "Finished {} in {}h {}m {}s. Rec/s: {}",
+        jobName,
+        hours,
+        minutes,
+        seconds,
+        String.format("%.2f", recPerSec));
   }
 
   @NotNull

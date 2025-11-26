@@ -236,7 +236,7 @@ public class Interpretation {
             PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
         outputPath + "/" + METRICS_FILENAME);
 
-      longTimeAndRecPerSecond("interpretation", start, identifiersCount);
+    longTimeAndRecPerSecond("interpretation", start, identifiersCount);
   }
 
   private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {

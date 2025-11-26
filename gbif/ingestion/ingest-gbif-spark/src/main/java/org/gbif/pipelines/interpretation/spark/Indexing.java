@@ -180,7 +180,7 @@ public class Indexing {
         Map.of("parquetToJsonCountAttempted", indexCount),
         outputPath + "/" + METRICS_FILENAME);
 
-     longTimeAndRecPerSecond("indexing", start, indexCount);
+    longTimeAndRecPerSecond("indexing", start, indexCount);
   }
 
   @Builder
