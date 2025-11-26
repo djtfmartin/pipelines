@@ -17,6 +17,7 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
+import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.longTimeAndRecPerSecond;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -235,10 +236,7 @@ public class Interpretation {
             PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
         outputPath + "/" + METRICS_FILENAME);
 
-    log.info(
-        "Finished interpretation in {} secs, records: {}",
-        (System.currentTimeMillis() - start) / 1000,
-        identifiersCount);
+      longTimeAndRecPerSecond("interpretation", start, identifiersCount);
   }
 
   private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {

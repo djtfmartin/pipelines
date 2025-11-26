@@ -5,12 +5,14 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
+import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.longTimeAndRecPerSecond;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
 import lombok.Builder;
@@ -154,6 +156,7 @@ public class Fragmenter {
       throws Exception {
 
     MDC.put("datasetKey", datasetId);
+    long start = System.currentTimeMillis();
     log.info("Starting to run fragmenter for dataset {}, attempt {}", datasetId, attempt);
 
     String outputPath = config.getOutputPath() + "/" + datasetId + "/" + attempt;
@@ -260,12 +263,12 @@ public class Fragmenter {
       log.error("Error while loading HFiles from " + config.getFragmentsTable(), ex);
     }
 
-    log.info("Finished running fragmenter. Records {}", recordCount);
-
     writeMetricsYaml(
         fileSystem,
         Map.of("fragmenterRecordsCountAttempted", recordCount),
         outputPath + "/" + METRICS_FILENAME);
+
+    longTimeAndRecPerSecond("fragmenter", start, recordCount);
   }
 
   @NotNull

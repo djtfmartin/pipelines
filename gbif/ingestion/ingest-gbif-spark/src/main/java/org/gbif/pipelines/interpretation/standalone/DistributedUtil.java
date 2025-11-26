@@ -3,6 +3,8 @@ package org.gbif.pipelines.interpretation.standalone;
 import static org.gbif.pipelines.interpretation.standalone.PostprocessValidation.getValueByKey;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
@@ -41,8 +43,9 @@ public class DistributedUtil {
       throws Exception {
 
     MDC.put("datasetKey", message.getDatasetUuid().toString());
+    long start = System.currentTimeMillis();
     Long recordsNumber = getRecordsNumber(pipelinesConfig, message, fileSystem);
-    log.info("Starting {}, records count {}", jobName, recordsNumber);
+    log.info("Starting distributed {}, records count {}", jobName, recordsNumber);
 
     // App name
     String sparkAppName = AppName.get(stepType, message.getDatasetUuid(), message.getAttempt());
@@ -57,7 +60,7 @@ public class DistributedUtil {
             recordsNumber,
             extraArgs);
 
-    log.info("selected config {}", conf.getDescription());
+    log.debug("selected config {}", conf.getDescription());
 
     // Submit
     AirflowSparkLauncher.builder()
@@ -69,7 +72,28 @@ public class DistributedUtil {
         .submitAwaitVoid();
 
     MDC.put("datasetKey", message.getDatasetUuid().toString());
-    log.info("Finished {}", jobName);
+    longTimeAndRecPerSecond(jobName, start, recordsNumber);
+  }
+
+  public static void longTimeAndRecPerSecond(String jobName, long start, long recordsNumber){
+      long end = System.currentTimeMillis();
+      Duration d = Duration.between(Instant.ofEpochMilli(start), Instant.ofEpochMilli(end));
+
+      long hours = d.toHours();
+      long minutes = d.toMinutesPart();
+      long seconds = d.toSecondsPart();
+
+      double secs = Math.max(d.toMillis() / 1000.0, 0.000001);
+      double recPerSec = (double) recordsNumber / secs;
+
+      log.info(
+              "Finished {} in {}h {}m {}s. Rec/s: {}",
+              jobName,
+              hours,
+              minutes,
+              seconds,
+              String.format("%.2f", recPerSec)
+      );
   }
 
   @NotNull
@@ -84,7 +108,7 @@ public class DistributedUtil {
             message.getAttempt().toString(),
             "archive-to-verbatim.yml");
 
-    log.info("Reading path for record number {}", metaPath);
+    log.debug("Reading path for record number {}", metaPath);
 
     // archiveToOccurrenceCount
     long occCount =

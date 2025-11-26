@@ -162,6 +162,5 @@ public class AirflowConfFactory {
     System.out.println(evaluate("recordNumber > 2000", recordNumber)); // false
     System.out.println(evaluate("recordCount < 100_000", 99999)); // false
     System.out.println(evaluate("recordCount < 100_000", 100_001)); // false
-
   }
 }

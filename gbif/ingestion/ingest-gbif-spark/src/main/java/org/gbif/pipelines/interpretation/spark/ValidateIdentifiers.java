@@ -8,6 +8,7 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
+import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.longTimeAndRecPerSecond;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -244,6 +245,7 @@ public class ValidateIdentifiers {
     fs.delete(new Path(outputPath + "/identifiers_transformed"), true);
 
     log.info("Finished in {} secs", (System.currentTimeMillis() - start) / 1000);
+    longTimeAndRecPerSecond("identifiers", start, metrics.get(VALID_GBIF_ID_COUNT + "Attempted"));
   }
 
   /**
