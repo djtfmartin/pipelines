@@ -9,8 +9,6 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 @Slf4j
 public class IdentifierDistributedCallback extends IdentifierCallback {
 
-  private static final String DAG_NAME = "gbif_pipelines_occurrence_identifiers_dag";
-
   public IdentifierDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     super(pipelinesConfig, publisher);
@@ -23,7 +21,7 @@ public class IdentifierDistributedCallback extends IdentifierCallback {
         message,
         "identifiers",
         fileSystem,
-        DAG_NAME,
+        pipelinesConfig.getAirflowConfig().identifierDag,
         StepType.VERBATIM_TO_IDENTIFIER);
   }
 }

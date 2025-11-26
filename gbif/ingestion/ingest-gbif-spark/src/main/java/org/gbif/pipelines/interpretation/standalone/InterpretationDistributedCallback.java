@@ -9,8 +9,6 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 @Slf4j
 public class InterpretationDistributedCallback extends InterpretationCallback {
 
-  private static final String DAG_NAME = "gbif_pipelines_occurrence_interpretation_dag";
-
   public InterpretationDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     super(pipelinesConfig, publisher);
@@ -24,7 +22,7 @@ public class InterpretationDistributedCallback extends InterpretationCallback {
         message,
         "interpretation",
         fileSystem,
-        DAG_NAME,
+        pipelinesConfig.getAirflowConfig().interpretationDag,
         StepType.VERBATIM_TO_INTERPRETED);
   }
 }

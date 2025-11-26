@@ -9,8 +9,6 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 @Slf4j
 public class TableBuildDistributedCallback extends TableBuildCallback {
 
-  private static final String DAG_NAME = "gbif_pipelines_occurrence_hdfs_view_dag";
-
   public TableBuildDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     super(pipelinesConfig, publisher);
@@ -19,6 +17,11 @@ public class TableBuildDistributedCallback extends TableBuildCallback {
   @Override
   protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
     DistributedUtil.runPipeline(
-        pipelinesConfig, message, "tablebuild", fileSystem, DAG_NAME, StepType.HDFS_VIEW);
+        pipelinesConfig,
+        message,
+        "tablebuild",
+        fileSystem,
+        pipelinesConfig.getAirflowConfig().tabloBuildDag,
+        StepType.HDFS_VIEW);
   }
 }

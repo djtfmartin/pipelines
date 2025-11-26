@@ -11,8 +11,6 @@ import org.gbif.pipelines.interpretation.spark.Indexing;
 @Slf4j
 public class IndexingDistributedCallback extends IndexingCallback {
 
-  private static final String DAG_NAME = "gbif_pipelines_occurrence_indexing_dag";
-
   public IndexingDistributedCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     super(pipelinesConfig, publisher);
   }
@@ -41,7 +39,7 @@ public class IndexingDistributedCallback extends IndexingCallback {
         message,
         "indexing",
         fileSystem,
-        DAG_NAME,
+        pipelinesConfig.getAirflowConfig().indexingDag,
         StepType.INTERPRETED_TO_INDEX,
         extraArgs);
   }
