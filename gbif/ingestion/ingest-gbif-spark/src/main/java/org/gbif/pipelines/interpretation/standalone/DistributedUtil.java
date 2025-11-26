@@ -84,15 +84,10 @@ public class DistributedUtil {
     long seconds = d.toSecondsPart();
 
     double secs = Math.max(d.toMillis() / 1000.0, 0.000001);
-    double recPerSec = (double) recordsNumber / secs;
+    double recPerSec = recordsNumber / secs;
 
     return String.format(
-        "Finished {} in {}h {}m {}s. Rec/s: {}",
-        jobName,
-        hours,
-        minutes,
-        seconds,
-        String.format("%.2f", recPerSec));
+        "Finished %s in %dh %dm %ds. Rec/s: %.2f", jobName, hours, minutes, seconds, recPerSec);
   }
 
   @NotNull
