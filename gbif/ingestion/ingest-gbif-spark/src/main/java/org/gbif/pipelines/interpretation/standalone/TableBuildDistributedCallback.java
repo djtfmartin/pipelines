@@ -24,4 +24,9 @@ public class TableBuildDistributedCallback extends TableBuildCallback {
         pipelinesConfig.getAirflowConfig().tabloBuildDag,
         StepType.HDFS_VIEW);
   }
+
+  @Override
+  protected boolean isStandalone() {
+    return false;
+  }
 }

@@ -114,16 +114,19 @@ public abstract class PipelinesCallback<
   }
 
   public void init() throws IOException {
-    SparkSession.Builder sparkBuilder = SparkSession.builder().appName("pipelines_standalone");
-    sparkBuilder = sparkBuilder.master("local[*]");
 
-    sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
-    sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
+    if (isStandalone()) {
+      SparkSession.Builder sparkBuilder = SparkSession.builder().appName("pipelines_standalone");
+      sparkBuilder = sparkBuilder.master("local[*]");
 
-    // let the individual implementations add their wares
-    configSparkSession(sparkBuilder, pipelinesConfig);
+      sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
+      sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");
 
-    this.sparkSession = sparkBuilder.getOrCreate();
+      // let the individual implementations add their wares
+      configSparkSession(sparkBuilder, pipelinesConfig);
+
+      this.sparkSession = sparkBuilder.getOrCreate();
+    }
 
     Configuration hadoopConf = this.sparkSession.sparkContext().hadoopConfiguration();
     if (pipelinesConfig.getHdfsSiteConfig() != null
@@ -144,6 +147,10 @@ public abstract class PipelinesCallback<
     if (fileSystem != null) {
       fileSystem.close();
     }
+  }
+
+  protected boolean isStandalone() {
+    return true;
   }
 
   protected abstract StepType getStepType();

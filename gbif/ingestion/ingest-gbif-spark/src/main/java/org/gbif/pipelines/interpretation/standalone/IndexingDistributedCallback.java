@@ -43,4 +43,9 @@ public class IndexingDistributedCallback extends IndexingCallback {
         StepType.INTERPRETED_TO_INDEX,
         extraArgs);
   }
+
+  @Override
+  protected boolean isStandalone() {
+    return false;
+  }
 }

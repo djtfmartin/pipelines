@@ -24,4 +24,9 @@ public class IdentifierDistributedCallback extends IdentifierCallback {
         pipelinesConfig.getAirflowConfig().identifierDag,
         StepType.VERBATIM_TO_IDENTIFIER);
   }
+
+  @Override
+  protected boolean isStandalone() {
+    return false;
+  }
 }

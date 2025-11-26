@@ -25,4 +25,9 @@ public class InterpretationDistributedCallback extends InterpretationCallback {
         pipelinesConfig.getAirflowConfig().interpretationDag,
         StepType.VERBATIM_TO_INTERPRETED);
   }
+
+  @Override
+  protected boolean isStandalone() {
+    return false;
+  }
 }

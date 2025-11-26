@@ -24,4 +24,9 @@ public class FragmenterDistributedCallback extends FragmenterCallback {
         pipelinesConfig.getAirflowConfig().fragmenterDag,
         StepType.FRAGMENTER);
   }
+
+  @Override
+  protected boolean isStandalone() {
+    return false;
+  }
 }
