@@ -35,6 +35,7 @@ public class AirflowConfFactory {
     Map<String, SparkJobConfig> configs = pipelinesConfig.getProcessingConfigs();
 
     SparkJobConfig baseConf = null;
+    String confDescription = null;
     if (recordsNumber < 0) {
       throw new IllegalArgumentException("Number of records must be greater than zero");
     }
@@ -43,6 +44,7 @@ public class AirflowConfFactory {
     for (String expression : expressions) {
       if (evaluate(expression, recordsNumber)) {
         baseConf = configs.get(expression);
+        confDescription = expression;
         break;
       }
     }
@@ -60,6 +62,7 @@ public class AirflowConfFactory {
     combinedArgs.addAll(baseConf.getArgs());
 
     return Conf.builder()
+        .description(confDescription)
         .args(combinedArgs)
         .driverMemoryOverheadFactor(baseConf.driverMemoryOverheadFactor)
         .driverCores(baseConf.driverCores)
@@ -124,6 +127,8 @@ public class AirflowConfFactory {
   @Builder
   public static class Conf {
 
+    private final String description;
+
     // command line args
     private final List<String> args;
 
@@ -155,5 +160,8 @@ public class AirflowConfFactory {
     System.out.println(evaluate("recordNumber < 2000", recordNumber)); // true
     System.out.println(evaluate("recordNumber > 1000", recordNumber)); // true
     System.out.println(evaluate("recordNumber > 2000", recordNumber)); // false
+    System.out.println(evaluate("recordCount < 100_000", 99999)); // false
+    System.out.println(evaluate("recordCount < 100_000", 100_001)); // false
+
   }
 }

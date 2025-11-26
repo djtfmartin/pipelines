@@ -41,9 +41,8 @@ public class DistributedUtil {
       throws Exception {
 
     MDC.put("datasetKey", message.getDatasetUuid().toString());
-    log.info("Starting {}", jobName);
-
     Long recordsNumber = getRecordsNumber(pipelinesConfig, message, fileSystem);
+    log.info("Starting {}, records count {}", jobName, recordsNumber);
 
     // App name
     String sparkAppName = AppName.get(stepType, message.getDatasetUuid(), message.getAttempt());
@@ -57,6 +56,8 @@ public class DistributedUtil {
             sparkAppName,
             recordsNumber,
             extraArgs);
+
+    log.info("selected config {}", conf.getDescription());
 
     // Submit
     AirflowSparkLauncher.builder()
