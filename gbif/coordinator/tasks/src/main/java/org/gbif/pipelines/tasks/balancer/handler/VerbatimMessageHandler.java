@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
@@ -87,9 +88,14 @@ public class VerbatimMessageHandler {
       log.info("The events message has been sent - {}", eventsMessage);
     } else {
 
-      Optional<Long> erCount =
+      Optional<Long> occCount =
           getRecordNumber(
               config, m, new DwcaToAvroConfiguration().metaFileName, Metrics.ARCHIVE_TO_OCC_COUNT);
+
+      Optional<Long> erCount =
+          getRecordNumber(
+              config, m, new DwcaToAvroConfiguration().metaFileName, Metrics.ARCHIVE_TO_ER_COUNT);
+
       Optional<Long> uniqueIdsCount =
           getRecordNumber(
               config,
@@ -97,17 +103,22 @@ public class VerbatimMessageHandler {
               new IdentifierConfiguration().metaFileName,
               Metrics.UNIQUE_IDS_COUNT + Metrics.ATTEMPTED);
 
-      long recordsNumber;
-      if (erCount.isPresent() && uniqueIdsCount.isPresent()) {
-        recordsNumber = Math.max(uniqueIdsCount.get(), erCount.get());
-      } else if (uniqueIdsCount.isPresent()) {
-        recordsNumber = uniqueIdsCount.get();
-      } else if (erCount.isPresent()) {
-        recordsNumber = erCount.get();
-      } else {
+      log.info("The record numbers - occ: {}, er: {}, ids: {}", occCount, erCount, uniqueIdsCount);
+
+      Optional<Long> recordNumberOpt =
+          Stream.of(occCount, erCount, uniqueIdsCount)
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .max(Long::compareTo);
+
+      log.info("Used record number - {}", recordNumberOpt);
+
+      if (recordNumberOpt.isEmpty()) {
         throw new IllegalArgumentException(
             "Can't find information about amount of records in MQ of meta files");
       }
+
+      long recordsNumber = recordNumberOpt.get();
 
       String runner = computeRunner(config, m, recordsNumber).name();
 
@@ -148,22 +159,7 @@ public class VerbatimMessageHandler {
 
     StepRunner runner;
 
-    // Strategy 1: Chooses a runner type by number of records in a dataset
-    if (recordsNumber > 0) {
-
-      int switchRecord = config.switchRecordsNumber;
-      if (isValidator(message.getPipelineSteps())) {
-        log.info(
-            "Use validatorSwitchRecordsNumber settings, becuase message contains validtor pipeline steps");
-        switchRecord = config.validatorSwitchRecordsNumber;
-      }
-
-      runner = recordsNumber >= switchRecord ? StepRunner.DISTRIBUTED : StepRunner.STANDALONE;
-      log.info("Records number - {}, Spark Runner type - {}", recordsNumber, runner);
-      return runner;
-    }
-
-    // Strategy 2: Chooses a runner type by calculating verbatim.avro file size
+    // Chooses a runner type by calculating verbatim.avro file size
     String verbatim = Conversion.FILE_NAME + Pipeline.AVRO_EXTENSION;
     StepConfiguration stepConfig = config.stepConfig;
     String repositoryPath =

@@ -36,6 +36,19 @@ public class Abcd206RecordParserTest extends ParserTestCase {
     assertEquals("GDA94", ror.getGeodeticDatum());
     assertEquals("0123456789ABCD", ror.getId());
     assertEquals("19870413whk1", ror.getCollectorsFieldNumber());
+    assertEquals("SEE REMARKS REF W45501", ror.getOccurrenceRemarks());
+    assertEquals("length measurement", ror.getPreparations());
+    assertEquals("06/06/1978", ror.getModified());
+    assertEquals(
+        "http://purl.oclc.org/net/edu.harvard.huh/guid/uuid/0e90e511-4ab7-4ca1-ba13-eac3d37bd345|http://viaf.org/viaf/171878794|http://www.wikidata.org/entity/Q1612245",
+        ror.getRecordedByID());
+    assertEquals(
+        "https://www.europlusmed.org/cdm_dataportal/taxon/F8D1EADB-7D91-4E3B-BF96-FD15A0BD888B",
+        ror.getScientificNameID());
+    assertEquals(
+        "http://purl.oclc.org/net/edu.harvard.huh/guid/uuid/d5fea488-5786-4106-af90-396ef452c3aa|http://viaf.org/viaf/100383596|http://www.wikidata.org/entity/Q78738",
+        ror.getIdentifiedByID());
+    assertEquals("112358", ror.getAssociatedSequences());
   }
 
   @Test

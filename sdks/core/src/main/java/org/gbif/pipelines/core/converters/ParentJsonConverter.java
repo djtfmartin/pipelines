@@ -5,30 +5,28 @@ import static org.gbif.pipelines.core.utils.ModelUtils.extractLengthAwareOptValu
 import static org.gbif.pipelines.core.utils.ModelUtils.extractOptValue;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-// import org.gbif.api.vocabulary.DurationUnit;
+import org.gbif.api.vocabulary.DurationUnit;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
-import org.gbif.pipelines.core.utils.HashConverter;
+import org.gbif.pipelines.core.utils.SortUtils;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.DerivedMetadataRecord;
 import org.gbif.pipelines.io.avro.json.EventInheritedRecord;
 import org.gbif.pipelines.io.avro.json.EventJsonRecord;
-// import org.gbif.pipelines.io.avro.json.Humboldt;
-// import org.gbif.pipelines.io.avro.json.HumboldtTaxonClassification;
-import org.gbif.pipelines.io.avro.json.JoinRecord;
+import org.gbif.pipelines.io.avro.json.Humboldt;
+import org.gbif.pipelines.io.avro.json.HumboldtTaxonClassification;
 import org.gbif.pipelines.io.avro.json.LocationInheritedRecord;
 import org.gbif.pipelines.io.avro.json.MetadataJsonRecord;
-import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 import org.gbif.pipelines.io.avro.json.Parent;
 import org.gbif.pipelines.io.avro.json.ParentJsonRecord;
 import org.gbif.pipelines.io.avro.json.TemporalInheritedRecord;
-
-// import org.gbif.pipelines.io.avro.json.ValueAndUnit;
+import org.gbif.pipelines.io.avro.json.VocabularyConcept;
 
 @Slf4j
 @Builder
@@ -46,14 +44,8 @@ public class ParentJsonConverter {
   protected final LocationInheritedRecord locationInheritedRecord;
   protected final TemporalInheritedRecord temporalInheritedRecord;
   protected final EventInheritedRecord eventInheritedRecord;
-  protected OccurrenceJsonRecord occurrenceJsonRecord;
   protected MeasurementOrFactRecord measurementOrFactRecord;
-
-  //  protected final HumboldtRecord humboldtRecord;
-
-  public ParentJsonRecord convertToParent() {
-    return (occurrenceJsonRecord != null) ? convertToParentOccurrence() : convertToParentEvent();
-  }
+  protected final HumboldtRecord humboldtRecord;
 
   @SneakyThrows
   public String toJson() {
@@ -61,17 +53,16 @@ public class ParentJsonConverter {
   }
 
   /** Converts to parent record based on an event record. */
-  private ParentJsonRecord convertToParentEvent() {
+  public ParentJsonRecord convertToParent() {
     ParentJsonRecord.Builder builder =
         convertToParentRecord()
             .setId(verbatim.getId())
             .setInternalId(identifier.getInternalId())
             .setUniqueKey(identifier.getUniqueKey())
             .setType(ConverterConstants.EVENT)
-            .setEvent(convertToEvent().build())
+            .setEventBuilder(convertToEvent())
             .setAll(JsonConverter.convertFieldAll(verbatim, false))
-            .setVerbatim(JsonConverter.convertVerbatimEventRecord(verbatim))
-            .setJoinRecord(JoinRecord.newBuilder().setName(ConverterConstants.EVENT).build());
+            .setVerbatim(JsonConverter.convertVerbatimEventRecord(verbatim));
 
     mapCreated(builder);
     mapDerivedMetadata(builder);
@@ -84,36 +75,12 @@ public class ParentJsonConverter {
     return builder.build();
   }
 
-  /** Converts to a parent record based on an occurrence record. */
-  private ParentJsonRecord convertToParentOccurrence() {
-    return convertToParentRecord()
-        .setType(ConverterConstants.OCCURRENCE)
-        .setId(occurrenceJsonRecord.getId())
-        .setInternalId(
-            HashConverter.getSha1(
-                metadata.getDatasetKey(),
-                occurrenceJsonRecord.getEventId(),
-                occurrenceJsonRecord.getOccurrenceId()))
-        .setJoinRecord(
-            JoinRecord.newBuilder()
-                .setName(ConverterConstants.OCCURRENCE)
-                .setParent(
-                    HashConverter.getSha1(
-                        metadata.getDatasetKey(), occurrenceJsonRecord.getEventId()))
-                .build())
-        .setOccurrence(occurrenceJsonRecord)
-        .setAll(occurrenceJsonRecord.getAll())
-        .setVerbatim(occurrenceJsonRecord.getVerbatim())
-        .setCreated(occurrenceJsonRecord.getCreated())
-        .build();
-  }
-
   /** Converts to a parent record */
   private ParentJsonRecord.Builder convertToParentRecord() {
     ParentJsonRecord.Builder builder =
         ParentJsonRecord.newBuilder()
             .setCrawlId(metadata.getCrawlId())
-            .setMetadata(mapMetadataJsonRecord().build());
+            .setMetadataBuilder(mapMetadataJsonRecord());
 
     JsonConverter.convertToDate(metadata.getLastCrawled()).ifPresent(builder::setLastCrawled);
 
@@ -133,7 +100,8 @@ public class ParentJsonConverter {
     mapLocationRecord(builder);
     mapMultimediaRecord(builder);
     mapMeasurementOrFactRecord(builder);
-    //    mapHumboldtRecord(builder);
+    mapHumboldtRecord(builder);
+    mapSortField(builder);
 
     return builder;
   }
@@ -156,11 +124,9 @@ public class ParentJsonConverter {
 
   private void mapEventCoreRecord(EventJsonRecord.Builder builder) {
 
-    String surveyID = null;
     if (eventCore.getEventType() != null
         && eventCore.getEventType().getConcept().equalsIgnoreCase(ConverterConstants.SURVEY)) {
-      surveyID = eventCore.getId();
-      builder.setSurveyID(surveyID);
+      builder.setSurveyID(builder.getEventID());
     }
 
     // Simple
@@ -197,7 +163,7 @@ public class ParentJsonConverter {
           .setEventHierarchyJoined(String.join(ConverterConstants.DELIMITER, eventIDs))
           .setEventHierarchyLevels(eventIDs.size());
 
-      if (surveyID == null) {
+      if (builder.getSurveyID() == null) {
         List<org.gbif.pipelines.io.avro.Parent> surveys =
             eventCore.getParentsLineage().stream()
                 .filter(
@@ -212,8 +178,8 @@ public class ParentJsonConverter {
     } else {
       // add the eventID and parentEventID to hierarchy for consistency
       List<String> eventHierarchy = new ArrayList<>();
-      Optional.ofNullable(eventCore.getParentEventID()).ifPresent(eventHierarchy::add);
-      Optional.ofNullable(eventCore.getId()).ifPresent(eventHierarchy::add);
+      Optional.ofNullable(builder.getParentEventID()).ifPresent(eventHierarchy::add);
+      Optional.ofNullable(builder.getEventID()).ifPresent(eventHierarchy::add);
 
       builder
           .setEventHierarchy(eventHierarchy)
@@ -222,8 +188,8 @@ public class ParentJsonConverter {
 
       // add the single type to hierarchy for consistency
       List<String> eventTypeHierarchy = new ArrayList<>();
-      if (eventCore.getEventType() != null && eventCore.getEventType().getConcept() != null) {
-        eventTypeHierarchy.add(eventCore.getEventType().getConcept());
+      if (builder.getEventType() != null && builder.getEventType().getConcept() != null) {
+        eventTypeHierarchy.add(builder.getEventType().getConcept());
       }
 
       builder
@@ -232,8 +198,9 @@ public class ParentJsonConverter {
               String.join(ConverterConstants.DELIMITER, eventTypeHierarchy));
 
       List<String> verbatimEventTypeHierarchy = new ArrayList<>();
-
-      extractOptValue(verbatim, DwcTerm.eventType).ifPresent(builder::setVerbatimEventType);
+      if (builder.getVerbatimEventType() != null) {
+        verbatimEventTypeHierarchy.add(builder.getVerbatimEventType());
+      }
 
       builder
           .setVerbatimEventTypeHierarchy(verbatimEventTypeHierarchy)
@@ -363,153 +330,135 @@ public class ParentJsonConverter {
             .collect(Collectors.toList()));
   }
 
-  //
-  //  private void mapHumboldtRecord(EventJsonRecord.Builder builder) {
-  //    builder.setHumboldt(
-  //        humboldtRecord.getHumboldtItems().stream()
-  //            .map(
-  //                h -> {
-  //                  Humboldt.Builder humboldtBuilder =
-  //                      Humboldt.newBuilder()
-  //                          .setSiteCount(h.getSiteCount())
-  //                          .setVerbatimSiteDescriptions(h.getVerbatimSiteDescriptions())
-  //                          .setVerbatimSiteNames(h.getVerbatimSiteNames())
-  //                          .setGeospatialScopeArea(
-  //                              getValueAndUnit(
-  //                                  h.getGeospatialScopeAreaValue(),
-  // h.getGeospatialScopeAreaUnit()))
-  //                          .setTotalAreaSampled(
-  //                              getValueAndUnit(
-  //                                  h.getTotalAreaSampledValue(), h.getTotalAreaSampledUnit()))
-  //                          .setTaxonCompletenessProtocols(h.getTaxonCompletenessProtocols())
-  //
-  // .setIsTaxonomicScopeFullyReported(h.getIsTaxonomicScopeFullyReported())
-  //                          .setIsAbsenceReported(h.getIsAbsenceReported())
-  //                          .setHasNonTargetTaxa(h.getHasNonTargetTaxa())
-  //
-  // .setAreNonTargetTaxaFullyReported(h.getAreNonTargetTaxaFullyReported())
-  //
-  // .setIsLifeStageScopeFullyReported(h.getIsLifeStageScopeFullyReported())
-  //                          .setIsDegreeOfEstablishmentScopeFullyReported(
-  //                              h.getIsDegreeOfEstablishmentScopeFullyReported())
-  //
-  // .setIsGrowthFormScopeFullyReported(h.getIsGrowthFormScopeFullyReported())
-  //                          .setHasNonTargetOrganisms(h.getHasNonTargetOrganisms())
-  //                          .setCompilationTypes(h.getCompilationTypes())
-  //                          .setCompilationSourceTypes(h.getCompilationSourceTypes())
-  //                          .setInventoryTypes(h.getInventoryTypes())
-  //                          .setProtocolNames(h.getProtocolNames())
-  //                          .setProtocolDescriptions(h.getProtocolDescriptions())
-  //                          .setProtocolReferences(h.getProtocolReferences())
-  //                          .setIsAbundanceReported(h.getIsAbundanceReported())
-  //                          .setIsAbundanceCapReported(h.getIsAbundanceCapReported())
-  //                          .setAbundanceCap(h.getAbundanceCap())
-  //                          .setIsVegetationCoverReported(h.getIsVegetationCoverReported())
-  //                          .setIsLeastSpecificTargetCategoryQuantityInclusive(
-  //                              h.getIsLeastSpecificTargetCategoryQuantityInclusive())
-  //                          .setHasVouchers(h.getHasVouchers())
-  //                          .setVoucherInstitutions(h.getVoucherInstitutions())
-  //                          .setHasMaterialSamples(h.getHasMaterialSamples())
-  //                          .setMaterialSampleTypes(h.getMaterialSampleTypes())
-  //                          .setSamplingPerformedBy(h.getSamplingPerformedBy())
-  //                          .setIsSamplingEffortReported(h.getIsSamplingEffortReported())
-  //                          .setSamplingEffort(
-  //                              getValueAndUnit(
-  //                                  h.getSamplingEffortValue(), h.getSamplingEffortUnit()));
-  //
-  //                  Function<
-  //                          List<org.gbif.pipelines.io.avro.VocabularyConcept>,
-  //                          List<VocabularyConcept>>
-  //                      vocabConverter =
-  //                          vocabs ->
-  //                              vocabs.stream()
-  //                                  .map(
-  //                                      v ->
-  //                                          VocabularyConcept.newBuilder()
-  //                                              .setConcept(v.getConcept())
-  //                                              .setLineage(v.getLineage())
-  //                                              .build())
-  //                                  .collect(Collectors.toList());
-  //
-  //                  humboldtBuilder.setTargetHabitatScope(h.getTargetHabitatScope());
-  //                  humboldtBuilder.setExcludedHabitatScope(h.getExcludedHabitatScope());
-  //                  humboldtBuilder.setTargetGrowthFormScope(h.getTargetGrowthFormScope());
-  //                  humboldtBuilder.setExcludedGrowthFormScope(h.getExcludedGrowthFormScope());
-  //                  humboldtBuilder.setTargetLifeStageScope(
-  //                      vocabConverter.apply(h.getTargetLifeStageScope()));
-  //                  humboldtBuilder.setExcludedLifeStageScope(
-  //                      vocabConverter.apply(h.getExcludedLifeStageScope()));
-  //                  humboldtBuilder.setTargetDegreeOfEstablishmentScope(
-  //                      vocabConverter.apply(h.getTargetDegreeOfEstablishmentScope()));
-  //                  humboldtBuilder.setExcludedDegreeOfEstablishmentScope(
-  //                      vocabConverter.apply(h.getExcludedDegreeOfEstablishmentScope()));
-  //
-  //                  if (h.getEventDurationValue() != null && h.getEventDurationUnit() != null) {
-  //                    DurationUnit eventDurationUnit =
-  // DurationUnit.valueOf(h.getEventDurationUnit());
-  //                    humboldtBuilder.setEventDurationValueInMinutes(
-  //                        h.getEventDurationValue() * eventDurationUnit.getDurationInMinutes());
-  //                    humboldtBuilder.setEventDuration(
-  //                        getValueAndUnit(h.getEventDurationValue(), h.getEventDurationUnit()));
-  //                  }
-  //
-  //                  // taxon
-  //                  Function<
-  //                          List<TaxonHumboldtRecord>, Map<String,
-  // List<HumboldtTaxonClassification>>>
-  //                      taxonFn =
-  //                          taxonRecords -> {
-  //                            Map<String, List<HumboldtTaxonClassification>> classifications =
-  //                                new HashMap<>();
-  //                            taxonRecords.forEach(
-  //                                t -> {
-  //                                  HumboldtTaxonClassification.Builder taxonBuilder =
-  //                                      HumboldtTaxonClassification.newBuilder()
-  //                                          .setUsageKey(t.getUsageKey())
-  //                                          .setUsageName(t.getUsageName())
-  //                                          .setUsageRank(t.getUsageRank());
-  //
-  //                                  Map<String, String> classification = new HashMap<>();
-  //                                  Map<String, String> classificationKeys = new HashMap<>();
-  //                                  List<String> taxonKeys = new ArrayList<>();
-  //                                  t.getClassification()
-  //                                      .forEach(
-  //                                          c -> {
-  //                                            classification.put(c.getRank(), c.getName());
-  //                                            classificationKeys.put(c.getRank(), c.getKey());
-  //                                            taxonKeys.add(c.getKey());
-  //                                          });
-  //
-  //                                  taxonBuilder.setClassification(classification);
-  //                                  taxonBuilder.setClassificationKeys(classificationKeys);
-  //                                  taxonBuilder.setTaxonKeys(taxonKeys);
-  //                                  taxonBuilder.setIssues(t.getIssues().getIssueList());
-  //                                  classifications
-  //                                      .computeIfAbsent(t.getChecklistKey(), k -> new
-  // ArrayList<>())
-  //                                      .add(taxonBuilder.build());
-  //                                });
-  //                            return classifications;
-  //                          };
-  //
-  //                  humboldtBuilder.setTargetTaxonomicScope(
-  //                      taxonFn.apply(h.getTargetTaxonomicScope()));
-  //                  humboldtBuilder.setExcludedTaxonomicScope(
-  //                      taxonFn.apply(h.getExcludedTaxonomicScope()));
-  //                  humboldtBuilder.setAbsentTaxa(taxonFn.apply(h.getAbsentTaxa()));
-  //                  humboldtBuilder.setNonTargetTaxa(taxonFn.apply(h.getNonTargetTaxa()));
-  //
-  //                  return humboldtBuilder.build();
-  //                })
-  //            .collect(Collectors.toList()));
-  //  }
-  //
-  //  private static ValueAndUnit getValueAndUnit(Double value, String unit) {
-  //    if (value != null && !Strings.isNullOrEmpty(unit)) {
-  //      return ValueAndUnit.newBuilder().setValue(value).setUnit(unit).build();
-  //    }
-  //    return null;
-  //  }
+  private void mapHumboldtRecord(EventJsonRecord.Builder builder) {
+    builder.setHumboldt(
+        humboldtRecord.getHumboldtItems().stream()
+            .map(
+                h -> {
+                  Humboldt.Builder humboldtBuilder =
+                      Humboldt.newBuilder()
+                          .setSiteCount(h.getSiteCount())
+                          .setVerbatimSiteDescriptions(h.getVerbatimSiteDescriptions())
+                          .setVerbatimSiteNames(h.getVerbatimSiteNames())
+                          .setGeospatialScopeAreaValue(h.getGeospatialScopeAreaValue())
+                          .setGeospatialScopeAreaUnit(h.getGeospatialScopeAreaUnit())
+                          .setTotalAreaSampledValue(h.getTotalAreaSampledValue())
+                          .setTotalAreaSampledUnit(h.getTotalAreaSampledUnit())
+                          .setEventDurationValue(h.getEventDurationValue())
+                          .setEventDurationUnit(h.getEventDurationUnit())
+                          .setGeospatialScopeAreaUnit(h.getGeospatialScopeAreaUnit())
+                          .setTaxonCompletenessProtocols(h.getTaxonCompletenessProtocols())
+                          .setIsTaxonomicScopeFullyReported(h.getIsTaxonomicScopeFullyReported())
+                          .setIsAbsenceReported(h.getIsAbsenceReported())
+                          .setHasNonTargetTaxa(h.getHasNonTargetTaxa())
+                          .setAreNonTargetTaxaFullyReported(h.getAreNonTargetTaxaFullyReported())
+                          .setIsLifeStageScopeFullyReported(h.getIsLifeStageScopeFullyReported())
+                          .setIsDegreeOfEstablishmentScopeFullyReported(
+                              h.getIsDegreeOfEstablishmentScopeFullyReported())
+                          .setIsGrowthFormScopeFullyReported(h.getIsGrowthFormScopeFullyReported())
+                          .setHasNonTargetOrganisms(h.getHasNonTargetOrganisms())
+                          .setCompilationTypes(h.getCompilationTypes())
+                          .setCompilationSourceTypes(h.getCompilationSourceTypes())
+                          .setInventoryTypes(h.getInventoryTypes())
+                          .setProtocolNames(h.getProtocolNames())
+                          .setProtocolDescriptions(h.getProtocolDescriptions())
+                          .setProtocolReferences(h.getProtocolReferences())
+                          .setIsAbundanceReported(h.getIsAbundanceReported())
+                          .setIsAbundanceCapReported(h.getIsAbundanceCapReported())
+                          .setAbundanceCap(h.getAbundanceCap())
+                          .setIsVegetationCoverReported(h.getIsVegetationCoverReported())
+                          .setIsLeastSpecificTargetCategoryQuantityInclusive(
+                              h.getIsLeastSpecificTargetCategoryQuantityInclusive())
+                          .setHasVouchers(h.getHasVouchers())
+                          .setVoucherInstitutions(h.getVoucherInstitutions())
+                          .setHasMaterialSamples(h.getHasMaterialSamples())
+                          .setMaterialSampleTypes(h.getMaterialSampleTypes())
+                          .setSamplingPerformedBy(h.getSamplingPerformedBy())
+                          .setIsSamplingEffortReported(h.getIsSamplingEffortReported())
+                          .setSamplingEffortValue(h.getSamplingEffortValue())
+                          .setSamplingEffortUnit(h.getSamplingEffortUnit());
+
+                  Function<
+                          List<org.gbif.pipelines.io.avro.VocabularyConcept>,
+                          List<VocabularyConcept>>
+                      vocabConverter =
+                          vocabs ->
+                              vocabs.stream()
+                                  .map(
+                                      v ->
+                                          VocabularyConcept.newBuilder()
+                                              .setConcept(v.getConcept())
+                                              .setLineage(v.getLineage())
+                                              .build())
+                                  .collect(Collectors.toList());
+
+                  humboldtBuilder.setTargetHabitatScope(h.getTargetHabitatScope());
+                  humboldtBuilder.setExcludedHabitatScope(h.getExcludedHabitatScope());
+                  humboldtBuilder.setTargetGrowthFormScope(h.getTargetGrowthFormScope());
+                  humboldtBuilder.setExcludedGrowthFormScope(h.getExcludedGrowthFormScope());
+                  humboldtBuilder.setTargetLifeStageScope(
+                      vocabConverter.apply(h.getTargetLifeStageScope()));
+                  humboldtBuilder.setExcludedLifeStageScope(
+                      vocabConverter.apply(h.getExcludedLifeStageScope()));
+                  humboldtBuilder.setTargetDegreeOfEstablishmentScope(
+                      vocabConverter.apply(h.getTargetDegreeOfEstablishmentScope()));
+                  humboldtBuilder.setExcludedDegreeOfEstablishmentScope(
+                      vocabConverter.apply(h.getExcludedDegreeOfEstablishmentScope()));
+
+                  if (h.getEventDurationValue() != null && h.getEventDurationUnit() != null) {
+                    DurationUnit eventDurationUnit = DurationUnit.valueOf(h.getEventDurationUnit());
+                    humboldtBuilder.setEventDurationValueInMinutes(
+                        h.getEventDurationValue() * eventDurationUnit.getDurationInMinutes());
+                  }
+
+                  // taxon
+                  Function<
+                          List<TaxonHumboldtRecord>, Map<String, List<HumboldtTaxonClassification>>>
+                      taxonFn =
+                          taxonRecords -> {
+                            Map<String, List<HumboldtTaxonClassification>> classifications =
+                                new HashMap<>();
+                            taxonRecords.forEach(
+                                t -> {
+                                  HumboldtTaxonClassification.Builder taxonBuilder =
+                                      HumboldtTaxonClassification.newBuilder()
+                                          .setUsageKey(t.getUsageKey())
+                                          .setUsageName(t.getUsageName())
+                                          .setUsageRank(t.getUsageRank());
+
+                                  Map<String, String> classification = new HashMap<>();
+                                  Map<String, String> classificationKeys = new HashMap<>();
+                                  List<String> taxonKeys = new ArrayList<>();
+                                  t.getClassification()
+                                      .forEach(
+                                          c -> {
+                                            classification.put(c.getRank(), c.getName());
+                                            classificationKeys.put(c.getRank(), c.getKey());
+                                            taxonKeys.add(c.getKey());
+                                          });
+
+                                  taxonBuilder.setClassification(classification);
+                                  taxonBuilder.setClassificationKeys(classificationKeys);
+                                  taxonBuilder.setTaxonKeys(taxonKeys);
+                                  taxonBuilder.setIssues(t.getIssues().getIssueList());
+                                  classifications
+                                      .computeIfAbsent(t.getChecklistKey(), k -> new ArrayList<>())
+                                      .add(taxonBuilder.build());
+                                });
+                            return classifications;
+                          };
+
+                  humboldtBuilder.setTargetTaxonomicScope(
+                      taxonFn.apply(h.getTargetTaxonomicScope()));
+                  humboldtBuilder.setExcludedTaxonomicScope(
+                      taxonFn.apply(h.getExcludedTaxonomicScope()));
+                  humboldtBuilder.setAbsentTaxa(taxonFn.apply(h.getAbsentTaxa()));
+                  humboldtBuilder.setNonTargetTaxa(taxonFn.apply(h.getNonTargetTaxa()));
+
+                  return humboldtBuilder.build();
+                })
+            .collect(Collectors.toList()));
+  }
 
   private void mapExtendedRecord(EventJsonRecord.Builder builder) {
     builder.setExtensions(JsonConverter.convertExtensions(verbatim));
@@ -528,13 +477,14 @@ public class ParentJsonConverter {
 
   private void mapIssues(EventJsonRecord.Builder builder) {
     JsonConverter.mapIssues(
-        Arrays.asList(metadata, eventCore, temporal, location, multimedia),
+        Arrays.asList(metadata, eventCore, temporal, location, multimedia, humboldtRecord),
         builder::setIssues,
         builder::setNotIssues);
   }
 
   private void mapCreated(ParentJsonRecord.Builder builder) {
-    JsonConverter.getMaxCreationDate(metadata, eventCore, temporal, location, multimedia)
+    JsonConverter.getMaxCreationDate(
+            metadata, eventCore, temporal, location, multimedia, humboldtRecord)
         .ifPresent(builder::setCreated);
   }
 
@@ -568,5 +518,11 @@ public class ParentJsonConverter {
     return parents.stream()
         .map(p -> Parent.newBuilder().setId(p.getId()).setEventType(p.getEventType()).build())
         .collect(Collectors.toList());
+  }
+
+  private void mapSortField(EventJsonRecord.Builder builder) {
+    builder.setYearMonthEventIDSort(
+        SortUtils.yearDescMonthAscEventIDAscSortKey(
+            builder.getYear(), builder.getMonth(), builder.getEventID()));
   }
 }

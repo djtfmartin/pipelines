@@ -3,6 +3,7 @@ package org.gbif.pipelines.transforms.core;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.Builder;
@@ -14,6 +15,7 @@ import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.gbif.pipelines.core.converters.JsonConverter;
 import org.gbif.pipelines.io.avro.EventDate;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MultiTaxonRecord;
@@ -81,20 +83,18 @@ public class DerivedMetadataTransform implements Serializable {
                       .setLte(temporalCoverage.getLte()));
             }
 
-            //            builder.setTaxonomicCoverage(
-            //                classifications.stream()
-            //                    .map(
-            //                        tr ->
-            //                            Optional.ofNullable(getAssociatedVerbatim(tr,
-            // verbatimRecords))
-            //                                .map(
-            //                                    vr ->
-            //
-            // JsonConverter.convertToGbifClassificationFromMultiTaxon(
-            //                                            vr, tr)))
-            //                    .filter(Optional::isPresent)
-            //                    .map(Optional::get)
-            //                    .collect(Collectors.toList()));
+            builder.setTaxonomicCoverage(
+                classifications.stream()
+                    .map(
+                        tr ->
+                            Optional.ofNullable(getAssociatedVerbatim(tr, verbatimRecords))
+                                .map(
+                                    vr ->
+                                        JsonConverter.convertToClassificationFromMultiTaxon(
+                                            vr, tr)))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toList()));
             c.output(KV.of(key, builder.build()));
           }
         };

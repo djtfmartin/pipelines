@@ -202,12 +202,12 @@ public class OccurrenceJsonConverter {
               .setBed(gx.getBed());
 
       gcb.setLithostratigraphy(
-          Stream.of(gx.getBed(), gx.getFormation(), gx.getGroup(), gx.getMember())
+          Stream.of(gcb.getBed(), gcb.getFormation(), gcb.getGroup(), gcb.getMember())
               .filter(Objects::nonNull)
               .collect(Collectors.toList()));
 
       gcb.setBiostratigraphy(
-          Stream.of(gx.getLowestBiostratigraphicZone(), gx.getHighestBiostratigraphicZone())
+          Stream.of(gcb.getLowestBiostratigraphicZone(), gcb.getHighestBiostratigraphicZone())
               .filter(Objects::nonNull)
               .collect(Collectors.toList()));
 
@@ -404,6 +404,7 @@ public class OccurrenceJsonConverter {
             .filter(tr -> GBIF_BACKBONE_DATASET_KEY.equals(tr.getDatasetKey()))
             .findFirst();
 
+    // populate the legacy all issues field
     JsonConverter.mapIssues(
         Arrays.asList(
             metadata,
@@ -412,9 +413,9 @@ public class OccurrenceJsonConverter {
             basic,
             temporal,
             location,
-            gbifRecord.orElse(TaxonRecord.newBuilder().build()),
             grscicoll,
-            multimedia),
+            multimedia,
+            gbifRecord.orElse(TaxonRecord.newBuilder().build())),
         builder::setIssues,
         builder::setNotIssues);
 
@@ -429,6 +430,7 @@ public class OccurrenceJsonConverter {
   private void mapCreated(OccurrenceJsonRecord.Builder builder) {
     JsonConverter.getMaxCreationDate(
             metadata,
+            identifier,
             clustering,
             basic,
             temporal,

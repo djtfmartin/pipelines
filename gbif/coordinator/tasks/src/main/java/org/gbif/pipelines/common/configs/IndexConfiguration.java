@@ -46,4 +46,7 @@ public class IndexConfiguration {
   @Parameter(names = "--index-occurrence-version")
   @NotNull
   public String occurrenceVersion;
+
+  @Parameter(names = "--index-mapping-total-fields-limit")
+  public Integer indexMappingTotalFieldsLimit;
 }

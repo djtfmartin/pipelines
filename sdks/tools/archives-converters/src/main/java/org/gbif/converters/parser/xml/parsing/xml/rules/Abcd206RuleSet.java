@@ -52,6 +52,12 @@ public class Abcd206RuleSet extends AbstractRuleSet {
     addFn.accept("verbatimLatitude", "setVerbatimLatitude");
     addFn.accept("verbatimLongitude", "setVerbatimLongitude");
     addFn.accept("footprintWKT", "setFootprintWKT");
+    addFn.accept("occurrenceRemarks", "setOccurrenceRemarks");
+    addFn.accept("modified", "setModified");
+    addFn.accept("preparations", "setPreparations");
+
+    addNonNullMethod(digester, "recordedByID", "addRecordedByID", 0);
+    addNonNullMethod(digester, "associatedSequences", "addAssociatedSequence", 0);
 
     addNonNullPrioritizedProperty(digester, "country", COUNTRY, 2);
     addNonNullPrioritizedProperty(digester, "geodeticDatum", GEODETIC_DATUM, 2);
@@ -67,6 +73,9 @@ public class Abcd206RuleSet extends AbstractRuleSet {
       addFn.accept("idPreferred", "setPreferredAsString");
       addFn.accept("idGenus", "setGenus");
       addFn.accept("idScientificName", "setScientificName");
+      addFn.accept("scientificNameID", "setScientificNameID");
+
+      addNonNullMethod(digester, "identifiedByID", "addIdentifiedByID", 0);
 
       addNonNullPrioritizedProperty(digester, "idDateIdentified", ID_DATE_IDENTIFIED, 2);
       addNonNullPrioritizedProperty(digester, "idIdentifierName", ID_IDENTIFIER_NAME, 2);

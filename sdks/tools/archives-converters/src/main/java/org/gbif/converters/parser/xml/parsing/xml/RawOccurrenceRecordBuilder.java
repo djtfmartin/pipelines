@@ -85,6 +85,11 @@ public class RawOccurrenceRecordBuilder extends PropertyPrioritizer {
   private String basisOfRecord;
   private String identifierName;
   private String unitQualifier;
+  private String occurrenceRemarks;
+  private String modified;
+  private String preparations;
+  private String identifiedByID;
+  private String scientificNameID;
 
   // year month and day may be set during parsing, but they will be reconciled into an
   // occurrenceDate
@@ -107,6 +112,8 @@ public class RawOccurrenceRecordBuilder extends PropertyPrioritizer {
   private List<Identification> identifications = new ArrayList<>();
   private List<ImageRecord> images = new ArrayList<>();
   private List<LinkRecord> links = new ArrayList<>();
+  private List<String> recordedByIDList = new ArrayList<>();
+  private List<String> associatedSequencesList = new ArrayList<>();
 
   public List<RawOccurrenceRecord> generateRawOccurrenceRecords() {
     List<RawOccurrenceRecord> records = new ArrayList<>();
@@ -229,6 +236,13 @@ public class RawOccurrenceRecordBuilder extends PropertyPrioritizer {
     bareBones.setSubspecies(subspecies);
     bareBones.setTypificationRecords(typificationRecords);
     bareBones.setUnitQualifier(unitQualifier);
+    bareBones.setModified(modified);
+    bareBones.setOccurrenceRemarks(occurrenceRemarks);
+    bareBones.setPreparations(preparations);
+    bareBones.setRecordedByID(String.join("|", recordedByIDList));
+    bareBones.setIdentifiedByID(identifiedByID);
+    bareBones.setScientificNameID(scientificNameID);
+    bareBones.setAssociatedSequences(String.join("|", associatedSequencesList));
 
     return bareBones;
   }
@@ -279,6 +293,18 @@ public class RawOccurrenceRecordBuilder extends PropertyPrioritizer {
   public void addLink(LinkRecord link) {
     if (link != null && !link.isEmpty()) {
       links.add(link);
+    }
+  }
+
+  public void addRecordedByID(String recordedByID) {
+    if (recordedByID != null && !recordedByID.isEmpty()) {
+      recordedByIDList.add(recordedByID);
+    }
+  }
+
+  public void addAssociatedSequence(String sequenceId) {
+    if (sequenceId != null && !sequenceId.isEmpty()) {
+      associatedSequencesList.add(sequenceId);
     }
   }
 
@@ -765,5 +791,45 @@ public class RawOccurrenceRecordBuilder extends PropertyPrioritizer {
 
   public void setFootprintWKT(String footprintWKT) {
     this.footprintWKT = footprintWKT;
+  }
+
+  public String getOccurrenceRemarks() {
+    return occurrenceRemarks;
+  }
+
+  public void setOccurrenceRemarks(String occurrenceRemarks) {
+    this.occurrenceRemarks = occurrenceRemarks;
+  }
+
+  public String getModified() {
+    return modified;
+  }
+
+  public void setModified(String modified) {
+    this.modified = modified;
+  }
+
+  public String getPreparations() {
+    return preparations;
+  }
+
+  public void setPreparations(String preparations) {
+    this.preparations = preparations;
+  }
+
+  public String getIdentifiedByID() {
+    return identifiedByID;
+  }
+
+  public void setIdentifiedByID(String identifiedByID) {
+    this.identifiedByID = identifiedByID;
+  }
+
+  public String getScientificNameID() {
+    return scientificNameID;
+  }
+
+  public void setScientificNameID(String scientificNameID) {
+    this.scientificNameID = scientificNameID;
   }
 }

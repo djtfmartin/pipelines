@@ -65,7 +65,6 @@ public class TaxonomyInterpreter {
       }
 
       ModelUtils.checkNullOrEmpty(er);
-      log.debug("TaxonomyInterpreter: {} ", er.getId());
       NameUsageMatchRequest nameUsageMatchRequest = createNameUsageMatchRequest(er, checklistKey);
       createTaxonRecord(nameUsageMatchRequest, kvStore, tr);
       tr.setId(er.getId());
@@ -118,9 +117,6 @@ public class TaxonomyInterpreter {
           tr.setClassification(Collections.singletonList(INCERTAE_SEDIS));
         },
         r -> {
-          //          tr.setUsageParsedName(toParsedNameAvro(r.getUsage()));
-
-          // convert taxon record
           TaxonRecordConverter.convert(r, tr);
         });
   }
@@ -204,7 +200,6 @@ public class TaxonomyInterpreter {
    * org.gbif.pipelines.io.avro.ParsedName}.
    */
   private static ParsedName toParsedNameAvro(NameUsageMatchResponse.Usage pn) {
-
     ParsedName.Builder builder =
         ParsedName.newBuilder()
             .setGenus(pn.getGenericName())

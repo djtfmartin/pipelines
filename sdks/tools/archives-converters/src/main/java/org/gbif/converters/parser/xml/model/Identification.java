@@ -15,7 +15,9 @@
  */
 package org.gbif.converters.parser.xml.model;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
@@ -44,7 +46,9 @@ public class Identification extends PropertyPrioritizer {
   private String genus;
   private String dateIdentified;
   private String scientificName;
+  private String scientificNameID;
   private String identifierName;
+  private List<String> identifiedByIDList = new ArrayList<>();
   private Set<Taxon> higherTaxons = new HashSet<>();
 
   /**
@@ -83,6 +87,8 @@ public class Identification extends PropertyPrioritizer {
     record.setDateIdentified(this.dateIdentified);
     record.setScientificName(this.scientificName);
     record.setIdentifierName(this.identifierName);
+    record.setScientificNameID(this.scientificNameID);
+    record.setIdentifiedByID(String.join("|", identifiedByIDList));
     if (setUnitQualifier) {
       record.setUnitQualifier(this.scientificName);
     }
@@ -108,6 +114,12 @@ public class Identification extends PropertyPrioritizer {
         case GENUS:
           break;
       }
+    }
+  }
+
+  public void addIdentifiedByID(String identifiedByID) {
+    if (identifiedByID != null && !identifiedByID.isEmpty()) {
+      identifiedByIDList.add(identifiedByID);
     }
   }
 
