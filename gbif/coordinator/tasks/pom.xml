@@ -80,30 +80,30 @@
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>variables</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.gbif.pipelines</groupId>
-      <artifactId>ingest-gbif-java</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.gbif.pipelines</groupId>
-      <artifactId>ingest-gbif-fragmenter</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>org.gbif.pipelines</groupId>-->
+<!--      <artifactId>ingest-gbif-java</artifactId>-->
+<!--      <exclusions>-->
+<!--        <exclusion>-->
+<!--          <groupId>org.apache.beam</groupId>-->
+<!--          <artifactId>*</artifactId>-->
+<!--        </exclusion>-->
+<!--        <exclusion>-->
+<!--          <groupId>org.slf4j</groupId>-->
+<!--          <artifactId>*</artifactId>-->
+<!--        </exclusion>-->
+<!--      </exclusions>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.gbif.pipelines</groupId>-->
+<!--      <artifactId>ingest-gbif-fragmenter</artifactId>-->
+<!--      <exclusions>-->
+<!--        <exclusion>-->
+<!--          <groupId>org.slf4j</groupId>-->
+<!--          <artifactId>*</artifactId>-->
+<!--        </exclusion>-->
+<!--      </exclusions>-->
+<!--    </dependency>-->
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>validator-core</artifactId>
@@ -242,10 +242,10 @@
       </exclusions>
     </dependency>
 
-    <dependency>
-      <groupId>org.gbif.pipelines</groupId>
-      <artifactId>beam-common</artifactId>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>org.gbif.pipelines</groupId>-->
+<!--      <artifactId>beam-common</artifactId>-->
+<!--    </dependency>-->
 
     <!-- Beam -->
     <dependency>

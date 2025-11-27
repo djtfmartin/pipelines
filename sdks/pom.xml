@@ -22,7 +22,7 @@
 <!--    <module>beam-common</module>-->
 <!--    <module>beam-transforms</module>-->
     <module>core</module>
-<!--    <module>models</module>-->
+    <module>models</module>
     <module>models-pojo</module>
     <module>sdks-integration-tests</module>
     <module>tools</module>

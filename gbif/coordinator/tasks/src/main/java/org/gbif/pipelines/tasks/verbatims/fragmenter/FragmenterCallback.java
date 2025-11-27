@@ -1,13 +1,9 @@
 package org.gbif.pipelines.tasks.verbatims.fragmenter;
 
 import static org.gbif.pipelines.common.utils.HdfsUtils.buildOutputPath;
-import static org.gbif.pipelines.common.utils.PathUtil.buildDwcaInputPath;
-import static org.gbif.pipelines.common.utils.PathUtil.buildXmlInputPath;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -31,10 +27,10 @@ import org.gbif.pipelines.core.factory.FileSystemFactory;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.utils.DatasetTypePredicate;
 import org.gbif.pipelines.core.utils.FsUtils;
-import org.gbif.pipelines.fragmenter.FragmentPersister;
-import org.gbif.pipelines.fragmenter.strategy.DwcaStrategy;
-import org.gbif.pipelines.fragmenter.strategy.Strategy;
-import org.gbif.pipelines.fragmenter.strategy.XmlStrategy;
+// import org.gbif.pipelines.fragmenter.FragmentPersister;
+// import org.gbif.pipelines.fragmenter.strategy.DwcaStrategy;
+// import org.gbif.pipelines.fragmenter.strategy.Strategy;
+// import org.gbif.pipelines.fragmenter.strategy.XmlStrategy;
 import org.gbif.pipelines.keygen.config.KeygenConfig;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
@@ -134,53 +130,54 @@ public class FragmenterCallback extends AbstractMessageCallback<PipelinesInterpr
   }
 
   private void runLocal(PipelinesInterpretedMessage message) {
-    UUID datasetId = message.getDatasetUuid();
-    Integer attempt = message.getAttempt();
-
-    Strategy strategy;
-    Path pathToArchive;
-
-    if (DatasetTypePredicate.isEndpointDwca(message.getEndpointType())) {
-      strategy = DwcaStrategy.create();
-      pathToArchive = buildDwcaInputPath(config.dwcaArchiveRepository, datasetId);
-    } else {
-      String subdir =
-          getXmlSubdir(
-              message.getEndpointType(),
-              config.xmlArchiveRepositoryXml,
-              config.xmlArchiveRepositoryAbcd);
-      strategy = XmlStrategy.create();
-      pathToArchive =
-          buildXmlInputPath(config.xmlArchiveRepository, subdir, datasetId, attempt.toString());
-    }
-
-    boolean useSync = message.getNumberOfRecords() < config.asyncThreshold;
-
-    log.info("Running fragmenter in asych mode: {} ...", useSync);
-
-    long result =
-        FragmentPersister.builder()
-            .strategy(strategy)
-            .endpointType(message.getEndpointType())
-            .datasetKey(datasetId.toString())
-            .attempt(attempt)
-            .tableName(config.hbaseFragmentsTable)
-            .hbaseConnection(hbaseConnection)
-            .executor(executor)
-            .useOccurrenceId(message.getValidationResult().isOccurrenceIdValid())
-            .useTriplet(message.getValidationResult().isTripletValid())
-            .pathToArchive(pathToArchive)
-            .keygenConfig(keygenConfig)
-            .useSyncMode(useSync)
-            .backPressure(config.backPressure)
-            .batchSize(config.batchSize)
-            .generateIdIfAbsent(config.generateIdIfAbsent)
-            .build()
-            .persist();
-
-    createMetafile(datasetId.toString(), attempt.toString(), result);
-
-    log.info("Result - {} records", result);
+    //    UUID datasetId = message.getDatasetUuid();
+    //    Integer attempt = message.getAttempt();
+    //
+    //    Strategy strategy;
+    //    Path pathToArchive;
+    //
+    //    if (DatasetTypePredicate.isEndpointDwca(message.getEndpointType())) {
+    //      strategy = DwcaStrategy.create();
+    //      pathToArchive = buildDwcaInputPath(config.dwcaArchiveRepository, datasetId);
+    //    } else {
+    //      String subdir =
+    //          getXmlSubdir(
+    //              message.getEndpointType(),
+    //              config.xmlArchiveRepositoryXml,
+    //              config.xmlArchiveRepositoryAbcd);
+    //      strategy = XmlStrategy.create();
+    //      pathToArchive =
+    //          buildXmlInputPath(config.xmlArchiveRepository, subdir, datasetId,
+    // attempt.toString());
+    //    }
+    //
+    //    boolean useSync = message.getNumberOfRecords() < config.asyncThreshold;
+    //
+    //    log.info("Running fragmenter in asych mode: {} ...", useSync);
+    //
+    //    long result =
+    //        FragmentPersister.builder()
+    //            .strategy(strategy)
+    //            .endpointType(message.getEndpointType())
+    //            .datasetKey(datasetId.toString())
+    //            .attempt(attempt)
+    //            .tableName(config.hbaseFragmentsTable)
+    //            .hbaseConnection(hbaseConnection)
+    //            .executor(executor)
+    //            .useOccurrenceId(message.getValidationResult().isOccurrenceIdValid())
+    //            .useTriplet(message.getValidationResult().isTripletValid())
+    //            .pathToArchive(pathToArchive)
+    //            .keygenConfig(keygenConfig)
+    //            .useSyncMode(useSync)
+    //            .backPressure(config.backPressure)
+    //            .batchSize(config.batchSize)
+    //            .generateIdIfAbsent(config.generateIdIfAbsent)
+    //            .build()
+    //            .persist();
+    //
+    //    createMetafile(datasetId.toString(), attempt.toString(), result);
+    //
+    //    log.info("Result - {} records", result);
   }
 
   @Override

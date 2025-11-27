@@ -25,7 +25,6 @@ import org.gbif.pipelines.common.process.BeamParametersBuilder;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
 import org.gbif.pipelines.common.process.RecordCountReader;
 import org.gbif.pipelines.common.process.SparkDynamicSettings;
-import org.gbif.pipelines.ingest.java.pipelines.VerbatimToIdentifierPipeline;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
 import org.gbif.pipelines.tasks.occurrences.identifier.validation.IdentifierValidationResult;
@@ -203,7 +202,7 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
   }
 
   private void runLocal(BeamParameters beamParameters) {
-    VerbatimToIdentifierPipeline.run(beamParameters.toArray(), executor);
+    //    VerbatimToIdentifierPipeline.run(beamParameters.toArray(), executor);
   }
 
   private String getFilePath(PipelinesVerbatimMessage message) {

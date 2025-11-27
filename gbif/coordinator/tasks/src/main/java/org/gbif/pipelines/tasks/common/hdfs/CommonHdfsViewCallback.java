@@ -25,7 +25,7 @@ import org.gbif.pipelines.common.process.RecordCountReader;
 import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.common.utils.HdfsUtils;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
-import org.gbif.pipelines.ingest.java.pipelines.HdfsViewPipeline;
+// import org.gbif.pipelines.ingest.java.pipelines.HdfsViewPipeline;
 import org.gbif.pipelines.tasks.events.interpretation.EventsInterpretationConfiguration;
 import org.gbif.pipelines.tasks.occurrences.interpretation.InterpreterConfiguration;
 import org.gbif.pipelines.tasks.verbatims.dwca.DwcaToAvroConfiguration;
@@ -88,7 +88,7 @@ public class CommonHdfsViewCallback {
   }
 
   private void runLocal(BeamParameters beamParameters) {
-    HdfsViewPipeline.run(beamParameters.toArray(), executor);
+    //    HdfsViewPipeline.run(beamParameters.toArray(), executor);
   }
 
   private void runDistributed(PipelinesInterpretationMessage message, BeamParameters beamParameters)

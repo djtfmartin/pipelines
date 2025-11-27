@@ -25,7 +25,7 @@ import org.gbif.pipelines.common.process.BeamParametersBuilder;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
 import org.gbif.pipelines.common.process.RecordCountReader;
 import org.gbif.pipelines.common.process.SparkDynamicSettings;
-import org.gbif.pipelines.ingest.java.pipelines.InterpretedToEsIndexExtendedPipeline;
+// import org.gbif.pipelines.ingest.java.pipelines.InterpretedToEsIndexExtendedPipeline;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
 import org.gbif.pipelines.tasks.occurrences.interpretation.InterpreterConfiguration;
@@ -197,7 +197,7 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
   }
 
   private void runLocal(BeamParameters beamParameters) {
-    InterpretedToEsIndexExtendedPipeline.run(beamParameters.toArray(), executor);
+    //    InterpretedToEsIndexExtendedPipeline.run(beamParameters.toArray(), executor);
   }
 
   private void runDistributed(
