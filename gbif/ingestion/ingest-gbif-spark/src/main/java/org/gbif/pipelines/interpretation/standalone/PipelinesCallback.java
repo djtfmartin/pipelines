@@ -509,9 +509,9 @@ public abstract class PipelinesCallback<
 
     step.setMessage(OBJECT_MAPPER.writeValueAsString(message))
         .setState(RUNNING)
-        .setRunner(StepRunner.STANDALONE)
+        .setRunner(isStandalone() ? StepRunner.STANDALONE : StepRunner.DISTRIBUTED)
         .setStarted(LocalDateTime.now())
-        .setPipelinesVersion("SPARK_PIPELINES-1.0"); // FIXME
+        .setPipelinesVersion(System.getProperty("pipelinesVersion", "NOT_SET"));
 
     Function<PipelineStep, Long> pipelineStepFn =
         s -> {
