@@ -21,6 +21,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.MDC;
 
 /**
  * This pipeline loads the /hdfs directory for a dataset/attempt, creates a temporary table with the
@@ -117,7 +118,8 @@ public class TableBuild {
       throws Exception {
 
     long start = System.currentTimeMillis();
-    log.info("HDFS VIEW starting for dataset: " + datasetId);
+    MDC.put("datasetKey", datasetId);
+    log.info("Starting tablebuild");
 
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
