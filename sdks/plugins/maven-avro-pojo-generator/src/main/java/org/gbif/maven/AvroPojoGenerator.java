@@ -182,7 +182,7 @@ public class AvroPojoGenerator extends AbstractMojo {
     @Getter
     @Setter
     @NoArgsConstructor
-    @SuperBuilder
+    @SuperBuilder(builderMethodName = "newBuilder", setterPrefix = "set")
     """);
     }
 

@@ -13,8 +13,11 @@ import org.gbif.common.messaging.api.messages.PipelinesEventsMessage;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.indexing.IndexSettings;
-import org.gbif.pipelines.common.process.*;
+import org.gbif.pipelines.common.process.AirflowSparkLauncher;
+import org.gbif.pipelines.common.process.BeamParametersBuilder;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
+import org.gbif.pipelines.common.process.RecordCountReader;
+import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
@@ -109,21 +112,23 @@ public class EventsIndexingCallback
             message.getAttempt(),
             recordsNumber);
 
+    boolean useMemoryExtraCoef =
+        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
+    SparkDynamicSettings sparkDynamicSettings =
+        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
+
     BeamParameters beamParameters =
         BeamParametersBuilder.eventIndexing(config, message, indexSettings);
 
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
-    // create the airflow conf
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
-
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .conf(conf)
+        .sparkStaticConfiguration(config.sparkConfig)
+        .sparkDynamicSettings(sparkDynamicSettings)
+        .beamParameters(beamParameters)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

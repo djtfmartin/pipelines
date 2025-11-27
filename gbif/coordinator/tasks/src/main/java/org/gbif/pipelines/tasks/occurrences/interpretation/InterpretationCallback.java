@@ -26,12 +26,16 @@ import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
 import org.gbif.common.parsers.date.DateComponentOrdering;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.common.GbifApi;
-import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
+import org.gbif.pipelines.common.PipelinesVariables.Pipeline;
+import org.gbif.pipelines.common.PipelinesVariables.Pipeline.Conversion;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.hdfs.HdfsViewSettings;
-import org.gbif.pipelines.common.process.*;
+import org.gbif.pipelines.common.process.AirflowSparkLauncher;
+import org.gbif.pipelines.common.process.BeamParametersBuilder;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
+import org.gbif.pipelines.common.process.RecordCountReader;
+import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.common.utils.HdfsUtils;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.ingest.java.pipelines.VerbatimToOccurrencePipeline;
@@ -124,15 +128,33 @@ public class InterpretationCallback extends AbstractMessageCallback<PipelinesVer
     return () -> {
       String datasetId = message.getDatasetUuid().toString();
       String attempt = Integer.toString(message.getAttempt());
+
+      String verbatim = Conversion.FILE_NAME + Pipeline.AVRO_EXTENSION;
+      String path =
+          message.getExtraPath() != null
+              ? message.getExtraPath()
+              : String.join("/", config.stepConfig.repositoryPath, datasetId, attempt, verbatim);
+
+      String defaultDateFormat = null;
+      if (!isValidator(message.getPipelineSteps(), config.validatorOnly)) {
+        defaultDateFormat = getDefaultDateFormat(datasetId);
+      }
+
+      int numberOfShards = computeNumberOfShards(message);
+
+      BeamParameters beamParameters =
+          BeamParametersBuilder.occurrenceInterpretation(
+              config, message, path, defaultDateFormat, numberOfShards);
+
       Predicate<StepRunner> runnerPr = sr -> config.processRunner.equalsIgnoreCase(sr.name());
 
       log.info("Start the process. Message - {}", message);
       try {
 
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
-          runDistributed(message);
-        } else {
-          throw new PipelinesException("This call back only expects DISTRIBUTED");
+          runDistributed(message, beamParameters);
+        } else if (runnerPr.test(StepRunner.STANDALONE)) {
+          runLocal(beamParameters);
         }
 
         log.info("Deleting old attempts directories");
@@ -186,7 +208,8 @@ public class InterpretationCallback extends AbstractMessageCallback<PipelinesVer
     VerbatimToOccurrencePipeline.run(beamParameters.toArray(), executor);
   }
 
-  private void runDistributed(PipelinesVerbatimMessage message) throws IOException {
+  private void runDistributed(PipelinesVerbatimMessage message, BeamParameters beamParameters)
+      throws IOException {
 
     // Spark dynamic settings
     Long messageNumber =
@@ -207,19 +230,22 @@ public class InterpretationCallback extends AbstractMessageCallback<PipelinesVer
             .build()
             .get();
 
+    boolean useMemoryExtraCoef =
+        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
+
+    SparkDynamicSettings sparkSettings =
+        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
+
     // App name
     String sparkAppName =
         AppName.get(getType(message), message.getDatasetUuid(), message.getAttempt());
 
-    // create the airflow conf
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
-
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .conf(conf)
+        .sparkStaticConfiguration(config.sparkConfig)
+        .sparkDynamicSettings(sparkSettings)
+        .beamParameters(beamParameters)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

@@ -5,7 +5,6 @@ import static org.gbif.pipelines.common.ValidatorPredicate.isValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
 import lombok.Builder;
@@ -21,8 +20,12 @@ import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.indexing.IndexSettings;
-import org.gbif.pipelines.common.process.*;
+import org.gbif.pipelines.common.process.AirflowSparkLauncher;
+import org.gbif.pipelines.common.process.BeamParametersBuilder;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
+import org.gbif.pipelines.common.process.RecordCountReader;
+import org.gbif.pipelines.common.process.SparkDynamicSettings;
+import org.gbif.pipelines.ingest.java.pipelines.InterpretedToEsIndexExtendedPipeline;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
 import org.gbif.pipelines.tasks.occurrences.interpretation.InterpreterConfiguration;
@@ -170,13 +173,9 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
 
         log.info("Start the process. Message - {}", message);
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
-          runDistributed(
-              message,
-              recordsNumber,
-              indexSettings.getIndexName(),
-              indexSettings.getNumberOfShards());
-        } else {
-          throw new PipelinesException("This call back only expects DISTRIBUTED");
+          runDistributed(message, beamParameters, recordsNumber);
+        } else if (runnerPr.test(StepRunner.STANDALONE)) {
+          runLocal(beamParameters);
         }
       } catch (Exception ex) {
         log.error(ex.getMessage(), ex);
@@ -197,29 +196,29 @@ public class IndexingCallback extends AbstractMessageCallback<PipelinesInterpret
         message.getEndpointType());
   }
 
+  private void runLocal(BeamParameters beamParameters) {
+    InterpretedToEsIndexExtendedPipeline.run(beamParameters.toArray(), executor);
+  }
+
   private void runDistributed(
-      PipelinesInterpretedMessage message,
-      long recordsNumber,
-      String indexName,
-      Integer numberOfShards) {
+      PipelinesInterpretedMessage message, BeamParameters beamParameters, long recordsNumber) {
+
+    // Spark dynamic settings
+    boolean useMemoryExtraCoef =
+        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
+    SparkDynamicSettings sparkSettings =
+        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
 
     // App name
     String sparkAppName =
         AppName.get(getType(message), message.getDatasetUuid(), message.getAttempt());
 
-    // create the airflow conf
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(),
-            message.getAttempt(),
-            sparkAppName,
-            recordsNumber,
-            List.of("--esIndexName=" + indexName, "--indexNumberShards=" + numberOfShards));
-
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .conf(conf)
+        .sparkStaticConfiguration(config.sparkConfig)
+        .sparkDynamicSettings(sparkSettings)
+        .beamParameters(beamParameters)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

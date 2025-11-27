@@ -20,10 +20,13 @@ import org.gbif.common.messaging.AbstractMessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelinesFragmenterMessage;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
-import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
-import org.gbif.pipelines.common.process.*;
+import org.gbif.pipelines.common.process.AirflowSparkLauncher;
+import org.gbif.pipelines.common.process.BeamParametersBuilder;
+import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
+import org.gbif.pipelines.common.process.RecordCountReader;
+import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.core.factory.FileSystemFactory;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.core.utils.DatasetTypePredicate;
@@ -92,10 +95,12 @@ public class FragmenterCallback extends AbstractMessageCallback<PipelinesInterpr
                 .get();
 
         log.info("Start the process. Message - {}", message);
-        if (StepRunner.DISTRIBUTED.name().equalsIgnoreCase(message.getRunner())) {
+        if (StepRunner.DISTRIBUTED.name().equalsIgnoreCase(message.getRunner())
+            && DatasetTypePredicate.isEndpointDwca(message.getEndpointType())
+            && config.switchRecordsNumber <= recordsNumber) {
           runDistributed(message, recordsNumber);
         } else {
-          throw new PipelinesException("This call back only expects DISTRIBUTED");
+          runLocal(message);
         }
       } catch (Exception ex) {
         log.error(ex.getMessage(), ex);
@@ -106,18 +111,23 @@ public class FragmenterCallback extends AbstractMessageCallback<PipelinesInterpr
   }
 
   private void runDistributed(PipelinesInterpretedMessage message, long recordsNumber) {
+    BeamParameters beamParameters = BeamParametersBuilder.verbatimFragmenter(config, message);
+
+    // Spark dynamic settings
+    boolean useMemoryExtraCoef =
+        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
+    SparkDynamicSettings sparkDynamicSettings =
+        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
 
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
-    // create the airflow conf
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .conf(conf)
+        .sparkStaticConfiguration(config.sparkConfig)
+        .sparkDynamicSettings(sparkDynamicSettings)
+        .beamParameters(beamParameters)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

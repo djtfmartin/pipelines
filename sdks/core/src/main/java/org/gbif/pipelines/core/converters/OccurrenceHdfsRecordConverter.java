@@ -4,6 +4,10 @@ import static org.gbif.pipelines.core.utils.ModelUtils.extractOptValue;
 
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Strings;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -16,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.gbif.api.vocabulary.License;
 import org.gbif.dwc.terms.*;
 import org.gbif.occurrence.common.TermUtils;

@@ -1,6 +1,7 @@
 package org.gbif.pipelines.tasks.verbatims.fragmenter;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -73,7 +74,7 @@ public class PipelinesHistoryClientTestStub implements PipelinesHistoryClient {
       for (StepType st : pipelineExecution.getStepsToRun()) {
         PipelineStep s =
             new PipelineStep()
-                .setStarted(LocalDateTime.now())
+                .setStarted(OffsetDateTime.from(LocalDateTime.now()))
                 .setState(Status.SUBMITTED)
                 .setType(st);
         s.setKey(++ek);

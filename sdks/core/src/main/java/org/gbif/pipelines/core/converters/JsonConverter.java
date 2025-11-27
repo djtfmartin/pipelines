@@ -17,13 +17,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.apache.avro.specific.SpecificRecordBase;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.api.vocabulary.License;
 import org.gbif.api.vocabulary.OccurrenceIssue;
 import org.gbif.common.parsers.date.TemporalAccessorUtils;
 import org.gbif.dwc.terms.DwcTerm;
-import org.gbif.pipelines.common.PipelinesVariables.Pipeline.Indexing;
 import org.gbif.pipelines.core.interpreters.core.TaxonomyInterpreter;
 import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
 import org.gbif.pipelines.core.utils.ModelUtils;
@@ -74,13 +72,10 @@ public class JsonConverter {
   }
 
   /** Gets the maximum/latest created date of all the records. */
-  public static Optional<String> getMaxCreationDate(SpecificRecordBase... recordBases) {
+  public static Optional<String> getMaxCreationDate(Created... recordBases) {
     return Arrays.stream(recordBases)
         .filter(Objects::nonNull)
-        .filter(r -> Objects.nonNull(r.getSchema().getField(Indexing.CREATED)))
-        .map(r -> r.get(Indexing.CREATED))
-        .filter(Objects::nonNull)
-        .map(Long.class::cast)
+        .map(Created::getCreated)
         .max(Long::compareTo)
         .flatMap(JsonConverter::convertToDate);
   }

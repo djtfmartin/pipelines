@@ -31,8 +31,8 @@ public class PostprocessValidation {
 
   public IdentifierValidationResult validate() throws IOException {
     if (useThresholdSkipTagValue() || ignoreChecklists() || skipInstallationKey()) {
-      String validationMessage = "Skip validation because machine tag id_threshold_skip=true";
-      return IdentifierValidationResult.create(0d, 0d, true, validationMessage);
+      String validatonMessage = "Skip valiation because machine tag id_threshold_skip=true";
+      return IdentifierValidationResult.create(0d, 0d, true, validatonMessage);
     } else {
       return validateThreshold();
     }

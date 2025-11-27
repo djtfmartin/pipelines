@@ -14,10 +14,10 @@ import org.gbif.pipelines.common.PipelinesVariables.Pipeline;
 import org.gbif.pipelines.common.PipelinesVariables.Pipeline.Conversion;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.hdfs.HdfsViewSettings;
-import org.gbif.pipelines.common.process.AirflowConfFactory;
 import org.gbif.pipelines.common.process.AirflowSparkLauncher;
 import org.gbif.pipelines.common.process.BeamParametersBuilder;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
+import org.gbif.pipelines.common.process.SparkDynamicSettings;
 import org.gbif.pipelines.common.utils.HdfsUtils;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.tasks.PipelinesCallback;
@@ -110,26 +110,28 @@ public class EventsInterpretationCallback extends AbstractMessageCallback<Pipeli
     String datasetId = message.getDatasetUuid().toString();
     String attempt = Integer.toString(message.getAttempt());
 
+    // Spark dynamic settings
+    boolean useMemoryExtraCoef =
+        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
+    SparkDynamicSettings sparkSettings =
+        SparkDynamicSettings.create(
+            config.sparkConfig, message.getNumberOfEventRecords(), useMemoryExtraCoef);
+
     String verbatim = Conversion.FILE_NAME + Pipeline.AVRO_EXTENSION;
     String path = String.join("/", config.stepConfig.repositoryPath, datasetId, attempt, verbatim);
     int numberOfShards = computeNumberOfShards(message);
-    long recordsNumber = message.getValidationResult().getNumberOfRecords();
-
     BeamParameters beamParameters =
         BeamParametersBuilder.eventInterpretation(config, message, path, numberOfShards);
 
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
 
-    // create the airflow conf
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
-
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .conf(conf)
+        .sparkStaticConfiguration(config.sparkConfig)
+        .sparkDynamicSettings(sparkSettings)
+        .beamParameters(beamParameters)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();

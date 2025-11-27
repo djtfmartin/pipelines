@@ -14,10 +14,18 @@ import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.messages.PipelinesEventsInterpretedMessage;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretationMessage;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
+import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.common.PipelinesVariables.Metrics;
 import org.gbif.pipelines.common.airflow.AppName;
-import org.gbif.pipelines.common.process.*;
+import org.gbif.pipelines.common.process.AirflowSparkLauncher;
+import org.gbif.pipelines.common.process.BeamParametersBuilder;
+import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
+import org.gbif.pipelines.common.process.RecordCountReader;
+import org.gbif.pipelines.common.process.SparkDynamicSettings;
+import org.gbif.pipelines.common.utils.HdfsUtils;
+import org.gbif.pipelines.core.pojo.HdfsConfigs;
+import org.gbif.pipelines.ingest.java.pipelines.HdfsViewPipeline;
 import org.gbif.pipelines.tasks.events.interpretation.EventsInterpretationConfiguration;
 import org.gbif.pipelines.tasks.occurrences.interpretation.InterpreterConfiguration;
 import org.gbif.pipelines.tasks.verbatims.dwca.DwcaToAvroConfiguration;
@@ -38,13 +46,17 @@ public class CommonHdfsViewCallback {
         // If there is one step only like metadata, we have to run pipelines steps
         message.setInterpretTypes(swapInterpretTypes(message.getInterpretTypes()));
 
+        int fileShards = computeNumberOfShards(message);
+        BeamParameters beamParameters =
+            BeamParametersBuilder.occurrenceHdfsView(config, message, fileShards);
+
         Predicate<StepRunner> runnerPr = sr -> config.processRunner.equalsIgnoreCase(sr.name());
 
         log.info("Start the process. Message - {}", message);
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
-          runDistributed(message);
-        } else {
-          throw new PipelinesException("This call back only expects DISTRIBUTED");
+          runDistributed(message, beamParameters);
+        } else if (runnerPr.test(StepRunner.STANDALONE)) {
+          runLocal(beamParameters);
         }
       } catch (Exception ex) {
         log.error(ex.getMessage(), ex);
@@ -75,7 +87,12 @@ public class CommonHdfsViewCallback {
     return true;
   }
 
-  private void runDistributed(PipelinesInterpretationMessage message) throws IOException {
+  private void runLocal(BeamParameters beamParameters) {
+    HdfsViewPipeline.run(beamParameters.toArray(), executor);
+  }
+
+  private void runDistributed(PipelinesInterpretationMessage message, BeamParameters beamParameters)
+      throws IOException {
 
     // Spark dynamic settings
     Long messageNumber = null;
@@ -125,22 +142,52 @@ public class CommonHdfsViewCallback {
       recordsNumber = interpretationRecordsNumber;
     }
 
+    log.info("Calculate job's settings based on {} records", recordsNumber);
+    boolean useMemoryExtraCoef =
+        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
+    SparkDynamicSettings sparkDynamicSettings =
+        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
+
     // App name
     String sparkAppName =
         AppName.get(config.stepType, message.getDatasetUuid(), message.getAttempt());
 
-    // create the airflow conf
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
-
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
+        .sparkStaticConfiguration(config.sparkConfig)
+        .sparkDynamicSettings(sparkDynamicSettings)
+        .beamParameters(beamParameters)
         .sparkAppName(sparkAppName)
-        .conf(conf)
         .build()
         .submitAwaitVoid();
+  }
+
+  private int computeNumberOfShards(PipelinesInterpretationMessage message) throws IOException {
+    String datasetId = message.getDatasetUuid().toString();
+    String attempt = Integer.toString(message.getAttempt());
+    String dirPath =
+        String.join(
+            "/",
+            config.stepConfig.repositoryPath,
+            datasetId,
+            attempt,
+            config.recordType == RecordType.EVENT
+                ? DwcTerm.Event.simpleName().toLowerCase()
+                : DwcTerm.Occurrence.simpleName().toLowerCase());
+    HdfsConfigs hdfsConfigs =
+        HdfsConfigs.create(config.stepConfig.hdfsSiteConfig, config.stepConfig.coreSiteConfig);
+    long sizeByte = HdfsUtils.getFileSizeByte(hdfsConfigs, dirPath);
+    if (sizeByte == -1d) {
+      throw new IllegalArgumentException(
+          "Please check interpretation source directory! - " + dirPath);
+    }
+    long sizeExpected = config.hdfsAvroExpectedFileSizeInMb * 1048576L; // 1024 * 1024
+    double numberOfShards = (sizeByte * config.hdfsAvroCoefficientRatio / 100f) / sizeExpected;
+    double numberOfShardsFloor = Math.floor(numberOfShards);
+    numberOfShards =
+        numberOfShards - numberOfShardsFloor > 0.5d ? numberOfShardsFloor + 1 : numberOfShardsFloor;
+    return numberOfShards <= 0 ? 1 : (int) numberOfShards;
   }
 
   // If there is one step only like metadata, we have to run the RecordType steps

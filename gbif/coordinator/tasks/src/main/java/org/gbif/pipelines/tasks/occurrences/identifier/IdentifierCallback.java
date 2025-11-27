@@ -20,8 +20,12 @@ import org.gbif.pipelines.common.PipelinesVariables.Pipeline;
 import org.gbif.pipelines.common.PipelinesVariables.Pipeline.Conversion;
 import org.gbif.pipelines.common.airflow.AppName;
 import org.gbif.pipelines.common.hdfs.HdfsViewSettings;
-import org.gbif.pipelines.common.process.*;
+import org.gbif.pipelines.common.process.AirflowSparkLauncher;
+import org.gbif.pipelines.common.process.BeamParametersBuilder;
 import org.gbif.pipelines.common.process.BeamParametersBuilder.BeamParameters;
+import org.gbif.pipelines.common.process.RecordCountReader;
+import org.gbif.pipelines.common.process.SparkDynamicSettings;
+import org.gbif.pipelines.ingest.java.pipelines.VerbatimToIdentifierPipeline;
 import org.gbif.pipelines.tasks.PipelinesCallback;
 import org.gbif.pipelines.tasks.StepHandler;
 import org.gbif.pipelines.tasks.occurrences.identifier.validation.IdentifierValidationResult;
@@ -96,9 +100,9 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
 
         log.info("Start the process. Message - {}", message);
         if (runnerPr.test(StepRunner.DISTRIBUTED)) {
-          runDistributed(message);
-        } else {
-          throw new PipelinesException("This call back only expects DISTRIBUTED");
+          runDistributed(message, beamParameters);
+        } else if (runnerPr.test(StepRunner.STANDALONE)) {
+          runLocal(beamParameters);
         }
 
         IdentifierValidationResult validationResult =
@@ -157,7 +161,8 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
         message.getDatasetType());
   }
 
-  private void runDistributed(PipelinesVerbatimMessage message) throws IOException {
+  private void runDistributed(PipelinesVerbatimMessage message, BeamParameters beamParameters)
+      throws IOException {
 
     // Spark dynamic settings
     Long messageNumber =
@@ -178,21 +183,27 @@ public class IdentifierCallback extends AbstractMessageCallback<PipelinesVerbati
             .build()
             .get();
 
+    boolean useMemoryExtraCoef =
+        config.sparkConfig.extraCoefDatasetSet.contains(message.getDatasetUuid().toString());
+    SparkDynamicSettings sparkSettings =
+        SparkDynamicSettings.create(config.sparkConfig, recordsNumber, useMemoryExtraCoef);
+
     // App name
     String sparkAppName = AppName.get(TYPE, message.getDatasetUuid(), message.getAttempt());
-
-    // create the airflow conf
-    AirflowConfFactory.Conf conf =
-        AirflowConfFactory.createConf(
-            message.getDatasetUuid().toString(), message.getAttempt(), sparkAppName, recordsNumber);
 
     // Submit
     AirflowSparkLauncher.builder()
         .airflowConfiguration(config.airflowConfig)
-        .conf(conf)
+        .sparkStaticConfiguration(config.sparkConfig)
+        .sparkDynamicSettings(sparkSettings)
+        .beamParameters(beamParameters)
         .sparkAppName(sparkAppName)
         .build()
         .submitAwaitVoid();
+  }
+
+  private void runLocal(BeamParameters beamParameters) {
+    VerbatimToIdentifierPipeline.run(beamParameters.toArray(), executor);
   }
 
   private String getFilePath(PipelinesVerbatimMessage message) {
