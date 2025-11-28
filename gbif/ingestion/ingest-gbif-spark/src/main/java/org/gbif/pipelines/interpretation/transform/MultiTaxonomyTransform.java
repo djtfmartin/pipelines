@@ -29,13 +29,7 @@ import org.gbif.rest.client.geocode.GeocodeResponse;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 @Slf4j
-public class MultiTaxonomyTransform implements Serializable {
-
-  private final PipelinesConfig config;
-
-  private MultiTaxonomyTransform(PipelinesConfig config) {
-    this.config = config;
-  }
+public record MultiTaxonomyTransform(PipelinesConfig config) implements Serializable {
 
   public static MultiTaxonomyTransform create(PipelinesConfig config) {
     return new MultiTaxonomyTransform(config);
