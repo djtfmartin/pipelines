@@ -166,6 +166,7 @@ public class VerbatimToEventPipeline {
         uniqueRawRecords
             .apply(verbatimTransform.toParentEventsKv())
             .apply("View to find parents", View.asMap());
+
     eventCoreTransform.setErWithParentsView(erWithParentEventsView);
 
     uniqueRawRecords

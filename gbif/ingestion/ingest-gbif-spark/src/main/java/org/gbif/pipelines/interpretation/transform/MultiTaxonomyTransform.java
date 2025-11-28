@@ -17,12 +17,15 @@ import java.io.Serializable;
 import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.kvs.KeyValueStore;
+import org.gbif.kvs.geocode.GeocodeRequest;
 import org.gbif.kvs.species.NameUsageMatchRequest;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.interpreters.core.MultiTaxonomyInterpreter;
+import org.gbif.pipelines.interpretation.transform.utils.GeocodeKVSFactory;
 import org.gbif.pipelines.interpretation.transform.utils.MultiTaxonomyKVSFactory;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MultiTaxonRecord;
+import org.gbif.rest.client.geocode.GeocodeResponse;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
 @Slf4j
@@ -43,6 +46,9 @@ public class MultiTaxonomyTransform implements Serializable {
     KeyValueStore<NameUsageMatchRequest, NameUsageMatchResponse> kvStore =
         MultiTaxonomyKVSFactory.getKvStore(config);
 
+    KeyValueStore<GeocodeRequest, GeocodeResponse> geoKvStore =
+        GeocodeKVSFactory.getKvStore(config);
+
     MultiTaxonRecord mtr =
         MultiTaxonRecord.newBuilder()
             .setId(source.getId())
@@ -50,7 +56,10 @@ public class MultiTaxonomyTransform implements Serializable {
             .build();
 
     MultiTaxonomyInterpreter.interpretMultiTaxonomy(
-            kvStore, config.getNameUsageMatchingService().getChecklistKeys())
+            kvStore,
+            geoKvStore,
+            config.getNameUsageMatchingService().getChecklistKeys(),
+            config.getNameUsageMatchingService().getCountryChecklistKeyMap())
         .accept(source, mtr);
 
     return mtr;

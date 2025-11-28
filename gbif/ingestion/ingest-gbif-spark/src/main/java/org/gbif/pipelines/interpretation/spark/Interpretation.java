@@ -419,7 +419,7 @@ public class Interpretation {
    * @param numberOfShards Number of shards to repartition the dataset
    * @return The filtered and repartitioned dataset of extended records
    */
-  private static Dataset<ExtendedRecord> loadExtendedRecords(
+  public static Dataset<ExtendedRecord> loadExtendedRecords(
       SparkSession spark,
       PipelinesConfig config,
       String inputPath,

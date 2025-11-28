@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
@@ -135,7 +136,7 @@ public class IndexSettings {
 @Setter
 class EsCatIndex implements Serializable {
 
-  private static final long serialVersionUID = 7134020816642786944L;
+  @Serial private static final long serialVersionUID = 7134020816642786944L;
 
   @JsonProperty("docs.count")
   private long count;

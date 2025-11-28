@@ -1,0 +1,31 @@
+package org.gbif.pipelines.interpretation.spark;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * POJO that holds the contents of an Event. Each string property is JSON serialisation of the
+ * output from a transform.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Event {
+
+  String id;
+  String internalId;
+  String verbatim;
+  String identifier;
+  String location;
+  String taxon;
+  String temporal;
+  String multimedia;
+  String audubon;
+  String image;
+  String eventCore;
+  String measurementOrFact;
+  String humboldt;
+}
