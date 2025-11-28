@@ -1,0 +1,264 @@
+package org.gbif.pipelines.interpretation.spark;
+
+import static org.apache.spark.sql.functions.*;
+import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
+import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
+
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import java.util.*;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.spark.api.java.function.FilterFunction;
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructType;
+import org.gbif.api.vocabulary.Extension;
+import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.io.avro.ExtendedRecord;
+
+@Slf4j
+public class VerbatimExtensionsInterpretation {
+
+  private static final Map<String, Extension> extensionCache = new HashMap<>();
+
+  @Parameters(separators = "=")
+  private static class Args {
+
+    @Parameter(names = "--appName", description = "Application name", required = true)
+    private String appName;
+
+    @Parameter(names = "--datasetId", description = "Dataset ID", required = true)
+    private String datasetId;
+
+    @Parameter(names = "--attempt", description = "Attempt number", required = true)
+    private int attempt;
+
+    @Parameter(names = "--icebergCatalog", description = "Apache Iceberg Catalog", required = true)
+    private String icebergCatalog;
+
+    @Parameter(names = "--dwcCoreTerm", description = "DarwinCore Core Term", required = true)
+    private String dwcCoreTerm;
+
+    @Parameter(
+        names = "--config",
+        description = "Path to YAML configuration file",
+        required = false)
+    private String config = "/tmp/pipelines-spark.yaml";
+
+    @Parameter(
+        names = "--master",
+        description = "Spark master - there for local dev only",
+        required = false)
+    private String master;
+
+    @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
+    private int numberOfShards = 10;
+
+    @Parameter(
+        names = {"--help", "-h"},
+        help = true,
+        description = "Show usage")
+    private boolean help;
+  }
+
+  @SneakyThrows
+  public static void processExtensions(
+      SparkSession spark,
+      PipelinesConfig config,
+      String datasetId,
+      int attempt,
+      int numberOfShards,
+      String icebergCatalog,
+      String dwcCoreTerm) {
+
+    String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
+
+    Dataset<ExtendedRecord> extendedRecords =
+        loadExtendedRecords(spark, config, inputPath, numberOfShards);
+
+    spark
+        .udf()
+        .register(
+            "extensionToDirectory",
+            (String url) -> extensionToDirectory(url),
+            DataTypes.StringType);
+
+    Dataset<Row> df = extendedRecords.toDF().withColumnRenamed("id", "gbifid");
+
+    Dataset<Row> exploded =
+        df.select(col("gbifid"), col("coreId"), expr("explode(extensions) as (directory, records)"))
+            .withColumn("record", explode(col("records")))
+            .withColumn("datasetKey", lit(datasetId))
+            .drop("records");
+
+    // Normalize the directory name
+    Dataset<Row> normalizedKeys =
+        exploded.withColumn("directory", callUDF("extensionToDirectory", col("directory")));
+
+    // Collect all possible map keys across the dataset
+    Dataset<Row> keysDf = normalizedKeys.select(explode(map_keys(col("record"))).alias("key"));
+    java.util.List<String> allKeys = keysDf.distinct().as(Encoders.STRING()).collectAsList();
+
+    // Dynamically create flattened columns
+    List<Column> selectCols = new ArrayList<>();
+    selectCols.add(col("gbifid"));
+    selectCols.add(col("coreId"));
+    selectCols.add(col("directory"));
+
+    for (String k : allKeys) {
+      String normalizedField = normalizeFieldName(k);
+      selectCols.add(col("record").getItem(k).alias(normalizedField));
+    }
+
+    Dataset<Row> flattened = normalizedKeys.select(selectCols.toArray(new Column[0]));
+
+    // Repartition for performance
+    Dataset<Row> optimized = flattened.repartition(col("directory"));
+
+    // collect distinct directories
+    java.util.List<String> directories =
+        optimized.select(col("directory")).distinct().as(Encoders.STRING()).collectAsList();
+
+    Set<String> dfCols = new HashSet<>(Arrays.asList(optimized.columns()));
+
+    // Write partitioned Parquet output (flat schema)
+    for (String dir : directories) {
+      String tableName =
+          dwcCoreTerm.toLowerCase() + "_ext_" + dir.toLowerCase(); // e.g. ac_extension -> extension
+      String table = icebergCatalog + "." + tableName; // e.g. iceberg_catalog.default.ac_extension
+
+      // get target table schema (table must exist)
+      if (!spark.catalog().tableExists(table)) {
+        log.info("Table {} does not exist, skipping extension {}", table, dir);
+        continue;
+      }
+      StructType tblSchema = spark.read().format("iceberg").load(table).schema();
+
+      // build select list that matches target schema: use existing columns or nulls cast to the
+      // target type
+      List<Column> colsToSelect = new ArrayList<>();
+      for (org.apache.spark.sql.types.StructField f : tblSchema.fields()) {
+        String fieldName = f.name();
+        if (dfCols.contains(fieldName)) {
+          colsToSelect.add(col(fieldName));
+        } else {
+          colsToSelect.add(lit(null).cast(f.dataType()).alias(fieldName));
+        }
+      }
+
+      // filter rows for this extension and select aligned columns
+      Dataset<Row> toWrite =
+          optimized
+              .filter(col("directory").equalTo(dir))
+              .select(colsToSelect.toArray(new org.apache.spark.sql.Column[0]));
+
+      // ensure partition column exists in the DataFrame if the table is partitioned by datasetKey
+      if (!Arrays.asList(toWrite.columns()).contains("datasetKey")) {
+        toWrite = toWrite.withColumn("datasetKey", lit(datasetId));
+      }
+
+      // write to existing Iceberg table (append; use overwritePartitions() if needed)
+      toWrite.writeTo(table).overwritePartitions();
+    }
+  }
+
+  private static String extensionToDirectory(String rowType) {
+    Extension extension = lookupExtension(rowType);
+    String prefix = extension.getRowType().toLowerCase().contains("/ac/") ? "ac_" : "";
+    return prefix + extension.name().toLowerCase();
+  }
+
+  /** Extracts the last part of the url as the field name and normalizes it. */
+  private static String normalizeFieldName(String name) {
+    String[] parts = name.split("/");
+    String rawName = parts[parts.length - 1];
+    return rawName.trim();
+  }
+
+  /** Read DWC extension from URL */
+  private static Extension getExtension(String url) {
+    return extensionCache.computeIfAbsent(url, VerbatimExtensionsInterpretation::lookupExtension);
+  }
+
+  @SneakyThrows
+  private static Extension lookupExtension(String rowType) {
+    return Extension.fromRowType(rowType);
+  }
+
+  private static Dataset<ExtendedRecord> loadExtendedRecords(
+      SparkSession spark, PipelinesConfig config, String inputPath, int numberOfShards) {
+
+    spark
+        .sparkContext()
+        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
+
+    final Set<String> allowExtensions =
+        Optional.ofNullable(config.getExtensionsAllowedForVerbatimSet())
+            .orElse(Collections.emptySet());
+
+    // load and filter extended records
+    return spark
+        .read()
+        .format("avro")
+        .load(inputPath + "/verbatim.avro")
+        .as(Encoders.bean(ExtendedRecord.class))
+        .filter((FilterFunction<ExtendedRecord>) er -> er != null && !er.getCoreTerms().isEmpty())
+        .map(
+            (MapFunction<ExtendedRecord, ExtendedRecord>)
+                er -> {
+                  Map<String, List<Map<String, String>>> extensions = new HashMap<>();
+                  er.getExtensions().entrySet().stream()
+                      .filter(es -> allowExtensions.contains(es.getKey()))
+                      .filter(es -> !es.getValue().isEmpty())
+                      .forEach(es -> extensions.put(es.getKey(), es.getValue()));
+                  return ExtendedRecord.newBuilder()
+                      .setId(er.getId())
+                      .setCoreTerms(er.getCoreTerms())
+                      .setExtensions(extensions)
+                      .build();
+                },
+            Encoders.bean(ExtendedRecord.class))
+        .repartition(numberOfShards);
+  }
+
+  public static void main(String[] argsv) throws Exception {
+    VerbatimExtensionsInterpretation.Args args = new VerbatimExtensionsInterpretation.Args();
+    JCommander jCommander = new JCommander(args);
+    jCommander.setAcceptUnknownOptions(true);
+    jCommander.parse(argsv);
+
+    if (args.help) {
+      jCommander.usage();
+      return;
+    }
+
+    PipelinesConfig config = loadConfig(args.config);
+    String datasetId = args.datasetId;
+    int attempt = args.attempt;
+
+    /* ############ standard init block ########## */
+    SparkSession spark =
+        getSparkSession(args.master, args.appName, config, TableBuild::configSparkSession);
+    FileSystem fileSystem = getFileSystem(spark, config);
+    /* ############ standard init block - end ########## */
+
+    processExtensions(
+        spark,
+        config,
+        datasetId,
+        attempt,
+        args.numberOfShards,
+        args.icebergCatalog,
+        args.dwcCoreTerm);
+
+    fileSystem.close();
+    spark.stop();
+    spark.close();
+    System.exit(0);
+  }
+}
