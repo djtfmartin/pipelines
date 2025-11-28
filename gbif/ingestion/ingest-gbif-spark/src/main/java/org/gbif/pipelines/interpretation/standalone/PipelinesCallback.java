@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -358,7 +357,7 @@ public abstract class PipelinesCallback<
     }
 
     if (FINISHED_STATE_SET.contains(status)) {
-      pipelineStep.setFinished(OffsetDateTime.from(LocalDateTime.now()));
+      pipelineStep.setFinished(LocalDateTime.now());
     }
 
     try {
@@ -463,9 +462,7 @@ public abstract class PipelinesCallback<
               .getAllNodesFor(Collections.singleton(getStepType()));
 
       PipelineExecution execution =
-          new PipelineExecution()
-              .setStepsToRun(stepTypes)
-              .setCreated(OffsetDateTime.from(LocalDateTime.now()));
+          new PipelineExecution().setStepsToRun(stepTypes).setCreated(LocalDateTime.now());
 
       Supplier<Long> executionIdSupplier =
           () -> {
@@ -513,7 +510,7 @@ public abstract class PipelinesCallback<
     step.setMessage(OBJECT_MAPPER.writeValueAsString(message))
         .setState(RUNNING)
         .setRunner(isStandalone() ? StepRunner.STANDALONE : StepRunner.DISTRIBUTED)
-        .setStarted(OffsetDateTime.from(LocalDateTime.now()))
+        .setStarted(LocalDateTime.now())
         .setPipelinesVersion(System.getProperty("pipelinesVersion", "NOT_SET"));
 
     Function<PipelineStep, Long> pipelineStepFn =
