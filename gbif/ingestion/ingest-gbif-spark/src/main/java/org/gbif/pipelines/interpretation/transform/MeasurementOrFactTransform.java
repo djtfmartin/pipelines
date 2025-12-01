@@ -2,6 +2,7 @@ package org.gbif.pipelines.interpretation.transform;
 
 import static org.gbif.pipelines.core.utils.ModelUtils.hasExtension;
 
+import java.io.Serializable;
 import java.time.Instant;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -9,7 +10,7 @@ import org.gbif.pipelines.core.interpreters.extension.MeasurementOrFactInterpret
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.MeasurementOrFactRecord;
 
-public class MeasurementOrFactTransform {
+public class MeasurementOrFactTransform implements Serializable {
 
   private final PipelinesConfig config;
 

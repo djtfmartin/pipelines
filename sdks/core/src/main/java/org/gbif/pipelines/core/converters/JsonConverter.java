@@ -76,6 +76,7 @@ public class JsonConverter {
     return Arrays.stream(recordBases)
         .filter(Objects::nonNull)
         .map(Created::getCreated)
+        .filter(Objects::nonNull)
         .max(Long::compareTo)
         .flatMap(JsonConverter::convertToDate);
   }

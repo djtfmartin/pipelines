@@ -141,7 +141,6 @@ public class EventInterpretation {
     HdfsConfigs hdfsConfigs =
         HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
     FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
 
     long eventCount = extendedRecords.count();
     // write metrics to yaml
@@ -168,7 +167,8 @@ public class EventInterpretation {
                       .temporal(MAPPER.readValue((String) r.getTemporal(), TemporalRecord.class))
                       .location(MAPPER.readValue((String) r.getLocation(), LocationRecord.class))
                       .measurementOrFactRecord(
-                          MAPPER.readValue((String) r.getLocation(), MeasurementOrFactRecord.class))
+                          MAPPER.readValue(
+                              (String) r.getMeasurementOrFact(), MeasurementOrFactRecord.class))
                       .humboldtRecord(
                           MAPPER.readValue((String) r.getHumboldt(), HumboldtRecord.class))
                       .multimedia(
@@ -207,7 +207,7 @@ public class EventInterpretation {
                       .eventCoreRecord(
                           MAPPER.readValue((String) record.getEventCore(), EventCoreRecord.class))
                       .humboldtRecord(
-                          MAPPER.readValue((String) record.getEventCore(), HumboldtRecord.class))
+                          MAPPER.readValue((String) record.getHumboldt(), HumboldtRecord.class))
                       .build();
 
               return c.convert();

@@ -484,19 +484,19 @@ public class ParentJsonConverter {
   }
 
   private void mapLocationInheritedFields(ParentJsonRecord.Builder builder) {
-    if (locationInheritedRecord.getId() != null) {
+    if (locationInheritedRecord != null && locationInheritedRecord.getId() != null) {
       builder.setLocationInherited(locationInheritedRecord);
     }
   }
 
   private void mapTemporalInheritedFields(ParentJsonRecord.Builder builder) {
-    if (temporalInheritedRecord.getId() != null) {
+    if (temporalInheritedRecord != null && temporalInheritedRecord.getId() != null) {
       builder.setTemporalInherited(temporalInheritedRecord);
     }
   }
 
   private void mapEventInheritedFields(ParentJsonRecord.Builder builder) {
-    if (eventInheritedRecord.getId() != null) {
+    if (eventInheritedRecord != null && eventInheritedRecord.getId() != null) {
       builder.setEventInherited(eventInheritedRecord);
     }
   }

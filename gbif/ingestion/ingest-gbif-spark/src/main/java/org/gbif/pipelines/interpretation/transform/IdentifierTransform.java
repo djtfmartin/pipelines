@@ -1,11 +1,12 @@
 package org.gbif.pipelines.interpretation.transform;
 
+import java.io.Serializable;
 import java.time.Instant;
 import org.gbif.pipelines.core.interpreters.core.IdentifierInterpreter;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.IdentifierRecord;
 
-public class IdentifierTransform {
+public class IdentifierTransform implements Serializable {
 
   public static IdentifierTransform create() {
     return new IdentifierTransform();

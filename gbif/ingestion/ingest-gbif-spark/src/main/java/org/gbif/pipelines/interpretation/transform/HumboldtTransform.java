@@ -2,6 +2,7 @@ package org.gbif.pipelines.interpretation.transform;
 
 import static org.gbif.pipelines.core.utils.ModelUtils.hasExtension;
 
+import java.io.Serializable;
 import java.time.Instant;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.kvs.KeyValueStore;
@@ -14,7 +15,7 @@ import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.gbif.pipelines.io.avro.HumboldtRecord;
 import org.gbif.rest.client.species.NameUsageMatchResponse;
 
-public class HumboldtTransform {
+public class HumboldtTransform implements Serializable {
 
   private final PipelinesConfig config;
 

@@ -1,5 +1,6 @@
 package org.gbif.pipelines.interpretation.transform;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -9,7 +10,7 @@ import org.gbif.pipelines.interpretation.transform.utils.VocabularyServiceFactor
 import org.gbif.pipelines.io.avro.EventCoreRecord;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 
-public class EventCoreTransform {
+public class EventCoreTransform implements Serializable {
 
   private final PipelinesConfig config;
 
