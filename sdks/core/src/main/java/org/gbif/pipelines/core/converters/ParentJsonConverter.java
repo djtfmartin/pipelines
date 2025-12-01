@@ -15,7 +15,6 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
 import org.gbif.pipelines.core.utils.SortUtils;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
 import org.gbif.pipelines.io.avro.json.DerivedMetadataRecord;
 import org.gbif.pipelines.io.avro.json.EventInheritedRecord;
 import org.gbif.pipelines.io.avro.json.EventJsonRecord;
@@ -37,7 +36,6 @@ public class ParentJsonConverter {
   protected final EventCoreRecord eventCore;
   protected final TemporalRecord temporal;
   protected final LocationRecord location;
-  protected final GrscicollRecord grscicoll;
   protected final MultimediaRecord multimedia;
   protected final ExtendedRecord verbatim;
   protected final DerivedMetadataRecord derivedMetadata;
