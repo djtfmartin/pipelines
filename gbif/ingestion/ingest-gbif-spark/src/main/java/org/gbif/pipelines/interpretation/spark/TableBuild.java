@@ -95,7 +95,6 @@ public class TableBuild {
   public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
     sparkBuilder
         .enableHiveSupport()
-        .config("spark.jars.packages", "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0")
         .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.iceberg.type", "hive")
         .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")

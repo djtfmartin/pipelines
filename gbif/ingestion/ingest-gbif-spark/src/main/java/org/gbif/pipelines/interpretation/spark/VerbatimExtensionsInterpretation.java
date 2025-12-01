@@ -16,15 +16,15 @@ import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.gbif.api.vocabulary.Extension;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
+import org.jetbrains.annotations.NotNull;
 
 @Slf4j
 public class VerbatimExtensionsInterpretation {
-
-  private static final Map<String, Extension> extensionCache = new HashMap<>();
 
   @Parameters(separators = "=")
   private static class Args {
@@ -66,30 +66,26 @@ public class VerbatimExtensionsInterpretation {
     private boolean help;
   }
 
-  @SneakyThrows
-  public static void processExtensions(
-      SparkSession spark,
-      PipelinesConfig config,
-      String datasetId,
-      int attempt,
-      int numberOfShards,
-      String icebergCatalog,
-      String dwcCoreTerm) {
 
-    String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
-
-    Dataset<ExtendedRecord> extendedRecords =
-        loadExtendedRecords(spark, config, inputPath, numberOfShards);
-
+  /** Register UDFs used in the processing. */
+  private static void registerUdfs(SparkSession spark) {
     spark
         .udf()
         .register(
             "extensionToDirectory",
             (String url) -> extensionToDirectory(url),
             DataTypes.StringType);
+  }
 
+  /** Read extended records and explode extensions into separate rows. */
+  private static Dataset<Row> readExtendedRecords(SparkSession spark, String inputPath, PipelinesConfig config, Integer numberOfShards, String datasetId) {
+     // Load extended records
+    Dataset<ExtendedRecord> extendedRecords = loadExtendedRecords(spark, config, inputPath, numberOfShards);
+
+    // Convert to DataFrame and rename id to gbifid
     Dataset<Row> df = extendedRecords.toDF().withColumnRenamed("id", "gbifid");
 
+    // Explode extensions into separate rows
     Dataset<Row> exploded =
         df.select(col("gbifid"), col("coreId"), expr("explode(extensions) as (directory, records)"))
             .withColumn("record", explode(col("records")))
@@ -97,11 +93,13 @@ public class VerbatimExtensionsInterpretation {
             .drop("records");
 
     // Normalize the directory name
-    Dataset<Row> normalizedKeys =
-        exploded.withColumn("directory", callUDF("extensionToDirectory", col("directory")));
+    return exploded.withColumn("directory", callUDF("extensionToDirectory", col("directory")));
+  }
 
-    // Collect all possible map keys across the dataset
-    Dataset<Row> keysDf = normalizedKeys.select(explode(map_keys(col("record"))).alias("key"));
+  /** Dynamically create flattened columns based on all keys in the 'record' map. */
+  private static Column[] selectColumnsForExtension(Dataset<Row> df) {
+    Dataset<Row> keysDf = df.select(explode(map_keys(col("record"))).alias("key"));
+
     java.util.List<String> allKeys = keysDf.distinct().as(Encoders.STRING()).collectAsList();
 
     // Dynamically create flattened columns
@@ -115,15 +113,39 @@ public class VerbatimExtensionsInterpretation {
       selectCols.add(col("record").getItem(k).alias(normalizedField));
     }
 
-    Dataset<Row> flattened = normalizedKeys.select(selectCols.toArray(new Column[0]));
+    return selectCols.toArray(new Column[0]);
+  }
+
+  @SneakyThrows
+  public static void processExtensions(
+      SparkSession spark,
+      PipelinesConfig config,
+      String datasetId,
+      int attempt,
+      int numberOfShards,
+      String icebergCatalog,
+      String dwcCoreTerm) {
+
+    String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
+
+    registerUdfs(spark);
+
+    // Normalize the directory name
+    Dataset<Row> normalizedKeys = readExtendedRecords(spark, inputPath, config, numberOfShards, datasetId);
+
+    // Dynamically create flattened columns
+   Column[] selectCols = selectColumnsForExtension(normalizedKeys);
+
+   // Flattened DataFrame
+    Dataset<Row> flattened = normalizedKeys.select(selectCols);
 
     // Repartition for performance
     Dataset<Row> optimized = flattened.repartition(col("directory"));
 
     // collect distinct directories
-    java.util.List<String> directories =
-        optimized.select(col("directory")).distinct().as(Encoders.STRING()).collectAsList();
+    List<String> directories = optimized.select(col("directory")).distinct().as(Encoders.STRING()).collectAsList();
 
+    // cache columns for later use
     Set<String> dfCols = new HashSet<>(Arrays.asList(optimized.columns()));
 
     // Write partitioned Parquet output (flat schema)
@@ -132,24 +154,17 @@ public class VerbatimExtensionsInterpretation {
           dwcCoreTerm.toLowerCase() + "_ext_" + dir.toLowerCase(); // e.g. ac_extension -> extension
       String table = icebergCatalog + "." + tableName; // e.g. iceberg_catalog.default.ac_extension
 
-      // get target table schema (table must exist)
       if (!spark.catalog().tableExists(table)) {
         log.info("Table {} does not exist, skipping extension {}", table, dir);
         continue;
       }
+
+      // get target table schema (table must exist)
       StructType tblSchema = spark.read().format("iceberg").load(table).schema();
 
       // build select list that matches target schema: use existing columns or nulls cast to the
       // target type
-      List<Column> colsToSelect = new ArrayList<>();
-      for (org.apache.spark.sql.types.StructField f : tblSchema.fields()) {
-        String fieldName = f.name();
-        if (dfCols.contains(fieldName)) {
-          colsToSelect.add(col(fieldName));
-        } else {
-          colsToSelect.add(lit(null).cast(f.dataType()).alias(fieldName));
-        }
-      }
+      var colsToSelect = getColsToSelect(tblSchema, dfCols);
 
       // filter rows for this extension and select aligned columns
       Dataset<Row> toWrite =
@@ -167,6 +182,22 @@ public class VerbatimExtensionsInterpretation {
     }
   }
 
+  /** Builds a list of columns to select from the DataFrame, aligning with the target table schema. */
+  @NotNull
+  private static Column[] getColsToSelect(StructType tblSchema, Set<String> dfCols) {
+    List<Column> colsToSelect = new ArrayList<>();
+    for (StructField f : tblSchema.fields()) {
+      String fieldName = f.name();
+      if (dfCols.contains(fieldName)) {
+        colsToSelect.add(col(fieldName));
+      } else {
+        colsToSelect.add(lit(null).cast(f.dataType()).alias(fieldName));
+      }
+    }
+    return colsToSelect.toArray(new Column[0]);
+  }
+
+  /** Converts extension rowType URL to directory name. */
   private static String extensionToDirectory(String rowType) {
     Extension extension = lookupExtension(rowType);
     String prefix = extension.getRowType().toLowerCase().contains("/ac/") ? "ac_" : "";
@@ -180,16 +211,12 @@ public class VerbatimExtensionsInterpretation {
     return rawName.trim();
   }
 
-  /** Read DWC extension from URL */
-  private static Extension getExtension(String url) {
-    return extensionCache.computeIfAbsent(url, VerbatimExtensionsInterpretation::lookupExtension);
-  }
-
   @SneakyThrows
   private static Extension lookupExtension(String rowType) {
     return Extension.fromRowType(rowType);
   }
 
+  /** Load extended records from Avro, filter and retain only allowed extensions. */
   private static Dataset<ExtendedRecord> loadExtendedRecords(
       SparkSession spark, PipelinesConfig config, String inputPath, int numberOfShards) {
 
