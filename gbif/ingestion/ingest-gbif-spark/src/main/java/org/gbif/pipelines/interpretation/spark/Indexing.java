@@ -23,6 +23,7 @@ import org.gbif.pipelines.core.config.model.EsConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.EsIndexUtils;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
+import org.gbif.pipelines.io.avro.json.ParentJsonRecord;
 import org.slf4j.MDC;
 
 /**
@@ -37,6 +38,11 @@ public class Indexing {
 
   public static final String ES_INDEX_NAME_ARG = "--esIndexName";
   public static final String ES_INDEX_NUMBER_OF_SHARDS_ARG = "--indexNumberShards";
+
+  enum IndexType {
+    OCCURRENCE,
+    EVENT
+  }
 
   @Parameters(separators = "=")
   private static class Args {
@@ -59,6 +65,9 @@ public class Indexing {
         names = ES_INDEX_NUMBER_OF_SHARDS_ARG,
         description = "Number of primary shards in the target index. Default = 3")
     private Integer indexNumberShards = 3;
+
+    @Parameter(names = "--indexType", description = "OCCURRENCE or EVENT")
+    private IndexType indexType = IndexType.OCCURRENCE;
 
     @Parameter(
         names = "--config",
@@ -99,14 +108,29 @@ public class Indexing {
     FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
-    runIndexing(
-        spark,
-        fileSystem,
-        config,
-        args.datasetId,
-        args.attempt,
-        args.esIndexName,
-        args.indexNumberShards);
+    if (args.indexType == IndexType.OCCURRENCE) {
+      runIndexing(
+          spark,
+          fileSystem,
+          config,
+          args.datasetId,
+          args.attempt,
+          args.esIndexName,
+          args.indexNumberShards,
+          OccurrenceJsonRecord.class,
+          "json");
+    } else if (args.indexType == IndexType.EVENT) {
+      runIndexing(
+          spark,
+          fileSystem,
+          config,
+          args.datasetId,
+          args.attempt,
+          args.esIndexName,
+          args.indexNumberShards,
+          ParentJsonRecord.class,
+          "event-json");
+    }
 
     spark.stop();
     spark.close();
@@ -120,14 +144,16 @@ public class Indexing {
     sparkBuilder.config("es.nodes", String.join(",", config.getElastic().getEsHosts()));
   }
 
-  public static void runIndexing(
+  public static <T> void runIndexing(
       SparkSession spark,
       FileSystem fileSystem,
       PipelinesConfig config,
       String datasetId,
       Integer attempt,
       String esIndexName,
-      Integer indexNumberShards) {
+      Integer indexNumberShards,
+      Class<T> recordClass,
+      String parquetDirectoryToLoad) {
 
     long start = System.currentTimeMillis();
     MDC.put("datasetKey", datasetId);
@@ -138,7 +164,8 @@ public class Indexing {
 
     // where the pre-prepared json should be
     String inputPath =
-        String.format("%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, "json");
+        String.format(
+            "%s/%s/%d/%s", config.getOutputPath(), datasetId, attempt, parquetDirectoryToLoad);
 
     // output path for metrics
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
@@ -154,8 +181,7 @@ public class Indexing {
     Set<String> indices = EsIndexUtils.deleteRecordsByDatasetId(options);
 
     // Read parquet files
-    Dataset<OccurrenceJsonRecord> df =
-        spark.read().parquet(inputPath).as(Encoders.bean(OccurrenceJsonRecord.class));
+    Dataset<T> df = spark.read().parquet(inputPath).as(Encoders.bean(recordClass));
 
     // Write to Elasticsearch
     df.write()
@@ -164,6 +190,7 @@ public class Indexing {
         .option("es.batch.size.entries", config.getElastic().getEsMaxBatchSize())
         .option("es.batch.size.bytes", config.getElastic().getEsMaxBatchSizeBytes())
         .option("es.mapping.id", "gbifId")
+        .option("es.mapping.id", "id")
         .option("es.nodes.wan.only", "true")
         .option("es.batch.write.refresh", "false")
         .mode("append")

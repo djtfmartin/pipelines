@@ -43,3 +43,4 @@ elastic:
   esSchemaPath: elasticsearch/es-occurrence-schema.json
   esMaxBatchSizeBytes: 10485760
   esMaxBatchSize: 1700
+  indexNumberReplicas: 0

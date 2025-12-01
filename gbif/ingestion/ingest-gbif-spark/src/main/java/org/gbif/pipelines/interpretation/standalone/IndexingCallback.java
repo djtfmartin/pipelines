@@ -9,6 +9,7 @@ import org.gbif.common.messaging.api.messages.PipelinesIndexedMessage;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.spark.Indexing;
+import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 
 @Slf4j
 public class IndexingCallback
@@ -41,7 +42,9 @@ public class IndexingCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         pipelinesConfig.getStandalone().getIndexName(),
-        pipelinesConfig.getStandalone().getNumberOfShards());
+        pipelinesConfig.getStandalone().getNumberOfShards(),
+        OccurrenceJsonRecord.class,
+        "json");
   }
 
   @Override
