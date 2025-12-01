@@ -181,25 +181,12 @@ public class Interpretation {
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards);
 
-    // Process and then reload identifiers
-    // if the /identifiers directory exists, then
-    // we assume that the valid and absent identifiers are already present because of a previous
-    // interpretation run
-    if (!FsUtils.fileExists(
-            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
-            outputPath + "/identifiers")
-        || !FsUtils.fileExists(
-            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
-            outputPath + "/identifiers/_SUCCESS")) {
-      log.debug("Processing identifiers - first interpretation run for this dataset and attempt");
-      processIdentifiers(spark, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
-    } else {
-      log.debug("Skipping processing identifiers - re-using existing identifiers");
-    }
+    // Process identifiers - persisting new identifiers
+    processIdentifiers(spark, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
 
     // load identifiers
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
-    long identifiersCount = identifiers.count();
+    final long identifiersCount = identifiers.count();
 
     // check all identifier records have a valid internal ID
     checkIdentifiers(identifiers);
@@ -231,8 +218,7 @@ public class Interpretation {
     writeMetricsYaml(
         fs,
         Map.of(
-            PipelinesVariables.Metrics.BASIC_RECORDS_COUNT,
-                identifiersCount, // need to check cli coordinator to use 1
+            PipelinesVariables.Metrics.BASIC_RECORDS_COUNT, identifiersCount,
             PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
         outputPath + "/" + METRICS_FILENAME);
 
@@ -476,6 +462,15 @@ public class Interpretation {
         .as(Encoders.bean(IdentifierRecord.class));
   }
 
+  /**
+   * Process and then reload identifiers if the /identifiers directory exists, then we assume that
+   * the valid and absent identifiers are already present because of a previous interpretation run
+   *
+   * @param spark
+   * @param config
+   * @param outputPath
+   * @param datasetId
+   */
   public static void processIdentifiers(
       SparkSession spark,
       PipelinesConfig config,
@@ -483,6 +478,16 @@ public class Interpretation {
       String datasetId,
       boolean tripletValid,
       boolean occurrenceIdValid) {
+
+    if (FsUtils.fileExists(
+            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
+            outputPath + "/identifiers")
+        && FsUtils.fileExists(
+            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
+            outputPath + "/identifiers/_SUCCESS")) {
+      log.debug("Skipping processing identifiers - re-using existing identifiers");
+      return;
+    }
 
     // load the valid identifiers - identifiers already present in hbase
     Dataset<IdentifierRecord> identifiers = loadValidIdentifiers(spark, outputPath);

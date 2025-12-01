@@ -1,15 +1,18 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.Interpretation.getMetadataRecord;
 import static org.gbif.pipelines.interpretation.spark.Interpretation.loadExtendedRecords;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
+import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.timeAndRecPerSecond;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.function.MapFunction;
@@ -17,10 +20,14 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.SparkSession;
+import org.gbif.pipelines.common.PipelinesVariables;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.core.converters.MultimediaConverter;
+import org.gbif.pipelines.core.converters.*;
+import org.gbif.pipelines.core.pojo.HdfsConfigs;
+import org.gbif.pipelines.core.utils.FsUtils;
 import org.gbif.pipelines.interpretation.transform.*;
 import org.gbif.pipelines.io.avro.*;
+import org.gbif.pipelines.io.avro.json.ParentJsonRecord;
 import org.slf4j.MDC;
 
 @Slf4j
@@ -95,7 +102,7 @@ public class EventInterpretation {
 
   public static void runEventInterpretation(
       SparkSession spark,
-      FileSystem fileSystem,
+      FileSystem fs,
       PipelinesConfig config,
       String datasetId,
       int attempt,
@@ -115,41 +122,103 @@ public class EventInterpretation {
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards);
 
-    Dataset<Event> simpleRecords = null;
+    Dataset<Event> simpleRecords =
+        runTransforms(spark, config, extendedRecords, metadata, outputPath);
 
-    runTransforms(spark, config, simpleRecords, metadata, outputPath);
+    // write parquet for elastic
+    toJson(simpleRecords, metadata)
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/event-json");
 
-    //        // write parquet for elastic
-    //        toJson(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath +
-    // "/json");
-    //
-    //        // write parquet for hdfs view
-    //        toHdfs(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath +
-    // "/hdfs");
-    //
-    //        // cleanup intermediate parquet outputs
-    //        HdfsConfigs hdfsConfigs =
-    //                HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-    //        FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
-    //        FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
-    //
-    //        // write metrics to yaml
-    //        writeMetricsYaml(
-    //                fs,
-    //                Map.of(
-    //                        PipelinesVariables.Metrics.BASIC_RECORDS_COUNT,
-    //                        identifiersCount, // need to check cli coordinator to use 1
-    //                        PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
-    //                outputPath + "/" + METRICS_FILENAME);
-    //
-    //        log.info(timeAndRecPerSecond("events-interpretation", start, identifiersCount));
+    // write parquet for hdfs view
+    toHdfs(simpleRecords, metadata)
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/event-hdfs");
 
+    // cleanup intermediate parquet outputs
+    HdfsConfigs hdfsConfigs =
+        HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
+
+    long eventCount = extendedRecords.count();
+    // write metrics to yaml
+    writeMetricsYaml(
+        fs,
+        Map.of(PipelinesVariables.Metrics.BASIC_RECORDS_COUNT, eventCount),
+        outputPath + "/" + METRICS_FILENAME);
+
+    log.info(timeAndRecPerSecond("events-interpretation", start, eventCount));
+  }
+
+  private static Dataset<ParentJsonRecord> toJson(
+      Dataset<Event> simpleRecords, MetadataRecord metadata) {
+    return simpleRecords.map(
+        (MapFunction<Event, ParentJsonRecord>)
+            r -> {
+              ParentJsonConverter c =
+                  ParentJsonConverter.builder()
+                      .metadata(metadata)
+                      .eventCore(MAPPER.readValue((String) r.getEventCore(), EventCoreRecord.class))
+                      .identifier(
+                          MAPPER.readValue((String) r.getIdentifier(), IdentifierRecord.class))
+                      .verbatim(MAPPER.readValue((String) r.getVerbatim(), ExtendedRecord.class))
+                      .temporal(MAPPER.readValue((String) r.getTemporal(), TemporalRecord.class))
+                      .location(MAPPER.readValue((String) r.getLocation(), LocationRecord.class))
+                      .measurementOrFactRecord(
+                          MAPPER.readValue((String) r.getLocation(), MeasurementOrFactRecord.class))
+                      .humboldtRecord(
+                          MAPPER.readValue((String) r.getHumboldt(), HumboldtRecord.class))
+                      .multimedia(
+                          MAPPER.readValue((String) r.getMultimedia(), MultimediaRecord.class))
+
+                      //                          private DerivedMetadataRecord derivedMetadata;
+                      //                          private LocationInheritedRecord locationInherited;
+                      //                          private TemporalInheritedRecord temporalInherited;
+
+                      .build();
+              return c.convertToParent();
+            },
+        Encoders.bean(ParentJsonRecord.class));
+  }
+
+  private static Dataset<OccurrenceHdfsRecord> toHdfs(
+      Dataset<Event> simpleRecords, MetadataRecord metadata) {
+    return simpleRecords.map(
+        (MapFunction<Event, OccurrenceHdfsRecord>)
+            record -> {
+              OccurrenceHdfsRecordConverter c =
+                  OccurrenceHdfsRecordConverter.builder()
+                      .metadataRecord(metadata)
+                      .extendedRecord(
+                          MAPPER.readValue((String) record.getVerbatim(), ExtendedRecord.class))
+                      .locationRecord(
+                          MAPPER.readValue((String) record.getLocation(), LocationRecord.class))
+                      .temporalRecord(
+                          MAPPER.readValue((String) record.getTemporal(), TemporalRecord.class))
+                      .multiTaxonRecord(
+                          MAPPER.readValue((String) record.getTaxon(), MultiTaxonRecord.class))
+                      .identifierRecord(
+                          MAPPER.readValue((String) record.getIdentifier(), IdentifierRecord.class))
+                      .multimediaRecord(
+                          MAPPER.readValue((String) record.getMultimedia(), MultimediaRecord.class))
+                      .eventCoreRecord(
+                          MAPPER.readValue((String) record.getEventCore(), EventCoreRecord.class))
+                      .humboldtRecord(
+                          MAPPER.readValue((String) record.getEventCore(), HumboldtRecord.class))
+                      .build();
+
+              return c.convert();
+            },
+        Encoders.bean(OccurrenceHdfsRecord.class));
   }
 
   public static Dataset<Event> runTransforms(
       SparkSession spark,
       PipelinesConfig config,
-      Dataset<Event> simpleRecords,
+      Dataset<ExtendedRecord> extendedRecords,
       MetadataRecord metadata,
       String outputPath) {
 
@@ -164,38 +233,32 @@ public class EventInterpretation {
     MeasurementOrFactTransform measurementOrFactTransform =
         MeasurementOrFactTransform.create(config);
     HumboldtTransform humboldtTransform = HumboldtTransform.create(config);
+    IdentifierTransform identifierTransform = IdentifierTransform.create();
 
     // Loop over all records and interpret them
     Dataset<Event> interpreted =
-        simpleRecords.map(
-            (MapFunction<Event, Event>)
-                simpleRecord -> {
-                  ExtendedRecord er =
-                      MAPPER.readValue(simpleRecord.getVerbatim(), ExtendedRecord.class);
+        extendedRecords.map(
+            (MapFunction<ExtendedRecord, Event>)
+                verbatim -> {
                   IdentifierRecord idr =
-                      MAPPER.readValue(simpleRecord.getIdentifier(), IdentifierRecord.class);
-
-                  // Apply all transforms
-                  //                                    ExtendedRecord verbatim =
-                  // defaultValuesTransform.convert(er);
-                  MultiTaxonRecord tr = taxonomyTransform.convert(er);
-                  LocationRecord lr = locationTransform.convert(er, metadata);
-                  TemporalRecord ter = temporalTransform.convert(er);
-                  MultimediaRecord mr = multimediaTransform.convert(er);
-                  ImageRecord ir = imageTransform.convert(er);
-                  AudubonRecord ar = audubonTransform.convert(er);
-                  MeasurementOrFactRecord mfr = measurementOrFactTransform.convert(er);
-                  EventCoreRecord ecr = eventCoreTransform.convert(er, null);
-                  HumboldtRecord hr = humboldtTransform.convert(er);
+                      identifierTransform.convert(verbatim, metadata.getDatasetKey());
+                  MultiTaxonRecord tr = taxonomyTransform.convert(verbatim);
+                  LocationRecord lr = locationTransform.convert(verbatim, metadata);
+                  TemporalRecord ter = temporalTransform.convert(verbatim);
+                  MultimediaRecord mr = multimediaTransform.convert(verbatim);
+                  ImageRecord ir = imageTransform.convert(verbatim);
+                  AudubonRecord ar = audubonTransform.convert(verbatim);
+                  MeasurementOrFactRecord mfr = measurementOrFactTransform.convert(verbatim);
+                  EventCoreRecord ecr = eventCoreTransform.convert(verbatim, null);
+                  HumboldtRecord hr = humboldtTransform.convert(verbatim);
 
                   // merge the multimedia records
                   MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
                   return Event.builder()
-                      //                                            .id(verbatim.getId())
-                      .identifier(simpleRecord.getIdentifier())
-                      //
-                      // .verbatim(MAPPER.writeValueAsString(verbatim))
+                      .id(verbatim.getId())
+                      .identifier(MAPPER.writeValueAsString(idr))
+                      .verbatim(MAPPER.writeValueAsString(verbatim))
                       .taxon(MAPPER.writeValueAsString(tr))
                       .location(MAPPER.writeValueAsString(lr))
                       .temporal(MAPPER.writeValueAsString(ter))
