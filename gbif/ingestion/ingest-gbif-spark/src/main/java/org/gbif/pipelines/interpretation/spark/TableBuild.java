@@ -170,7 +170,7 @@ public class TableBuild {
     cleanHdfsPath(fileSystem, config, table);
     hdfs.writeTo(table).create();
 
-    log.debug("Created Iceberg table: " + table);
+    log.debug("Created Iceberg table: {}", table);
 
     // Display table schema and initial record count
     Dataset<Row> result = spark.sql("SELECT COUNT(*) FROM " + table);
