@@ -116,6 +116,7 @@ public class Indexing {
           args.datasetId,
           args.attempt,
           args.esIndexName,
+              "elasticsearch/es-occurrence-schema.json",
           args.indexNumberShards,
           OccurrenceJsonRecord.class,
           "json");
@@ -127,6 +128,7 @@ public class Indexing {
           args.datasetId,
           args.attempt,
           args.esIndexName,
+          "elasticsearch/es-event-schema.json",
           args.indexNumberShards,
           ParentJsonRecord.class,
           "event-json");
@@ -151,6 +153,7 @@ public class Indexing {
       String datasetId,
       Integer attempt,
       String esIndexName,
+      String esSchemaPath,
       Integer indexNumberShards,
       Class<T> recordClass,
       String parquetDirectoryToLoad) {
@@ -172,7 +175,7 @@ public class Indexing {
 
     ElasticOptions options =
         ElasticOptions.fromArgsAndConfig(
-            config, esIndexName, datasetId, attempt, indexNumberShards);
+            config, esIndexName, esSchemaPath, datasetId, attempt, indexNumberShards);
 
     // Create ES index and alias if not exists
     EsIndexUtils.createIndexAndAliasForDefault(options);
@@ -236,6 +239,7 @@ public class Indexing {
     public static ElasticOptions fromArgsAndConfig(
         PipelinesConfig config,
         String esIndexName,
+        String esSchemaPath,
         String datasetId,
         Integer attempt,
         Integer indexNumberShards) {
@@ -249,7 +253,7 @@ public class Indexing {
               .esAlias(new String[] {esConfig.getEsAlias()})
               .datasetId(datasetId)
               .attempt(attempt)
-              .esSchemaPath(esConfig.getEsSchemaPath())
+              .esSchemaPath(esSchemaPath)
               .esHosts(esConfig.getEsHosts().split(","));
 
       if (esConfig.getIndexRefreshInterval() != null) {

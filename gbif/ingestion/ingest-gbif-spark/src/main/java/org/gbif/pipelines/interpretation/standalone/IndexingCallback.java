@@ -42,6 +42,7 @@ public class IndexingCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         pipelinesConfig.getStandalone().getIndexName(),
+            "elasticsearch/es-occurrence-schema.json",
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,
         "json");
