@@ -66,7 +66,6 @@ public class VerbatimExtensionsInterpretation {
     private boolean help;
   }
 
-
   /** Register UDFs used in the processing. */
   private static void registerUdfs(SparkSession spark) {
     spark
@@ -78,9 +77,15 @@ public class VerbatimExtensionsInterpretation {
   }
 
   /** Read extended records and explode extensions into separate rows. */
-  private static Dataset<Row> readExtendedRecords(SparkSession spark, String inputPath, PipelinesConfig config, Integer numberOfShards, String datasetId) {
-     // Load extended records
-    Dataset<ExtendedRecord> extendedRecords = loadExtendedRecords(spark, config, inputPath, numberOfShards);
+  private static Dataset<Row> readExtendedRecords(
+      SparkSession spark,
+      String inputPath,
+      PipelinesConfig config,
+      Integer numberOfShards,
+      String datasetId) {
+    // Load extended records
+    Dataset<ExtendedRecord> extendedRecords =
+        loadExtendedRecords(spark, config, inputPath, numberOfShards);
 
     // Convert to DataFrame and rename id to gbifid
     Dataset<Row> df = extendedRecords.toDF().withColumnRenamed("id", "gbifid");
@@ -131,19 +136,21 @@ public class VerbatimExtensionsInterpretation {
     registerUdfs(spark);
 
     // Normalize the directory name
-    Dataset<Row> normalizedKeys = readExtendedRecords(spark, inputPath, config, numberOfShards, datasetId);
+    Dataset<Row> normalizedKeys =
+        readExtendedRecords(spark, inputPath, config, numberOfShards, datasetId);
 
     // Dynamically create flattened columns
-   Column[] selectCols = selectColumnsForExtension(normalizedKeys);
+    Column[] selectCols = selectColumnsForExtension(normalizedKeys);
 
-   // Flattened DataFrame
+    // Flattened DataFrame
     Dataset<Row> flattened = normalizedKeys.select(selectCols);
 
     // Repartition for performance
     Dataset<Row> optimized = flattened.repartition(col("directory"));
 
     // collect distinct directories
-    List<String> directories = optimized.select(col("directory")).distinct().as(Encoders.STRING()).collectAsList();
+    List<String> directories =
+        optimized.select(col("directory")).distinct().as(Encoders.STRING()).collectAsList();
 
     // cache columns for later use
     Set<String> dfCols = new HashSet<>(Arrays.asList(optimized.columns()));
@@ -167,10 +174,7 @@ public class VerbatimExtensionsInterpretation {
       var colsToSelect = getColsToSelect(tblSchema, dfCols);
 
       // filter rows for this extension and select aligned columns
-      Dataset<Row> toWrite =
-          optimized
-              .filter(col("directory").equalTo(dir))
-              .select(colsToSelect.toArray(new org.apache.spark.sql.Column[0]));
+      Dataset<Row> toWrite = optimized.filter(col("directory").equalTo(dir)).select(colsToSelect);
 
       // ensure partition column exists in the DataFrame if the table is partitioned by datasetKey
       if (!Arrays.asList(toWrite.columns()).contains("datasetKey")) {
@@ -182,7 +186,9 @@ public class VerbatimExtensionsInterpretation {
     }
   }
 
-  /** Builds a list of columns to select from the DataFrame, aligning with the target table schema. */
+  /**
+   * Builds a list of columns to select from the DataFrame, aligning with the target table schema.
+   */
   @NotNull
   private static Column[] getColsToSelect(StructType tblSchema, Set<String> dfCols) {
     List<Column> colsToSelect = new ArrayList<>();
