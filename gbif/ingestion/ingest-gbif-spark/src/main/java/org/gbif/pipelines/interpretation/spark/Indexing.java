@@ -116,7 +116,7 @@ public class Indexing {
           args.datasetId,
           args.attempt,
           args.esIndexName,
-              "elasticsearch/es-occurrence-schema.json",
+          "elasticsearch/es-occurrence-schema.json",
           args.indexNumberShards,
           OccurrenceJsonRecord.class,
           "json");

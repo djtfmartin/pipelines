@@ -30,8 +30,6 @@ import org.slf4j.MDC;
 @Slf4j
 public class TableBuild {
 
-  public static final String METRICS_FILENAME = "occurrence-to-hdfs.yml";
-
   @Parameters(separators = "=")
   private static class Args {
 
@@ -44,15 +42,19 @@ public class TableBuild {
     @Parameter(names = "--attempt", description = "Attempt number", required = true)
     private int attempt;
 
-    @Parameter(
-        names = "--config",
-        description = "Path to YAML configuration file",
-        required = false)
+    @Parameter(names = "--tableName", description = "Table name", required = true)
+    private String tableName = "occurrence";
+
+    @Parameter(names = "--sourceDirectory", description = "Table name", required = true)
+    private String sourceDirectory = "hdfs";
+
+    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
     private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
         names = "--master",
-        description = "Spark master - there for local dev only",
+        description =
+            "Spark master - there for local dev only. Use --master=local[*] to run locally.",
         required = false)
     private String master;
 
@@ -84,7 +86,8 @@ public class TableBuild {
     FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
-    runTableBuild(spark, fileSystem, config, datasetId, attempt);
+    runTableBuild(
+        spark, fileSystem, config, datasetId, attempt, args.tableName, args.sourceDirectory);
 
     spark.stop();
     spark.close();
@@ -108,12 +111,25 @@ public class TableBuild {
         .config("spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
   }
 
+  /**
+   * Run an incremental table build for the supplied dataset
+   *
+   * @param spark Spark session
+   * @param fileSystem HDFS file system
+   * @param config Pipelines config
+   * @param datasetId Dataset ID
+   * @param attempt Attempt number
+   * @param tableName table name e.g. occurrence or event
+   * @param sourceDirectory Source directory of parquet files
+   */
   public static void runTableBuild(
       SparkSession spark,
       FileSystem fileSystem,
       PipelinesConfig config,
       String datasetId,
-      int attempt)
+      int attempt,
+      String tableName,
+      String sourceDirectory)
       throws Exception {
 
     long start = System.currentTimeMillis();
@@ -123,7 +139,7 @@ public class TableBuild {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     // load hdfs view
-    Dataset<Row> hdfs = spark.read().parquet(outputPath + "/hdfs");
+    Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
     String[] columns = hdfs.columns();
 
     StringBuilder selectBuffer = new StringBuilder();
@@ -157,7 +173,7 @@ public class TableBuild {
     }
 
     // Generate a unique temporary table name
-    String table = String.format("occurrence_%s_%d", datasetId.replace("-", "_"), attempt);
+    String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
 
     // Switch to the configured Hive database
     spark.sql("USE " + config.getHiveDB());
@@ -181,19 +197,20 @@ public class TableBuild {
     }
 
     // Create or populate the occurrence table SQL
-    spark.sql(occurrenceTableSQL);
+    spark.sql(tableSQL);
 
     // Build the insert query
     String insertQuery =
         String.format(
-            "INSERT OVERWRITE TABLE %s.occurrence (%s) SELECT %s FROM %s.%s",
+            "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
             config.getHiveDB(),
+            tableName,
             String.join(", ", columnList),
             selectBuffer,
             config.getHiveDB(),
             table);
 
-    log.debug("Inserting data into occurrence table: {}", insertQuery);
+    log.debug("Inserting data into {}} table: {}", tableName, insertQuery);
 
     // Execute the insert
     spark.sql(insertQuery);
@@ -208,9 +225,14 @@ public class TableBuild {
     writeMetricsYaml(
         fileSystem,
         Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted),
-        outputPath + "/" + METRICS_FILENAME);
+        outputPath + "/" + getMetricsFileName(tableName));
 
     log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
+  }
+
+  @NotNull
+  public static String getMetricsFileName(String tableName) {
+    return tableName + "-to-hdfs.yml";
   }
 
   @NotNull
@@ -226,7 +248,7 @@ public class TableBuild {
   }
 
   // FIXME - the table definition needs to be loaded from elsewhere...
-  static final String occurrenceTableSQL =
+  static final String tableSQL =
       """
       CREATE TABLE IF NOT EXISTS occurrence (
       gbifid STRING,

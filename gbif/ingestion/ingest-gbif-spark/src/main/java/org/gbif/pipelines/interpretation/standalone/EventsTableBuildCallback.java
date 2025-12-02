@@ -5,19 +5,20 @@ import org.apache.spark.sql.SparkSession;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
-import org.gbif.common.messaging.api.messages.*;
+import org.gbif.common.messaging.api.messages.PipelinesEventsHdfsViewMessage;
+import org.gbif.common.messaging.api.messages.PipelinesEventsInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.spark.TableBuild;
 
 @Slf4j
-public class TableBuildCallback
-    extends PipelinesCallback<PipelinesInterpretedMessage, PipelinesHdfsViewMessage>
-    implements MessageCallback<PipelinesInterpretedMessage> {
+public class EventsTableBuildCallback
+    extends PipelinesCallback<PipelinesEventsInterpretedMessage, PipelinesEventsHdfsViewMessage>
+    implements MessageCallback<PipelinesEventsInterpretedMessage> {
 
   protected String tableName;
   protected String sourceDirectory;
 
-  public TableBuildCallback(
+  public EventsTableBuildCallback(
       PipelinesConfig pipelinesConfig,
       MessagePublisher publisher,
       String tableName,
@@ -34,11 +35,11 @@ public class TableBuildCallback
 
   @Override
   protected StepType getStepType() {
-    return StepType.HDFS_VIEW;
+    return StepType.EVENTS_HDFS_VIEW;
   }
 
   @Override
-  protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
+  protected void runPipeline(PipelinesEventsInterpretedMessage message) throws Exception {
     TableBuild.runTableBuild(
         sparkSession,
         fileSystem,
@@ -51,17 +52,24 @@ public class TableBuildCallback
 
   @Override
   protected String getMetaFileName() {
-    return "occurrence-to-hdfs.yaml";
+    return "event-to-hdfs.yaml";
   }
 
   @Override
-  public PipelinesHdfsViewMessage createOutgoingMessage(PipelinesInterpretedMessage message) {
-    return new PipelinesHdfsViewMessage(
-        message.getDatasetUuid(), message.getAttempt(), message.getPipelineSteps(), null, null);
+  public PipelinesEventsHdfsViewMessage createOutgoingMessage(
+      PipelinesEventsInterpretedMessage message) {
+    return new PipelinesEventsHdfsViewMessage(
+        message.getDatasetUuid(),
+        message.getAttempt(),
+        message.getPipelineSteps(),
+        message.getNumberOfOccurrenceRecords(),
+        message.getNumberOfEventRecords(),
+        null,
+        null);
   }
 
   @Override
-  public Class<PipelinesInterpretedMessage> getMessageClass() {
-    return PipelinesInterpretedMessage.class;
+  public Class<PipelinesEventsInterpretedMessage> getMessageClass() {
+    return PipelinesEventsInterpretedMessage.class;
   }
 }

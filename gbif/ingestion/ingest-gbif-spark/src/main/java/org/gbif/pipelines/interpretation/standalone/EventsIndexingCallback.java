@@ -5,24 +5,24 @@ import org.apache.spark.sql.SparkSession;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
-import org.gbif.common.messaging.api.messages.PipelinesIndexedMessage;
-import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
+import org.gbif.common.messaging.api.messages.PipelinesEventsIndexedMessage;
+import org.gbif.common.messaging.api.messages.PipelinesEventsInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.spark.Indexing;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 
 @Slf4j
-public class IndexingCallback
-    extends PipelinesCallback<PipelinesInterpretedMessage, PipelinesIndexedMessage>
-    implements MessageCallback<PipelinesInterpretedMessage> {
+public class EventsIndexingCallback
+    extends PipelinesCallback<PipelinesEventsInterpretedMessage, PipelinesEventsIndexedMessage>
+    implements MessageCallback<PipelinesEventsInterpretedMessage> {
 
-  public IndexingCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
+  public EventsIndexingCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
     super(pipelinesConfig, publisher);
   }
 
   @Override
   protected StepType getStepType() {
-    return StepType.INTERPRETED_TO_INDEX;
+    return StepType.EVENTS_INTERPRETED_TO_INDEX;
   }
 
   @Override
@@ -31,7 +31,7 @@ public class IndexingCallback
   }
 
   @Override
-  protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
+  protected void runPipeline(PipelinesEventsInterpretedMessage message) throws Exception {
     if (pipelinesConfig.getStandalone().getIndexName() == null) {
       throw new RuntimeException("Index Name is null");
     }
@@ -42,10 +42,10 @@ public class IndexingCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         pipelinesConfig.getStandalone().getIndexName(),
-        "elasticsearch/es-occurrence-schema.json",
+        "elasticsearch/es-events-schema.json",
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,
-        "json");
+        "events-json");
   }
 
   @Override
@@ -54,18 +54,21 @@ public class IndexingCallback
   }
 
   @Override
-  public Class<PipelinesInterpretedMessage> getMessageClass() {
-    return PipelinesInterpretedMessage.class;
+  public Class<PipelinesEventsInterpretedMessage> getMessageClass() {
+    return PipelinesEventsInterpretedMessage.class;
   }
 
   @Override
-  public PipelinesIndexedMessage createOutgoingMessage(PipelinesInterpretedMessage message) {
-    return new PipelinesIndexedMessage(
+  public PipelinesEventsIndexedMessage createOutgoingMessage(
+      PipelinesEventsInterpretedMessage message) {
+    return new PipelinesEventsIndexedMessage(
         message.getDatasetUuid(),
         message.getAttempt(),
         message.getPipelineSteps(),
-        null, // Set in balancer cli
-        null,
-        message.getEndpointType());
+        message.getNumberOfOccurrenceRecords(),
+        message.getNumberOfEventRecords(),
+        message.getResetPrefix(),
+        message.getExecutionId(),
+        message.getRunner());
   }
 }

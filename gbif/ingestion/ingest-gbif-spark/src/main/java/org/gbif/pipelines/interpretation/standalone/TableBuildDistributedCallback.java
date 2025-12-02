@@ -10,8 +10,11 @@ import org.gbif.pipelines.core.config.model.PipelinesConfig;
 public class TableBuildDistributedCallback extends TableBuildCallback {
 
   public TableBuildDistributedCallback(
-      PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+      PipelinesConfig pipelinesConfig,
+      MessagePublisher publisher,
+      String tableName,
+      String sourceDirectory) {
+    super(pipelinesConfig, publisher, tableName, sourceDirectory);
   }
 
   @Override
@@ -21,7 +24,7 @@ public class TableBuildDistributedCallback extends TableBuildCallback {
         message,
         "tablebuild",
         fileSystem,
-        pipelinesConfig.getAirflowConfig().tabloBuildDag,
+        pipelinesConfig.getAirflowConfig().tableBuildDag,
         StepType.HDFS_VIEW);
   }
 

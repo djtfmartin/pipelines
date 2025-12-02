@@ -35,6 +35,7 @@ import org.gbif.common.messaging.api.MessageCallback;
 import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelineBasedMessage;
 import org.gbif.common.messaging.api.messages.PipelinesBalancerMessage;
+import org.gbif.common.messaging.api.messages.PipelinesEventsMessage;
 import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
@@ -165,6 +166,17 @@ public abstract class PipelinesCallback<
       return false;
     }
     return true;
+  }
+
+  protected boolean pathExists(PipelinesEventsMessage message, String subdir) throws IOException {
+    String inputPath =
+        String.format(
+            "%s/%s/%d/%s",
+            pipelinesConfig.getOutputPath(),
+            message.getDatasetUuid().toString(),
+            message.getAttempt(),
+            subdir);
+    return fileSystem.exists(new Path(inputPath));
   }
 
   protected abstract void runPipeline(I message) throws Exception;

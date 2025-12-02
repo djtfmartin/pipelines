@@ -30,13 +30,10 @@ public class Standalone {
     @Parameter(names = "--mode", description = "mode", required = true)
     private String mode;
 
-    @Parameter(
-        names = "--config",
-        description = "Path to YAML configuration file",
-        required = false)
+    @Parameter(names = "--config", description = "Path to YAML configuration file")
     private String config = "/tmp/pipelines-spark.yaml";
 
-    @Parameter(names = "--threads", description = "Number of threads", required = false)
+    @Parameter(names = "--threads", description = "Number of threads")
     private int threads = 1;
 
     @Parameter(names = "--queueName", description = "queueName", required = true)
@@ -47,6 +44,9 @@ public class Standalone {
 
     @Parameter(names = "--exchange", description = "exchange", required = true)
     private String exchange = "occurrence";
+
+    @Parameter(names = "--threadSleepMillis", description = "exchange", required = true)
+    private long threadSleepMillis = 2000;
   }
 
   public static void main(String[] argsv) throws Exception {
@@ -58,7 +58,14 @@ public class Standalone {
     PipelinesConfig config = loadConfig(args.config);
 
     new Standalone()
-        .start(mode, config, args.queueName, args.routingKey, args.exchange, args.threads);
+        .start(
+            mode,
+            config,
+            args.queueName,
+            args.routingKey,
+            args.exchange,
+            args.threads,
+            args.threadSleepMillis);
   }
 
   public void start(
@@ -67,7 +74,8 @@ public class Standalone {
       String queueName,
       String routingKey,
       String exchange,
-      int threads) {
+      int threads,
+      long threadSleepMillis) {
 
     Function<MessagePublisher, PipelinesCallback> callbackFn = null;
 
@@ -86,12 +94,35 @@ public class Standalone {
         callbackFn =
             (messagePublisher -> new InterpretationDistributedCallback(config, messagePublisher));
         break;
+      case EVENTS_INTERPRETATION:
+        callbackFn =
+            (messagePublisher -> new EventsInterpretationCallback(config, messagePublisher));
+        break;
+      case EVENTS_INTERPRETATION_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher ->
+                new EventsInterpretationDistributedCallback(config, messagePublisher));
+        break;
       case TABLEBUILD:
-        callbackFn = (messagePublisher -> new TableBuildCallback(config, messagePublisher));
+        callbackFn =
+            (messagePublisher ->
+                new TableBuildCallback(config, messagePublisher, "occurrence", "hdfs"));
         break;
       case TABLEBUILD_DISTRIBUTED:
         callbackFn =
-            (messagePublisher -> new TableBuildDistributedCallback(config, messagePublisher));
+            (messagePublisher ->
+                new TableBuildDistributedCallback(config, messagePublisher, "occurrence", "hdfs"));
+        break;
+      case EVENTS_TABLEBUILD:
+        callbackFn =
+            (messagePublisher ->
+                new TableBuildCallback(config, messagePublisher, "event", "event-hdfs"));
+        break;
+      case EVENTS_TABLEBUILD_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher ->
+                new EventsTableBuildDistributedCallback(
+                    config, messagePublisher, "event", "event-hdfs"));
         break;
       case INDEXING:
         callbackFn = (messagePublisher -> new IndexingCallback(config, messagePublisher));
@@ -99,6 +130,13 @@ public class Standalone {
       case INDEXING_DISTRIBUTED:
         callbackFn =
             (messagePublisher -> new IndexingDistributedCallback(config, messagePublisher));
+        break;
+      case EVENTS_INDEXING:
+        callbackFn = (messagePublisher -> new EventsIndexingCallback(config, messagePublisher));
+        break;
+      case EVENTS_INDEXING_DISTRIBUTED:
+        callbackFn =
+            (messagePublisher -> new EventsIndexingDistributedCallback(config, messagePublisher));
         break;
       case FRAGMENTER:
         callbackFn = (messagePublisher -> new FragmenterCallback(config, messagePublisher));
@@ -135,7 +173,7 @@ public class Standalone {
       // 5. Keep running until shutdown
       while (running) {
         try {
-          Thread.sleep(2000);
+          Thread.sleep(threadSleepMillis);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
@@ -191,10 +229,16 @@ public class Standalone {
     IDENTIFIER_DISTRIBUTED,
     INTERPRETATION,
     INTERPRETATION_DISTRIBUTED,
+    EVENTS_INTERPRETATION,
+    EVENTS_INTERPRETATION_DISTRIBUTED,
     TABLEBUILD,
     TABLEBUILD_DISTRIBUTED,
+    EVENTS_TABLEBUILD,
+    EVENTS_TABLEBUILD_DISTRIBUTED,
     INDEXING,
     INDEXING_DISTRIBUTED,
+    EVENTS_INDEXING,
+    EVENTS_INDEXING_DISTRIBUTED,
     FRAGMENTER,
     FRAGMENTER_DISTRIBUTED
   }
