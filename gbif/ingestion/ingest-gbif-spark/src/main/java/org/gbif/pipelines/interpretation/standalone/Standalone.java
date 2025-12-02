@@ -45,7 +45,7 @@ public class Standalone {
     @Parameter(names = "--exchange", description = "exchange", required = true)
     private String exchange = "occurrence";
 
-    @Parameter(names = "--threadSleepMillis", description = "exchange", required = true)
+    @Parameter(names = "--threadSleepMillis", description = "exchange", required = false)
     private long threadSleepMillis = 2000;
   }
 
