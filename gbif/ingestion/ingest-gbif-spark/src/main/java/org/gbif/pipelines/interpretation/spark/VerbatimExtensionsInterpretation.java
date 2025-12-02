@@ -174,6 +174,7 @@ public class VerbatimExtensionsInterpretation {
         log.info("Table {} does not exist, skipping extension {}", table, dir);
         continue;
       }
+      log.info("Processing extension directory '{}' into table '{}'", dir, table);
       spark
           .sparkContext()
           .setJobGroup("extension-" + table, "Loading extension data into table " + table, true);
@@ -186,9 +187,10 @@ public class VerbatimExtensionsInterpretation {
       var colsToSelect = getColsToSelect(tblSchema, dfCols);
 
       // filter rows for this extension and select aligned columns
-      Dataset<Row> toWrite = optimized
-                              .filter(col("directory").equalTo(dir)) // select data in the extension
-                              .select(colsToSelect); // align columns to target schema
+      Dataset<Row> toWrite =
+          optimized
+              .filter(col("directory").equalTo(dir)) // select data in the extension
+              .select(colsToSelect); // align columns to target schema
 
       // ensure partition column exists in the DataFrame if the table is partitioned by datasetKey
       if (!Arrays.asList(toWrite.columns()).contains("datasetKey")) {
