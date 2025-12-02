@@ -10,7 +10,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.util.*;
 import java.util.stream.Collectors;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
@@ -89,9 +88,7 @@ public class VerbatimExtensionsInterpretation {
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, config, inputPath, numberOfShards);
 
-    spark
-        .sparkContext()
-        .setJobGroup("explode-extensions", "Exploding extensions", true);
+    spark.sparkContext().setJobGroup("explode-extensions", "Exploding extensions", true);
     // Convert to DataFrame and rename id to gbifid
     Dataset<Row> df = extendedRecords.toDF().withColumnRenamed("id", "gbifid");
 
@@ -108,9 +105,7 @@ public class VerbatimExtensionsInterpretation {
 
   /** Dynamically create flattened columns based on all keys in the 'record' map. */
   private static Dataset<Row> selectColumnsForExtension(SparkSession spark, Dataset<Row> df) {
-    spark
-        .sparkContext()
-        .setJobGroup("select-ext-columns", "Selecting columns of extension", true);
+    spark.sparkContext().setJobGroup("select-ext-columns", "Selecting columns of extension", true);
     Dataset<Row> keysDf = df.select(explode(map_keys(col("record"))).alias("key"));
 
     List<String> allKeys = keysDf.distinct().as(Encoders.STRING()).collectAsList();
@@ -125,7 +120,9 @@ public class VerbatimExtensionsInterpretation {
       String normalizedField = normalizeFieldName(k);
       selectCols.add(col("record").getItem(k).alias(normalizedField));
     }
-    log.info("Selecting [{}] columns for extension", selectCols.stream().map(Column::toString).collect(Collectors.joining(", ")));
+    log.info(
+        "Selecting [{}] columns for extension",
+        selectCols.stream().map(Column::toString).collect(Collectors.joining(", ")));
 
     return df.select(selectCols.toArray(new Column[0]));
   }
@@ -151,18 +148,18 @@ public class VerbatimExtensionsInterpretation {
     // Dynamically create flattened columns
     Dataset<Row> flattened = selectColumnsForExtension(spark, normalizedKeys);
 
-
     // Repartition for performance
-    spark
-        .sparkContext()
-        .setJobGroup("repartitioning", "Repartitioning by extension", true);
+    spark.sparkContext().setJobGroup("repartitioning", "Repartitioning by extension", true);
     Dataset<Row> optimized = flattened.repartition(col("directory"));
 
     // collect distinct directories
     List<String> directories =
         optimized.select(col("directory")).distinct().as(Encoders.STRING()).collectAsList();
 
-    log.info("Found {} distinct extension directories: {}", directories.size(), String.join(", ", directories));
+    log.info(
+        "Found {} distinct extension directories: {}",
+        directories.size(),
+        String.join(", ", directories));
 
     // cache columns for later use
     Set<String> dfCols = new HashSet<>(Arrays.asList(optimized.columns()));
@@ -189,7 +186,9 @@ public class VerbatimExtensionsInterpretation {
       var colsToSelect = getColsToSelect(tblSchema, dfCols);
 
       // filter rows for this extension and select aligned columns
-      Dataset<Row> toWrite = optimized.filter(col("directory").equalTo(dir)).select(colsToSelect);
+      Dataset<Row> toWrite = optimized
+                              .filter(col("directory").equalTo(dir)) // select data in the extension
+                              .select(colsToSelect); // align columns to target schema
 
       // ensure partition column exists in the DataFrame if the table is partitioned by datasetKey
       if (!Arrays.asList(toWrite.columns()).contains("datasetKey")) {
@@ -221,8 +220,7 @@ public class VerbatimExtensionsInterpretation {
   /** Converts extension rowType URL to directory name. */
   private static String extensionToDirectory(String rowType) {
     Extension extension = lookupExtension(rowType);
-    String prefix = extension.getRowType().toLowerCase().contains("/ac/") ? "ac_" : "";
-    return prefix + extension.name().toLowerCase();
+    return extension.name().toLowerCase();
   }
 
   /** Extracts the last part of the url as the field name and normalizes it. */
