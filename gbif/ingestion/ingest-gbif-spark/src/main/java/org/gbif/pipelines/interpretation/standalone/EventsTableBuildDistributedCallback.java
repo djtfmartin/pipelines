@@ -28,4 +28,9 @@ public class EventsTableBuildDistributedCallback extends EventsTableBuildCallbac
         tableName,
         sourceDirectory);
   }
+
+  @Override
+  protected boolean isStandalone() {
+    return false;
+  }
 }

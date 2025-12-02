@@ -32,4 +32,9 @@ public class EventsIndexingDistributedCallback extends EventsIndexingCallback {
         OccurrenceJsonRecord.class,
         "json");
   }
+
+  @Override
+  protected boolean isStandalone() {
+    return false;
+  }
 }
