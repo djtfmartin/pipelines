@@ -53,7 +53,7 @@ public class EventsInterpretationCallback
 
   @Override
   protected String getMetaFileName() {
-    return Interpretation.METRICS_FILENAME;
+    return EventInterpretation.METRICS_FILENAME;
   }
 
   public PipelinesEventsInterpretedMessage createOutgoingMessage(PipelinesEventsMessage message) {
