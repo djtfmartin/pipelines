@@ -42,7 +42,7 @@ public class Standalone {
     @Parameter(names = "--routingKey", description = "routingKey", required = true)
     private String routingKey;
 
-    @Parameter(names = "--exchange", description = "exchange", required = true)
+    @Parameter(names = "--exchange", description = "exchange")
     private String exchange = "occurrence";
 
     @Parameter(names = "--threadSleepMillis", description = "exchange", required = false)
