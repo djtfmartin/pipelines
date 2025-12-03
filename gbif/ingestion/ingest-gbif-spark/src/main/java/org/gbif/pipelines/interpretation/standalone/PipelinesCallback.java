@@ -192,7 +192,7 @@ public abstract class PipelinesCallback<
 
     if (!isMessageCorrect(message) || isProcessingStopped(message)) {
 
-        log.debug("Returning message correct~: {} isProcessingStopped: {} ",
+        log.debug("Returning message correct: {} isProcessingStopped: {} ",
                 isMessageCorrect(message), isProcessingStopped(message));
       return;
     }

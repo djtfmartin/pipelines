@@ -24,8 +24,8 @@ public class EventsInterpretationCallback
 
   @Override
   protected boolean isMessageCorrect(PipelinesEventsMessage message) {
-    return message.getDatasetType() == DatasetType.SAMPLING_EVENT
-        && message.getNumberOfEventRecords() > 0;
+    log.info("Checking dataset type: {}", message.getDatasetType());
+    return message.getDatasetType() == DatasetType.SAMPLING_EVENT;
   }
 
   @Override
