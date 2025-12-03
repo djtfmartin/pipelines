@@ -408,6 +408,7 @@ public abstract class PipelinesCallback<
   public abstract O createOutgoingMessage(I message);
 
   private void updateQueuedStatus(TrackingInfo info, I message) {
+
     List<PipelinesWorkflow.Graph<StepType>.Edge> nodeEdges;
     if (false /* isValidator*/) {
       nodeEdges = PipelinesWorkflow.getValidatorWorkflow().getNodeEdges(getStepType());
@@ -417,6 +418,17 @@ public abstract class PipelinesCallback<
       PipelinesWorkflow.Graph<StepType> workflow =
           PipelinesWorkflow.getWorkflow(containsOccurrences, containsEvents);
       nodeEdges = workflow.getNodeEdges(getStepType());
+
+      log.debug(
+          "Workflow for containsOccurrences: {}, containsEvents: {} has nodes {} ",
+          containsOccurrences,
+          containsEvents,
+          nodeEdges);
+    }
+
+    if (nodeEdges.isEmpty()) {
+      log.debug("No next steps found for step type {}", getStepType());
+      return;
     }
 
     for (PipelinesWorkflow.Graph<StepType>.Edge e : nodeEdges) {
