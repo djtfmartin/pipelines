@@ -187,13 +187,17 @@ public abstract class PipelinesCallback<
 
   public void handleMessage(I message) {
 
-    MDC.put("datasetKey", message.getDatasetUuid() !=null ? message.getDatasetUuid().toString() : "NO_DATASET");
+    MDC.put(
+        "datasetKey",
+        message.getDatasetUuid() != null ? message.getDatasetUuid().toString() : "NO_DATASET");
     log.debug("Received message: {}", message);
 
     if (!isMessageCorrect(message) || isProcessingStopped(message)) {
 
-        log.debug("Returning message correct: {} isProcessingStopped: {} ",
-                isMessageCorrect(message), isProcessingStopped(message));
+      log.debug(
+          "Returning message correct: {} isProcessingStopped: {}",
+          isMessageCorrect(message),
+          isProcessingStopped(message));
       return;
     }
 
