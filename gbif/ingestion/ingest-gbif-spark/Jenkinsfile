@@ -30,6 +30,11 @@ pipeline {
         withMaven () {
           sh 'mvn clean install -DskipTests'
         }
+        dir('gbif/coordinator/tasks') {
+          withMaven() {
+            sh 'mvn clean install -DskipTests -Pgbif-artifacts'
+          }
+        }
       }
     }
     stage('Build Spark Docker image') {
