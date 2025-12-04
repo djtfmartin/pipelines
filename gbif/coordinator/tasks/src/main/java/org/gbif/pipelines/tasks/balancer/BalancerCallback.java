@@ -50,7 +50,7 @@ public class BalancerCallback extends AbstractMessageCallback<PipelinesBalancerM
       } else if (PipelinesFragmenterMessage.class.getSimpleName().equals(className)) {
         PipelinesFragmenterMessageHandler.handle(publisher, message);
       } else if (PipelinesEventsMessage.class.getSimpleName().equals(className)) {
-        EventsMessageHandler.handle(publisher, message);
+        EventsMessageHandler.handle(config, publisher, message);
       } else if (PipelinesEventsInterpretedMessage.class.getSimpleName().equals(className)) {
         EventsInterpretedMessageHandler.handle(publisher, message);
       } else if (PipelinesEventsIndexedMessage.class.getSimpleName().equals(className)) {

@@ -16,6 +16,7 @@ import org.gbif.api.model.pipelines.InterpretationType.RecordType;
 import org.gbif.api.model.pipelines.StepRunner;
 import org.gbif.api.vocabulary.DatasetType;
 import org.gbif.common.messaging.api.MessagePublisher;
+import org.gbif.common.messaging.api.messages.PipelineBasedMessage;
 import org.gbif.common.messaging.api.messages.PipelinesBalancerMessage;
 import org.gbif.common.messaging.api.messages.PipelinesEventsMessage;
 import org.gbif.common.messaging.api.messages.PipelinesVerbatimMessage;
@@ -120,7 +121,7 @@ public class VerbatimMessageHandler {
 
       long recordsNumber = recordNumberOpt.get();
 
-      String runner = computeRunner(config, m, recordsNumber).name();
+      String runner = computeRunner(config, m).name();
 
       ValidationResult result = m.getValidationResult();
       if (result.getNumberOfRecords() == null || isValidator(m.getPipelineSteps())) {
@@ -150,8 +151,7 @@ public class VerbatimMessageHandler {
    * Computes runner type: Strategy 1 - Chooses a runner type by number of records in a dataset
    * Strategy 2 - Chooses a runner type by calculating verbatim.avro file size
    */
-  private static StepRunner computeRunner(
-      BalancerConfiguration config, PipelinesVerbatimMessage message, long recordsNumber)
+  public static StepRunner computeRunner(BalancerConfiguration config, PipelineBasedMessage message)
       throws IOException {
 
     String datasetId = message.getDatasetUuid().toString();
@@ -208,7 +208,7 @@ public class VerbatimMessageHandler {
         HdfsConfigs.create(stepConfig.hdfsSiteConfig, stepConfig.coreSiteConfig);
     Optional<Long> fileNumber = HdfsUtils.getLongByKey(hdfsConfigs, metaPath, metricName);
 
-    if (messageNumber == null && !fileNumber.isPresent()) {
+    if (messageNumber == null && fileNumber.isEmpty()) {
       return Optional.empty();
     }
 
