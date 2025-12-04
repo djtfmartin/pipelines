@@ -32,17 +32,15 @@ public class EventsIndexingCallback
 
   @Override
   protected void runPipeline(PipelinesEventsInterpretedMessage message) throws Exception {
-    if (pipelinesConfig.getStandalone().getIndexName() == null) {
-      throw new RuntimeException("Index Name is null");
-    }
     Indexing.runIndexing(
         sparkSession,
         fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
-        pipelinesConfig.getStandalone().getIndexName(),
-        "elasticsearch/es-events-schema.json",
+        pipelinesConfig.getStandalone().getEventIndexAlias(),
+        pipelinesConfig.getStandalone().getEventIndexAlias(),
+        pipelinesConfig.getStandalone().getEventIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,
         "events-json");

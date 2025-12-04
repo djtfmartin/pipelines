@@ -32,17 +32,15 @@ public class IndexingCallback
 
   @Override
   protected void runPipeline(PipelinesInterpretedMessage message) throws Exception {
-    if (pipelinesConfig.getStandalone().getIndexName() == null) {
-      throw new RuntimeException("Index Name is null");
-    }
     Indexing.runIndexing(
         sparkSession,
         fileSystem,
         pipelinesConfig,
         message.getDatasetUuid().toString(),
         message.getAttempt(),
-        pipelinesConfig.getStandalone().getIndexName(),
-        "elasticsearch/es-occurrence-schema.json",
+        pipelinesConfig.getStandalone().getOccurrenceIndexAlias(),
+        pipelinesConfig.getStandalone().getOccurrenceIndexAlias(),
+        pipelinesConfig.getStandalone().getOccurrenceIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,
         "json");

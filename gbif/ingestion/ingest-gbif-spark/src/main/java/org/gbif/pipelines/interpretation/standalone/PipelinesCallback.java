@@ -421,7 +421,7 @@ public abstract class PipelinesCallback<
 
       log.debug(
           "Workflow for {} containsOccurrences: {}, containsEvents: {} has nodes {} ",
-          message.getDatasetInfo(),
+          message.getDatasetInfo().getDatasetType(),
           containsOccurrences,
           containsEvents,
           nodeEdges);

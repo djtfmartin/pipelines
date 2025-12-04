@@ -13,8 +13,6 @@ public class EsConfig implements Serializable {
   private static final long serialVersionUID = -2392370864481517738L;
 
   private String esHosts;
-  private String esSchemaPath;
-  private String esAlias;
   private Long esMaxBatchSize;
   private Long esMaxBatchSizeBytes;
   private String indexRefreshInterval;

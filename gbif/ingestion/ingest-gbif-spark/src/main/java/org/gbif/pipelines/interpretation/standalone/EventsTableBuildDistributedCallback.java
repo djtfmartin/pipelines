@@ -1,10 +1,10 @@
 package org.gbif.pipelines.interpretation.standalone;
 
 import lombok.extern.slf4j.Slf4j;
+import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelinesEventsInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.interpretation.spark.TableBuild;
 
 @Slf4j
 public class EventsTableBuildDistributedCallback extends EventsTableBuildCallback {
@@ -19,14 +19,13 @@ public class EventsTableBuildDistributedCallback extends EventsTableBuildCallbac
 
   @Override
   protected void runPipeline(PipelinesEventsInterpretedMessage message) throws Exception {
-    TableBuild.runTableBuild(
-        sparkSession,
-        fileSystem,
+    DistributedUtil.runPipeline(
         pipelinesConfig,
-        message.getDatasetUuid().toString(),
-        message.getAttempt(),
-        tableName,
-        sourceDirectory);
+        message,
+        "tablebuild",
+        fileSystem,
+        pipelinesConfig.getAirflowConfig().eventsTableBuildDag,
+        StepType.EVENTS_HDFS_VIEW);
   }
 
   @Override

@@ -37,6 +37,7 @@ public class Indexing {
   public static final String METRICS_FILENAME = "occurrence-to-index.yml";
 
   public static final String ES_INDEX_NAME_ARG = "--esIndexName";
+  public static final String ES_INDEX_ALIAS_ARG = "--esIndexAlias";
   public static final String ES_INDEX_NUMBER_OF_SHARDS_ARG = "--indexNumberShards";
 
   enum IndexType {
@@ -60,6 +61,11 @@ public class Indexing {
         names = ES_INDEX_NAME_ARG,
         description = "Name of the Elasticsearch index that will be used to index the records")
     private String esIndexName;
+
+    @Parameter(
+        names = ES_INDEX_ALIAS_ARG,
+        description = "Alias of the Elasticsearch index that will be used to index the records")
+    private String esIndexAlias;
 
     @Parameter(
         names = ES_INDEX_NUMBER_OF_SHARDS_ARG,
@@ -115,6 +121,7 @@ public class Indexing {
           config,
           args.datasetId,
           args.attempt,
+          args.esIndexAlias,
           args.esIndexName,
           "elasticsearch/es-occurrence-schema.json",
           args.indexNumberShards,
@@ -127,6 +134,7 @@ public class Indexing {
           config,
           args.datasetId,
           args.attempt,
+          args.esIndexAlias,
           args.esIndexName,
           "elasticsearch/es-event-schema.json",
           args.indexNumberShards,
@@ -152,6 +160,7 @@ public class Indexing {
       PipelinesConfig config,
       String datasetId,
       Integer attempt,
+      String esIndexAlias,
       String esIndexName,
       String esSchemaPath,
       Integer indexNumberShards,
@@ -175,7 +184,7 @@ public class Indexing {
 
     ElasticOptions options =
         ElasticOptions.fromArgsAndConfig(
-            config, esIndexName, esSchemaPath, datasetId, attempt, indexNumberShards);
+            config, esIndexAlias, esIndexName, esSchemaPath, datasetId, attempt, indexNumberShards);
 
     // Create ES index and alias if not exists
     EsIndexUtils.createIndexAndAliasForDefault(options);
@@ -238,6 +247,7 @@ public class Indexing {
 
     public static ElasticOptions fromArgsAndConfig(
         PipelinesConfig config,
+        String esIndexAlias,
         String esIndexName,
         String esSchemaPath,
         String datasetId,
@@ -250,7 +260,7 @@ public class Indexing {
               .esIndexName(esIndexName)
               .indexNumberShards(indexNumberShards)
               .indexNumberReplicas(esConfig.getIndexNumberReplicas())
-              .esAlias(new String[] {esConfig.getEsAlias()})
+              .esAlias(new String[] {esIndexAlias})
               .datasetId(datasetId)
               .attempt(attempt)
               .esSchemaPath(esSchemaPath)

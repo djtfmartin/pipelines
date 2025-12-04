@@ -14,8 +14,15 @@ public class StandaloneConfig implements Serializable {
 
   RegistryConfig registry;
   MessagingConfig messaging;
-  String indexName;
   Integer numberOfShards = 12;
   Double idThresholdPercent = 50d;
   List<String> skipInstallationsList = new ArrayList<>();
+
+  String occurrenceIndexName = "occurrence_a";
+  String occurrenceIndexAlias = "occurrence";
+  String occurrenceIndexSchema = "elasticsearch/es-occurrence-schema.json";
+
+  String eventIndexName = "event_a";
+  String eventIndexAlias = "event";
+  String eventIndexSchema = "elasticsearch/es-event-schema.json";
 }
