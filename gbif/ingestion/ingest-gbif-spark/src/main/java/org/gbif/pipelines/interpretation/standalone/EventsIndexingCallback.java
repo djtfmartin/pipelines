@@ -39,7 +39,7 @@ public class EventsIndexingCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         pipelinesConfig.getStandalone().getEventIndexAlias(),
-        pipelinesConfig.getStandalone().getEventIndexAlias(),
+        pipelinesConfig.getStandalone().getEventIndexName(),
         pipelinesConfig.getStandalone().getEventIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,

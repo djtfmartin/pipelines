@@ -39,7 +39,7 @@ public class IndexingCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         pipelinesConfig.getStandalone().getOccurrenceIndexAlias(),
-        pipelinesConfig.getStandalone().getOccurrenceIndexAlias(),
+        pipelinesConfig.getStandalone().getOccurrenceIndexName(),
         pipelinesConfig.getStandalone().getOccurrenceIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,
