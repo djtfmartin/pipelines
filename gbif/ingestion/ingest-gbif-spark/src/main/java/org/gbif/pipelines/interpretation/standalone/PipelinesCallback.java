@@ -420,13 +420,14 @@ public abstract class PipelinesCallback<
       nodeEdges = workflow.getNodeEdges(getStepType());
 
       log.debug(
-          "Workflow for containsOccurrences: {}, containsEvents: {} has nodes {} ",
+          "Workflow for {} containsOccurrences: {}, containsEvents: {} has nodes {} ",
+          message.getDatasetInfo(),
           containsOccurrences,
           containsEvents,
           nodeEdges);
     }
 
-    if (nodeEdges.isEmpty()) {
+    if (nodeEdges == null || nodeEdges.isEmpty()) {
       log.debug("No next steps found for step type {}", getStepType());
       return;
     }
