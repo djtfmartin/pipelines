@@ -116,7 +116,7 @@ public class Standalone {
       case EVENTS_TABLEBUILD:
         callbackFn =
             (messagePublisher ->
-                new TableBuildCallback(config, messagePublisher, "event", "event-hdfs"));
+                new EventsTableBuildCallback(config, messagePublisher, "event", "event-hdfs"));
         break;
       case EVENTS_TABLEBUILD_DISTRIBUTED:
         callbackFn =
