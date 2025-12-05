@@ -6,6 +6,7 @@ import org.apache.spark.graphx.Graph;
 import org.apache.spark.graphx.Pregel;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.storage.StorageLevel;
 import scala.Tuple2;
 import scala.Tuple3;
@@ -24,23 +25,34 @@ public class CalculateLineage {
 
     public static void main(String[] args) {
         java.util.List<Tuple3<String, String, String>> events = java.util.List.of(
-                new Tuple3<String, String, String>("Event1", "TypeA", null),
-                new Tuple3<String, String, String>("Event2", "TypeB", "Event1"),
-                new Tuple3<String, String, String>("Event3", "TypeC", "Event1"),
-                new Tuple3<String, String, String>("Event4", "TypeD", "Event2")
+                new Tuple3<>("Event1", "TypeA", null),
+                new Tuple3<>("Event2", "TypeB", "Event1"),
+                new Tuple3<>("Event3", "TypeC", "Event1"),
+                new Tuple3<>("Event4", "TypeD", "Event2")
         );
 
         SparkSession.Builder sparkBuilder = SparkSession.builder().appName("graphx test");
         sparkBuilder = sparkBuilder.master("local[*]");
-        SparkSession spark =  sparkBuilder.getOrCreate();
-
+        SparkSession spark = sparkBuilder.getOrCreate();
         Dataset<Row> eventDf = spark.createDataset(
-                    events,
-                    Encoders.tuple(Encoders.STRING(), Encoders.STRING(), Encoders.STRING())
+                        events,
+                        Encoders.tuple(Encoders.STRING(), Encoders.STRING(), Encoders.STRING())
                 )
                 .toDF();
+        Dataset<Row> lineages = calculateLineage(spark, eventDf);
 
+        lineages.show(false);
+        spark.close();
+    }
 
+    /**
+     * Calculates lineage using GraphX Pregel API
+     *
+     * @param spark
+     * @param eventDf
+     */
+    public static Dataset<Row> calculateLineage(SparkSession spark, Dataset<Row> eventDf)  {
+        
         Dataset<Row> eventDfWithId = eventDf
                 .select(col("_1").as("eventId"), col("_2").as("eventType"), col("_3").as("parentEventId"))
                 .withColumn("vertexId", monotonically_increasing_id());
@@ -78,7 +90,7 @@ public class CalculateLineage {
                 joined
                         // Remove rows where supervisorId is null
                         .filter("parentVertexId IS NOT NULL")
-                        // Select supervisorId, employeeId, role
+                        // Select supervisorId, eventId, role
                         .select("parentVertexId", "vertexId", "eventId")
                         // Convert to RDD<Edge<String>>
                         .javaRDD()
@@ -139,14 +151,31 @@ public class CalculateLineage {
                 stringTag,
                 eventNodeMessageTag
         );
+//
+//        results.vertices().toJavaRDD().foreach(v -> {
+//            EventNodeValue val = v._2();
+//            System.out.println("eventID: " + val.getName() +
+//                "\n\t\tRoot eventID: " + val.getHead() +
+//                "\n\t\tLineage: " + String.join(" -> ", val.getPath())
+//            );
+//        });
 
-        results.vertices().toJavaRDD().foreach(v -> {
-            EventNodeValue val = v._2();
-            System.out.println("Path: " + String.join(" -> ", val.getPath()));
-        });
-
-
-        spark.close();
+        //convert results back to DataFrame if needed
+        return spark.createDataFrame(
+                results.vertices().toJavaRDD().map(v -> {
+                    EventNodeValue val = v._2();
+                    return RowFactory.create(
+                            val.getName(),
+                            val.getHead(),
+                            val.getPath().toArray(new String[0])
+                    );
+                }),
+                DataTypes.createStructType(Arrays.asList(
+                        DataTypes.createStructField("eventId", DataTypes.StringType, false),
+                        DataTypes.createStructField("rootEventId", DataTypes.StringType, false),
+                        DataTypes.createStructField("lineage", DataTypes.createArrayType(DataTypes.StringType), false)
+                ))
+        );
     }
 
     // Step 1: Mutate the value of the vertices, based on the message received
@@ -329,8 +358,8 @@ public class CalculateLineage {
         private final int level;      // The number of up-line supervisors (level in reporting hierarchy)
         private final String head;    // The top-most supervisor
         private final List<String> path; // The reporting path to the top-most supervisor
-        private final boolean isCyclic;  // Is the reporting structure of the employee cyclic
-        private final boolean isLeaf;    // Is the employee rank and file (no down-line reporting employee)
+        private final boolean isCyclic;  // Is the reporting structure of the event cyclic
+        private final boolean isLeaf;    // Is the event rank and file (no down-line reporting event)
 
         public EventNodeMessage(long currentId, int level, String head, List<String> path, boolean isCyclic, boolean isLeaf) {
             this.currentId = currentId;
@@ -352,8 +381,8 @@ public class CalculateLineage {
 
     // Inner class representing the structure of the vertex values of the graph
     public static class EventNodeValue implements Serializable {
-        private final String name;      // The employee name
-        private final long currentId;   // Initial value is the employeeId
+        private final String name;      // The event name
+        private final long currentId;   // Initial value is the eventId
         private final int level;        // Initial value is zero
         private final String head;      // Initial value is this eventNode's Id
         private final List<String> path; // Initial value contains this eventNode's Id only
