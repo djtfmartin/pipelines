@@ -1,5 +1,7 @@
 package org.gbif.pipelines.interpretation.spark;
 
+import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.lit;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -10,15 +12,16 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.MDC;
@@ -172,6 +175,15 @@ public class TableBuild {
       }
     }
 
+    // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
+    StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
+    Column[] colsToSelect =
+        getColsToSelect(
+            tblSchema,
+            columnList.stream()
+                .map(String::toLowerCase)
+                .collect(java.util.stream.Collectors.toSet()));
+
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
 
@@ -205,7 +217,8 @@ public class TableBuild {
             "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
             config.getHiveDB(),
             tableName,
-            String.join(", ", columnList),
+            String.join(
+                ", ", Arrays.stream(colsToSelect).map(Column::toString).toArray(String[]::new)),
             selectBuffer,
             config.getHiveDB(),
             table);
@@ -228,6 +241,23 @@ public class TableBuild {
         outputPath + "/" + getMetricsFileName(tableName));
 
     log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
+  }
+
+  /**
+   * Builds a list of columns to select from the DataFrame, aligning with the target table schema.
+   */
+  @NotNull
+  private static Column[] getColsToSelect(StructType tblSchema, Set<String> dfCols) {
+    List<Column> colsToSelect = new ArrayList<>();
+    for (StructField f : tblSchema.fields()) {
+      String fieldName = f.name();
+      if (dfCols.contains(fieldName)) {
+        colsToSelect.add(col(fieldName));
+      } else {
+        colsToSelect.add(lit(null).cast(f.dataType()).alias(fieldName));
+      }
+    }
+    return colsToSelect.toArray(new Column[0]);
   }
 
   @NotNull
