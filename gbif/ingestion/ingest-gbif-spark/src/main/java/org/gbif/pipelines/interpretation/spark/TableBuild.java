@@ -50,7 +50,7 @@ public class TableBuild {
     @Parameter(names = "--sourceDirectory", description = "Table name", required = true)
     private String sourceDirectory = "hdfs";
 
-    @Parameter(names = "--config", description = "Path to YAML configuration file", required = true)
+    @Parameter(names = "--config", description = "Path to YAML configuration file")
     private String config = "/tmp/pipelines-spark.yaml";
 
     @Parameter(
