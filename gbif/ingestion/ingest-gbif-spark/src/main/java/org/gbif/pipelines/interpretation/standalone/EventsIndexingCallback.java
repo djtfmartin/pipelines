@@ -43,7 +43,7 @@ public class EventsIndexingCallback
         pipelinesConfig.getStandalone().getEventIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,
-        "events-json");
+        "event-json");
   }
 
   @Override
