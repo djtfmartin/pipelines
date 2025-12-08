@@ -16,6 +16,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.gbif.api.vocabulary.DatasetType;
 import org.gbif.pipelines.core.config.model.IndexConfig;
 
 @Slf4j
@@ -25,35 +26,47 @@ public class IndexSettings {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private final Integer numberOfShards;
   private final String indexName;
+  private final String indexAlias;
 
   private IndexSettings(
+      DatasetType datasetType,
       IndexConfig indexConfig,
       HttpClient httpClient,
       String datasetId,
       Integer attempt,
       long recordsNumber)
       throws IOException {
-    this.indexName = computeIndexName(indexConfig, httpClient, datasetId, attempt, recordsNumber);
+    this.indexName =
+        computeIndexName(datasetType, indexConfig, httpClient, datasetId, attempt, recordsNumber);
     this.numberOfShards = computeNumberOfShards(indexConfig, indexName, recordsNumber);
+    switch (datasetType) {
+      case OCCURRENCE -> this.indexAlias = indexConfig.getOccurrenceAlias();
+      case SAMPLING_EVENT -> this.indexAlias = indexConfig.getEventAlias();
+      default -> throw new IllegalStateException("Unexpected value: " + datasetType);
+    }
   }
 
-  private IndexSettings(String indexName, Integer numberOfShards) {
+  private IndexSettings(String indexName, Integer numberOfShards, String indexAlias) {
     this.numberOfShards = numberOfShards;
     this.indexName = indexName;
+    this.indexAlias = null;
   }
 
   public static IndexSettings create(
+      DatasetType datasetType,
       IndexConfig indexConfig,
       HttpClient httpClient,
       String datasetId,
       Integer attempt,
       long recordsNumber)
       throws IOException {
-    return new IndexSettings(indexConfig, httpClient, datasetId, attempt, recordsNumber);
+
+    return new IndexSettings(
+        datasetType, indexConfig, httpClient, datasetId, attempt, recordsNumber);
   }
 
-  public static IndexSettings create(String indexName, Integer numberOfShards) {
-    return new IndexSettings(indexName, numberOfShards);
+  public static IndexSettings create(String indexName, Integer numberOfShards, String indexAlias) {
+    return new IndexSettings(indexName, numberOfShards, indexAlias);
   }
 
   /**
@@ -66,6 +79,7 @@ public class IndexSettings {
    * </pre>
    */
   private String computeIndexName(
+      DatasetType datasetType,
       IndexConfig indexConfig,
       HttpClient httpClient,
       String datasetId,
@@ -75,16 +89,22 @@ public class IndexSettings {
 
     // Independent index for datasets where number of records more than config.indexIndepRecord
     String idxName;
+    String indexVersion;
+    switch (datasetType) {
+      case OCCURRENCE -> indexVersion = indexConfig.occurrenceVersion;
+      case SAMPLING_EVENT -> indexVersion = indexConfig.eventVersion;
+      default -> throw new IllegalStateException("Unexpected value: " + datasetType);
+    }
 
     if (recordsNumber >= indexConfig.bigIndexIfRecordsMoreThan) {
-      idxName = datasetId + "_" + attempt + "_" + indexConfig.occurrenceVersion;
+      idxName = datasetId + "_" + attempt + "_" + indexVersion;
       idxName = idxName + "_" + Instant.now().toEpochMilli();
       log.info("ES Index name - {}, recordsNumber - {}", idxName, recordsNumber);
       return idxName;
     }
 
     // Default index name for all other datasets
-    String esPr = indexConfig.defaultPrefixName + "_" + indexConfig.occurrenceVersion;
+    String esPr = indexConfig.defaultPrefixName + "_" + indexVersion;
     idxName =
         getIndexName(indexConfig, httpClient, esPr)
             .orElse(esPr + "_" + Instant.now().toEpochMilli());

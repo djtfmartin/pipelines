@@ -3,6 +3,7 @@ package org.gbif.pipelines.interpretation.standalone;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.api.model.pipelines.StepType;
+import org.gbif.api.vocabulary.DatasetType;
 import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -22,6 +23,7 @@ public class IndexingDistributedCallback extends IndexingCallback {
 
     IndexSettings indexSettings =
         IndexSettings.create(
+            DatasetType.OCCURRENCE,
             pipelinesConfig.getIndexConfig(),
             httpClient,
             message.getDatasetUuid().toString(),
@@ -32,7 +34,8 @@ public class IndexingDistributedCallback extends IndexingCallback {
     List<String> extraArgs =
         List.of(
             Indexing.ES_INDEX_NAME_ARG + "=" + indexSettings.getIndexName(),
-            Indexing.ES_INDEX_NUMBER_OF_SHARDS_ARG + "=" + indexSettings.getNumberOfShards());
+            Indexing.ES_INDEX_NUMBER_OF_SHARDS_ARG + "=" + indexSettings.getNumberOfShards(),
+            Indexing.ES_INDEX_ALIAS_ARG + "=" + indexSettings.getIndexAlias());
 
     DistributedUtil.runPipeline(
         pipelinesConfig,

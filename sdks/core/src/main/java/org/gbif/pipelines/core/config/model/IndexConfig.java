@@ -18,6 +18,10 @@ public class IndexConfig implements Serializable {
   public Integer defaultNewIfSize;
   public boolean defaultExtraShard = true;
   public String defaultSmallestIndexCatUrl;
-  public String occurrenceAlias;
+
+  // index aliases
+  public String occurrenceAlias = "occurrence";
   public String occurrenceVersion;
+  public String eventAlias = "event";
+  public String eventVersion;
 }
