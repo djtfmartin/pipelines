@@ -21,6 +21,6 @@ public class AirflowConfig implements Serializable {
   public String tableBuildDag = "gbif_pipelines_occurrence_hdfs_view_dag";
   public String indexingDag = "gbif_pipelines_occurrence_indexing_dag";
   public String eventsInterpretationDag = "gbif_pipelines_event_interpretation_dag";
-  public String eventsIndexingDag = "gbif_pipelines_event_interpretation_dag";
-  public String eventsTableBuildDag = "gbif_pipelines_event_interpretation_dag";
+  public String eventsIndexingDag = "gbif_pipelines_event_indexing_dag";
+  public String eventsTableBuildDag = "gbif_pipelines_event_hdfs_view_dag";
 }
