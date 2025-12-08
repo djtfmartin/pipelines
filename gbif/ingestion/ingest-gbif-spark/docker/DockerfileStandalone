@@ -26,11 +26,13 @@ CMD ["MODE", "PATH_TO_CONFIG", "1"]
 
 ENTRYPOINT ["sh", "-c", "java $JVM_OPTIONS \
   -DpipelinesVersion $VERSION \
-  --add-opens=java.base/java.net=ALL-UNNAMED \
-  --add-opens=java.base/java.nio=ALL-UNNAMED \
-  --add-opens=java.base/java.lang.invoke=ALL-UNNAMED \
-  --add-opens=java.base/java.io=ALL-UNNAMED \
-  --add-exports=java.base/sun.nio.ch=ALL-UNNAMED \
-  --add-exports=java.base/sun.security.action=ALL-UNNAMED \
+  --add-exports java.base/sun.nio.ch=ALL-UNNAMED \
+  --add-exports java.base/sun.security.action=ALL-UNNAMED \
+  --add-opens java.base/java.io=ALL-UNNAMED \
+  --add-opens java.base/java.lang.invoke=ALL-UNNAMED \
+  --add-opens java.base/java.net=ALL-UNNAMED \
+  --add-opens java.base/java.nio=ALL-UNNAMED \
+  --add-opens java.base/java.util=ALL-UNNAMED \
+  --add-opens java.base/sun.nio.ch=ALL-UNNAMED \
   -cp /opt/spark/jars/*:/jobs/ingest-gbif-spark.jar \
   org.gbif.pipelines.interpretation.standalone.Standalone \"$@\"", "sh"]
