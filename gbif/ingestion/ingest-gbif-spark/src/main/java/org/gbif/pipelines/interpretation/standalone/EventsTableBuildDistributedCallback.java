@@ -1,5 +1,6 @@
 package org.gbif.pipelines.interpretation.standalone;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.api.model.pipelines.StepType;
 import org.gbif.common.messaging.api.MessagePublisher;
@@ -25,7 +26,8 @@ public class EventsTableBuildDistributedCallback extends EventsTableBuildCallbac
         "tablebuild",
         fileSystem,
         pipelinesConfig.getAirflowConfig().eventsTableBuildDag,
-        StepType.EVENTS_HDFS_VIEW);
+        StepType.EVENTS_HDFS_VIEW,
+        List.of("--tableName=event", "--sourceDirectory=event-hdfs"));
   }
 
   @Override
