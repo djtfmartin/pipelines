@@ -48,7 +48,6 @@ public class EventCoreTransform implements Serializable {
     CoreInterpreter.interpretSamplingProtocol(source, r::setSamplingProtocol);
     CoreInterpreter.interpretParentEventID(source, r::setParentEventID);
     CoreInterpreter.interpretLocationID(source, r::setLocationID);
-    CoreInterpreter.interpretLineages(erWithParents, vocabularyService).accept(source, r);
 
     return r;
   }
