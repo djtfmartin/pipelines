@@ -175,15 +175,6 @@ public class TableBuild {
       }
     }
 
-    // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
-    StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
-    Column[] colsToSelect =
-        getColsToSelect(
-            tblSchema,
-            columnList.stream()
-                .map(String::toLowerCase)
-                .collect(java.util.stream.Collectors.toSet()));
-
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
 
@@ -210,6 +201,15 @@ public class TableBuild {
 
     // Create or populate the occurrence table SQL
     spark.sql(tableSQL);
+
+    // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
+    StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
+    Column[] colsToSelect =
+        getColsToSelect(
+            tblSchema,
+            columnList.stream()
+                .map(String::toLowerCase)
+                .collect(java.util.stream.Collectors.toSet()));
 
     // Build the insert query
     String insertQuery =
