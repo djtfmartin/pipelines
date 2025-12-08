@@ -149,29 +149,35 @@ public class TableBuild {
     // map them to select statements
     List<HdfsColumn> hdfsColumnList = new ArrayList<>();
 
-    for (int i = 0; i < columns.length; i++) {
+    for (String col : columns) {
 
       HdfsColumn hdfsColumn = new HdfsColumn();
-      hdfsColumn.originalName = columns[i];
-      String icebergCol;
-      String col = columns[i];
+      hdfsColumn.originalName = col;
+
+      final String lower = col.toLowerCase().replace("$", "");
 
       if (col.equalsIgnoreCase("extMultimedia")) {
+
         hdfsColumn.icebergCol = "ext_multimedia";
-        hdfsColumn.select = "`extMultimedia` AS `" + hdfsColumn.icebergCol + "`";
+        hdfsColumn.select = "`extMultimedia` AS `ext_multimedia`";
 
       } else if (col.equalsIgnoreCase("extHumboldt")) {
+
         hdfsColumn.icebergCol = "ext_humboldt";
-        hdfsColumn.select = "`extHumboldt` AS `" + hdfsColumn.icebergCol + "`";
+        hdfsColumn.select = "`extHumboldt` AS `ext_humboldt`";
 
       } else if (col.matches("^[vV][A-Z].*")) {
-        hdfsColumn.icebergCol = "v_" + col.substring(1).toLowerCase().replace("$", "");
-        hdfsColumn.select = "`" + col + "` AS " + hdfsColumn.icebergCol;
+        // Handles names like VSomething → v_something
+        String normalized = "v_" + col.substring(1).toLowerCase().replace("$", "");
+        hdfsColumn.icebergCol = normalized;
+        hdfsColumn.select = "`" + col + "` AS " + normalized;
 
       } else {
-        hdfsColumn.icebergCol = col.toLowerCase().replace("$", "");
-        hdfsColumn.select = "`" + col + "` AS " + hdfsColumn.icebergCol;
+
+        hdfsColumn.icebergCol = lower;
+        hdfsColumn.select = "`" + col + "` AS " + lower;
       }
+
       hdfsColumnList.add(hdfsColumn);
     }
 
