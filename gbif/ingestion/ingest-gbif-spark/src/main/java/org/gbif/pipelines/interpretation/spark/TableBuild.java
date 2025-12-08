@@ -143,35 +143,26 @@ public class TableBuild {
 
     // load hdfs view
     Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
-    String[] columns = hdfs.columns();
 
-    StringBuilder selectBuffer = new StringBuilder();
+    String[] columns = hdfs.columns();
 
     List<String> columnList = new ArrayList<>();
 
     for (int i = 0; i < columns.length; i++) {
-
       if (columns[i].equalsIgnoreCase("extMultimedia")) {
         // FIXME - something odd happening with the content of 'extMultimedia'
         String icebergCol = "ext_multimedia";
-        selectBuffer.append("`extMultimedia` AS `").append(icebergCol).append("`");
         columnList.add(icebergCol);
       } else if (columns[i].equalsIgnoreCase("extHumboldt")) {
         // FIXME - something odd happening with the content of 'extMultimedia'
         String icebergCol = "ext_humboldt";
-        selectBuffer.append("`extHumboldt` AS `").append(icebergCol).append("`");
         columnList.add(icebergCol);
       } else if (columns[i].matches("^v[A-Z].*") || columns[i].matches("^V[A-Z].*")) {
         String icebergCol = "v_" + columns[i].substring(1).toLowerCase().replaceAll("\\$", "");
-        selectBuffer.append("`").append(columns[i]).append("` AS ").append(icebergCol);
         columnList.add(icebergCol);
       } else {
         String icebergCol = columns[i].toLowerCase().replaceAll("\\$", "");
-        selectBuffer.append("`").append(columns[i]).append("` AS ").append(icebergCol);
         columnList.add(icebergCol);
-      }
-      if (i < columns.length - 1) {
-        selectBuffer.append(", ");
       }
     }
 
@@ -210,6 +201,32 @@ public class TableBuild {
             columnList.stream()
                 .map(String::toLowerCase)
                 .collect(java.util.stream.Collectors.toSet()));
+
+    StringBuilder selectBuffer = new StringBuilder();
+
+    for (Column column : colsToSelect) {
+
+      String columnName = column.toString();
+      if (!selectBuffer.isEmpty()) {
+        selectBuffer.append(", ");
+      }
+
+      if (columnName.equalsIgnoreCase("extMultimedia")) {
+        // FIXME - something odd happening with the content of 'extMultimedia'
+        String icebergCol = "ext_multimedia";
+        selectBuffer.append("`extMultimedia` AS `").append(icebergCol).append("`");
+      } else if (columnName.equalsIgnoreCase("extHumboldt")) {
+        // FIXME - something odd happening with the content of 'extMultimedia'
+        String icebergCol = "ext_humboldt";
+        selectBuffer.append("`extHumboldt` AS `").append(icebergCol).append("`");
+      } else if (columnName.matches("^v[A-Z].*") || columnName.matches("^V[A-Z].*")) {
+        String icebergCol = "v_" + columnName.substring(1).toLowerCase().replaceAll("\\$", "");
+        selectBuffer.append("`").append(columnName).append("` AS ").append(icebergCol);
+      } else {
+        String icebergCol = column.toString().toLowerCase().replaceAll("\\$", "");
+        selectBuffer.append("`").append(columnName).append("` AS ").append(icebergCol);
+      }
+    }
 
     // Build the insert query
     String insertQuery =
