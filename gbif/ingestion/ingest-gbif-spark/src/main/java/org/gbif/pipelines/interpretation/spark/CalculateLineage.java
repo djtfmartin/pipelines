@@ -6,7 +6,6 @@ import static org.apache.spark.sql.functions.monotonically_increasing_id;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.graphx.Edge;

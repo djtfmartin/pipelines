@@ -9,7 +9,7 @@ import org.gbif.common.messaging.api.messages.PipelinesEventsIndexedMessage;
 import org.gbif.common.messaging.api.messages.PipelinesEventsInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.spark.Indexing;
-import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
+import org.gbif.pipelines.io.avro.json.ParentJsonRecord;
 
 @Slf4j
 public class EventsIndexingCallback
@@ -42,7 +42,7 @@ public class EventsIndexingCallback
         pipelinesConfig.getStandalone().getEventIndexName(),
         pipelinesConfig.getStandalone().getEventIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
-        OccurrenceJsonRecord.class,
+        ParentJsonRecord.class,
         "event-json");
   }
 
