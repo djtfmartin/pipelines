@@ -183,7 +183,6 @@ public class EventInterpretation {
                 },
             Encoders.row(schema));
 
-    events.show(false);
     return CalculateLineage.calculateLineage(spark, events);
   }
 
