@@ -6,6 +6,8 @@ import static org.apache.spark.sql.functions.monotonically_increasing_id;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.graphx.Edge;
 import org.apache.spark.graphx.EdgeTriplet;
@@ -23,6 +25,7 @@ import scala.Tuple3;
 import scala.reflect.ClassTag;
 import scala.runtime.AbstractFunction2;
 
+@Slf4j
 public class CalculateLineage {
 
   public static void main(String[] args) {
@@ -121,9 +124,6 @@ public class CalculateLineage {
             StorageLevel.MEMORY_ONLY(),
             eventNodeTag,
             stringTag);
-
-    // Print all vertices
-    eventGraph.vertices().toJavaRDD().foreach(v -> System.out.println(v._2().eventId));
 
     // Map vertices
     Graph<EventNodeValue, String> eventNodeValueGraph =
