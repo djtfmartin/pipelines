@@ -200,7 +200,7 @@ public class TableBuild {
     }
 
     // Create or populate the occurrence table SQL
-    spark.sql(tableSQL);
+    spark.sql(getTableSQL(tableName));
 
     // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
     StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
@@ -278,9 +278,10 @@ public class TableBuild {
   }
 
   // FIXME - the table definition needs to be loaded from elsewhere...
-  static final String tableSQL =
-      """
-      CREATE TABLE IF NOT EXISTS occurrence (
+  static String getTableSQL(String tableName) {
+    return String.format(
+        """
+      CREATE TABLE IF NOT EXISTS %s (
       gbifid STRING,
       v_accessrights STRING,
       v_bibliographiccitation STRING,
@@ -734,5 +735,7 @@ public class TableBuild {
       'write.format.default'='parquet',
       'parquet.compression'='SNAPPY',
       'auto.purge'='true'
-    )""";
+    )""",
+        tableName);
+  }
 }
