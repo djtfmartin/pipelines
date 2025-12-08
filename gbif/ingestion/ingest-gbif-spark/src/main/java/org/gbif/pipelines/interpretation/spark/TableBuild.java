@@ -1,7 +1,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.apache.spark.sql.functions.col;
-import static org.apache.spark.sql.functions.lit;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -13,10 +12,10 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -144,26 +143,36 @@ public class TableBuild {
     // load hdfs view
     Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
 
+    // get the hdfs columns from the parquet
     String[] columns = hdfs.columns();
 
-    List<String> columnList = new ArrayList<>();
+    // map them to select statements
+    List<HdfsColumn> hdfsColumnList = new ArrayList<>();
 
     for (int i = 0; i < columns.length; i++) {
-      if (columns[i].equalsIgnoreCase("extMultimedia")) {
-        // FIXME - something odd happening with the content of 'extMultimedia'
-        String icebergCol = "ext_multimedia";
-        columnList.add(icebergCol);
-      } else if (columns[i].equalsIgnoreCase("extHumboldt")) {
-        // FIXME - something odd happening with the content of 'extMultimedia'
-        String icebergCol = "ext_humboldt";
-        columnList.add(icebergCol);
-      } else if (columns[i].matches("^v[A-Z].*") || columns[i].matches("^V[A-Z].*")) {
-        String icebergCol = "v_" + columns[i].substring(1).toLowerCase().replaceAll("\\$", "");
-        columnList.add(icebergCol);
+
+      HdfsColumn hdfsColumn = new HdfsColumn();
+      hdfsColumn.originalName = columns[i];
+      String icebergCol;
+      String col = columns[i];
+
+      if (col.equalsIgnoreCase("extMultimedia")) {
+        hdfsColumn.icebergCol = "ext_multimedia";
+        hdfsColumn.select = "`extMultimedia` AS `" + hdfsColumn.icebergCol + "`";
+
+      } else if (col.equalsIgnoreCase("extHumboldt")) {
+        hdfsColumn.icebergCol = "ext_humboldt";
+        hdfsColumn.select = "`extHumboldt` AS `" + hdfsColumn.icebergCol + "`";
+
+      } else if (col.matches("^[vV][A-Z].*")) {
+        hdfsColumn.icebergCol = "v_" + col.substring(1).toLowerCase().replace("$", "");
+        hdfsColumn.select = "`" + col + "` AS " + hdfsColumn.icebergCol;
+
       } else {
-        String icebergCol = columns[i].toLowerCase().replaceAll("\\$", "");
-        columnList.add(icebergCol);
+        hdfsColumn.icebergCol = col.toLowerCase().replace("$", "");
+        hdfsColumn.select = "`" + col + "` AS " + hdfsColumn.icebergCol;
       }
+      hdfsColumnList.add(hdfsColumn);
     }
 
     // Generate a unique temporary table name
@@ -195,38 +204,7 @@ public class TableBuild {
 
     // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
     StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
-    Column[] colsToSelect =
-        getColsToSelect(
-            tblSchema,
-            columnList.stream()
-                .map(String::toLowerCase)
-                .collect(java.util.stream.Collectors.toSet()));
-
-    StringBuilder selectBuffer = new StringBuilder();
-
-    for (Column column : colsToSelect) {
-
-      String columnName = column.toString();
-      if (!selectBuffer.isEmpty()) {
-        selectBuffer.append(", ");
-      }
-
-      if (columnName.equalsIgnoreCase("extMultimedia")) {
-        // FIXME - something odd happening with the content of 'extMultimedia'
-        String icebergCol = "ext_multimedia";
-        selectBuffer.append("`extMultimedia` AS `").append(icebergCol).append("`");
-      } else if (columnName.equalsIgnoreCase("extHumboldt")) {
-        // FIXME - something odd happening with the content of 'extMultimedia'
-        String icebergCol = "ext_humboldt";
-        selectBuffer.append("`extHumboldt` AS `").append(icebergCol).append("`");
-      } else if (columnName.matches("^v[A-Z].*") || columnName.matches("^V[A-Z].*")) {
-        String icebergCol = "v_" + columnName.substring(1).toLowerCase().replaceAll("\\$", "");
-        selectBuffer.append("`").append(columnName).append("` AS ").append(icebergCol);
-      } else {
-        String icebergCol = column.toString().toLowerCase().replaceAll("\\$", "");
-        selectBuffer.append("`").append(columnName).append("` AS ").append(icebergCol);
-      }
-    }
+    HdfsColumn[] colsToSelect = getColsToSelect(tblSchema, hdfsColumnList);
 
     // Build the insert query
     String insertQuery =
@@ -234,9 +212,8 @@ public class TableBuild {
             "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
             config.getHiveDB(),
             tableName,
-            String.join(
-                ", ", Arrays.stream(colsToSelect).map(Column::toString).toArray(String[]::new)),
-            selectBuffer,
+            Arrays.stream(colsToSelect).map(c -> c.icebergCol).collect(Collectors.joining(", ")),
+            Arrays.stream(colsToSelect).map(c -> c.select).collect(Collectors.joining(", ")),
             config.getHiveDB(),
             table);
 
@@ -264,17 +241,20 @@ public class TableBuild {
    * Builds a list of columns to select from the DataFrame, aligning with the target table schema.
    */
   @NotNull
-  private static Column[] getColsToSelect(StructType tblSchema, Set<String> dfCols) {
-    List<Column> colsToSelect = new ArrayList<>();
+  private static HdfsColumn[] getColsToSelect(StructType tblSchema, List<HdfsColumn> hdfsColumns) {
+    List<HdfsColumn> colsToSelect = new ArrayList<>();
+
+    // create a map icebergCol -> HdfsColumn lookup
+    Map<String, HdfsColumn> map =
+        hdfsColumns.stream().collect(Collectors.toMap(c -> c.icebergCol, c -> c));
+
     for (StructField f : tblSchema.fields()) {
       String fieldName = f.name();
-      if (dfCols.contains(fieldName)) {
-        colsToSelect.add(col(fieldName));
-      } else {
-        colsToSelect.add(lit(null).cast(f.dataType()).alias(fieldName));
+      if (map.containsKey(fieldName)) {
+        colsToSelect.add(map.get(fieldName));
       }
     }
-    return colsToSelect.toArray(new Column[0]);
+    return colsToSelect.toArray(new HdfsColumn[0]);
   }
 
   @NotNull
@@ -754,5 +734,11 @@ public class TableBuild {
       'auto.purge'='true'
     )""",
         tableName);
+  }
+
+  static class HdfsColumn {
+    String originalName;
+    String select;
+    String icebergCol;
   }
 }
