@@ -19,6 +19,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
+import org.gbif.api.vocabulary.DatasetType;
 import org.gbif.pipelines.core.config.model.EsConfig;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.EsIndexUtils;
@@ -39,11 +40,7 @@ public class Indexing {
   public static final String ES_INDEX_NAME_ARG = "--esIndexName";
   public static final String ES_INDEX_ALIAS_ARG = "--esIndexAlias";
   public static final String ES_INDEX_NUMBER_OF_SHARDS_ARG = "--indexNumberShards";
-
-  enum IndexType {
-    OCCURRENCE,
-    EVENT
-  }
+  public static final String ES_INDEX_DATASET_TYPE = "--datasetType";
 
   @Parameters(separators = "=")
   private static class Args {
@@ -72,8 +69,8 @@ public class Indexing {
         description = "Number of primary shards in the target index. Default = 3")
     private Integer indexNumberShards = 3;
 
-    @Parameter(names = "--indexType", description = "OCCURRENCE or EVENT")
-    private IndexType indexType = IndexType.OCCURRENCE;
+    @Parameter(names = ES_INDEX_DATASET_TYPE, description = "OCCURRENCE or SAMPLING_EVENT")
+    private DatasetType datasetType = DatasetType.OCCURRENCE;
 
     @Parameter(
         names = "--config",
@@ -114,7 +111,7 @@ public class Indexing {
     FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
-    if (args.indexType == IndexType.OCCURRENCE) {
+    if (args.datasetType == DatasetType.OCCURRENCE) {
       runIndexing(
           spark,
           fileSystem,
@@ -127,7 +124,7 @@ public class Indexing {
           args.indexNumberShards,
           OccurrenceJsonRecord.class,
           "json");
-    } else if (args.indexType == IndexType.EVENT) {
+    } else if (args.datasetType == DatasetType.SAMPLING_EVENT) {
       runIndexing(
           spark,
           fileSystem,

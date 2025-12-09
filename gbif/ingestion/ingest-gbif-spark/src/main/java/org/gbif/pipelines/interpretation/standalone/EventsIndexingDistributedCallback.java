@@ -36,7 +36,8 @@ public class EventsIndexingDistributedCallback extends EventsIndexingCallback {
         List.of(
             Indexing.ES_INDEX_NAME_ARG + "=" + indexSettings.getIndexName(),
             Indexing.ES_INDEX_NUMBER_OF_SHARDS_ARG + "=" + indexSettings.getNumberOfShards(),
-            Indexing.ES_INDEX_ALIAS_ARG + "=" + indexSettings.getIndexAlias());
+            Indexing.ES_INDEX_ALIAS_ARG + "=" + indexSettings.getIndexAlias(),
+            Indexing.ES_INDEX_DATASET_TYPE + "=" + DatasetType.SAMPLING_EVENT);
 
     DistributedUtil.runPipeline(
         pipelinesConfig,

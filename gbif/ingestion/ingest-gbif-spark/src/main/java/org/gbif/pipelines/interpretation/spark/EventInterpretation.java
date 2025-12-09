@@ -12,6 +12,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +26,6 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.common.PipelinesVariables;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.converters.*;
-import org.gbif.pipelines.core.pojo.HdfsConfigs;
-import org.gbif.pipelines.core.utils.FsUtils;
 import org.gbif.pipelines.core.utils.ModelUtils;
 import org.gbif.pipelines.interpretation.transform.*;
 import org.gbif.pipelines.io.avro.*;
@@ -128,8 +127,27 @@ public class EventInterpretation {
 
     Dataset<EventLineage> lineage = generateLineage(spark, extendedRecords);
 
+    lineage.show(10, false);
+
+    // run the record by record transformations
     Dataset<Event> simpleRecords =
         runTransforms(spark, config, extendedRecords, metadata, lineage, outputPath);
+
+    // using the parent lineage, join back to get the full event records
+    /*
+    SELECT id FROM simple_event se
+    left outer JOIN simple_event AS parent_events pe ON
+    pe.id IN se.parentLineage
+     */
+
+    //    simpleRecords.createOrReplaceTempView("simple_event");
+    //
+    //
+    //    Dataset<Row> joinedToParents = spark.sql("""
+    //        SELECT se, pe FROM simple_event se
+    //        left outer JOIN simple_event AS parent_events pe
+    //        ON pe.id IN se.parentLineage
+    //    """);
 
     // write parquet for elastic
     toJson(simpleRecords, metadata)
@@ -143,12 +161,8 @@ public class EventInterpretation {
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/event-hdfs");
 
-    // cleanup intermediate parquet outputs
-    HdfsConfigs hdfsConfigs =
-        HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
+    final long eventCount = extendedRecords.count();
 
-    long eventCount = extendedRecords.count();
     // write metrics to yaml
     writeMetricsYaml(
         fs,
@@ -270,57 +284,62 @@ public class EventInterpretation {
     HumboldtTransform humboldtTransform = HumboldtTransform.create(config);
     IdentifierTransform identifierTransform = IdentifierTransform.create();
 
-    // Loop over all records and interpret them
-    //    Dataset<Event> interpreted =
+    // join with lineage
     Dataset<Tuple2<ExtendedRecord, EventLineage>> join =
         extendedRecords
             .as("extendedRecord")
             .joinWith(lineage, extendedRecords.col("id").equalTo(lineage.col("id")), "left_outer");
 
     Dataset<Event> interpreted =
-        ((Dataset<Tuple2<ExtendedRecord, EventLineage>>) join)
-            .map(
-                new MapFunction<Tuple2<ExtendedRecord, EventLineage>, Event>() {
-                  @Override
-                  public Event call(Tuple2<ExtendedRecord, EventLineage> row) throws Exception {
-                    ExtendedRecord verbatim = row._1;
-                    EventLineage eventLineage = row._2;
+        join.map(
+            (MapFunction<Tuple2<ExtendedRecord, EventLineage>, Event>)
+                row -> {
+                  ExtendedRecord verbatim = row._1;
+                  EventLineage eventLineage = row._2;
+                  IdentifierRecord idr =
+                      identifierTransform.convert(verbatim, metadata.getDatasetKey());
+                  MultiTaxonRecord tr = taxonomyTransform.convert(verbatim);
+                  LocationRecord lr = locationTransform.convert(verbatim, metadata);
+                  TemporalRecord ter = temporalTransform.convert(verbatim);
+                  MultimediaRecord mr = multimediaTransform.convert(verbatim);
+                  ImageRecord ir = imageTransform.convert(verbatim);
+                  AudubonRecord ar = audubonTransform.convert(verbatim);
+                  MeasurementOrFactRecord mfr = measurementOrFactTransform.convert(verbatim);
+                  EventCoreRecord ecr = eventCoreTransform.convert(verbatim, null);
+                  HumboldtRecord hr = humboldtTransform.convert(verbatim);
 
-                    IdentifierRecord idr =
-                        identifierTransform.convert(verbatim, metadata.getDatasetKey());
-                    MultiTaxonRecord tr = taxonomyTransform.convert(verbatim);
-                    LocationRecord lr = locationTransform.convert(verbatim, metadata);
-                    TemporalRecord ter = temporalTransform.convert(verbatim);
-                    MultimediaRecord mr = multimediaTransform.convert(verbatim);
-                    ImageRecord ir = imageTransform.convert(verbatim);
-                    AudubonRecord ar = audubonTransform.convert(verbatim);
-                    MeasurementOrFactRecord mfr = measurementOrFactTransform.convert(verbatim);
-                    EventCoreRecord ecr = eventCoreTransform.convert(verbatim, null);
-                    HumboldtRecord hr = humboldtTransform.convert(verbatim);
-
-                    // add the lineage
-                    if (eventLineage != null) {
-                      ecr.setParentsLineage(eventLineage.getLineage());
-                    }
-
-                    // merge the multimedia records
-                    MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
-
-                    return Event.builder()
-                        .id(verbatim.getId())
-                        .identifier(MAPPER.writeValueAsString(idr))
-                        .verbatim(MAPPER.writeValueAsString(verbatim))
-                        .taxon(MAPPER.writeValueAsString(tr))
-                        .location(MAPPER.writeValueAsString(lr))
-                        .temporal(MAPPER.writeValueAsString(ter))
-                        .multimedia(MAPPER.writeValueAsString(mmr))
-                        .measurementOrFact(MAPPER.writeValueAsString(mfr))
-                        .eventCore(MAPPER.writeValueAsString(ecr))
-                        .humboldt(MAPPER.writeValueAsString(hr))
-                        .build();
+                  // add the lineage
+                  if (eventLineage != null) {
+                    ecr.setParentsLineage(eventLineage.getLineage());
                   }
+
+                  // merge the multimedia records
+                  MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
+
+                  // get lineage ids
+                  List<String> lineageIds =
+                      Optional.ofNullable(eventLineage)
+                          .map(EventLineage::getLineage)
+                          .orElseGet(List::of)
+                          .stream()
+                          .map(Parent::getId)
+                          .toList();
+
+                  return Event.builder()
+                      .id(verbatim.getId())
+                      .lineage(lineageIds)
+                      .identifier(MAPPER.writeValueAsString(idr))
+                      .verbatim(MAPPER.writeValueAsString(verbatim))
+                      .taxon(MAPPER.writeValueAsString(tr))
+                      .location(MAPPER.writeValueAsString(lr))
+                      .temporal(MAPPER.writeValueAsString(ter))
+                      .multimedia(MAPPER.writeValueAsString(mmr))
+                      .measurementOrFact(MAPPER.writeValueAsString(mfr))
+                      .eventCore(MAPPER.writeValueAsString(ecr))
+                      .humboldt(MAPPER.writeValueAsString(hr))
+                      .build();
                 },
-                Encoders.bean(Event.class));
+            Encoders.bean(Event.class));
 
     // write simple interpreted records to disk
     interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/simple-event");

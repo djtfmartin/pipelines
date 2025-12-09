@@ -1,6 +1,5 @@
 package org.gbif.pipelines.interpretation.spark;
 
-import static org.apache.spark.sql.functions.col;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -143,43 +142,8 @@ public class TableBuild {
     // load hdfs view
     Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
 
-    // get the hdfs columns from the parquet
-    String[] columns = hdfs.columns();
-
-    // map them to select statements
-    List<HdfsColumn> hdfsColumnList = new ArrayList<>();
-
-    for (String col : columns) {
-
-      HdfsColumn hdfsColumn = new HdfsColumn();
-      hdfsColumn.originalName = col;
-
-      final String lower = col.toLowerCase().replace("$", "");
-
-      if (col.equalsIgnoreCase("extMultimedia")) {
-
-        hdfsColumn.icebergCol = "ext_multimedia";
-        hdfsColumn.select = "`extMultimedia` AS `ext_multimedia`";
-
-      } else if (col.equalsIgnoreCase("extHumboldt")) {
-
-        hdfsColumn.icebergCol = "ext_humboldt";
-        hdfsColumn.select = "`extHumboldt` AS `ext_humboldt`";
-
-      } else if (col.matches("^[vV][A-Z].*")) {
-        // Handles names like VSomething → v_something
-        String normalized = "v_" + col.substring(1).toLowerCase().replace("$", "");
-        hdfsColumn.icebergCol = normalized;
-        hdfsColumn.select = "`" + col + "` AS " + normalized;
-
-      } else {
-
-        hdfsColumn.icebergCol = lower;
-        hdfsColumn.select = "`" + col + "` AS " + lower;
-      }
-
-      hdfsColumnList.add(hdfsColumn);
-    }
+    // get the hdfs columns from the parquet with mappings to iceberg columns
+    List<HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
 
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
@@ -241,6 +205,48 @@ public class TableBuild {
         outputPath + "/" + getMetricsFileName(tableName));
 
     log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
+  }
+
+  @NotNull
+  private static List<HdfsColumn> getHdfsColumns(Dataset<Row> hdfs) {
+    // get the hdfs columns from the parquet
+    String[] columns = hdfs.columns();
+
+    // map them to select statements
+    List<HdfsColumn> hdfsColumnList = new ArrayList<>();
+
+    for (String col : columns) {
+
+      HdfsColumn hdfsColumn = new HdfsColumn();
+      hdfsColumn.originalName = col;
+
+      final String lower = col.toLowerCase().replace("$", "");
+
+      if (col.equalsIgnoreCase("extMultimedia")) {
+
+        hdfsColumn.icebergCol = "ext_multimedia";
+        hdfsColumn.select = "`extMultimedia` AS `ext_multimedia`";
+
+      } else if (col.equalsIgnoreCase("extHumboldt")) {
+
+        hdfsColumn.icebergCol = "ext_humboldt";
+        hdfsColumn.select = "`extHumboldt` AS `ext_humboldt`";
+
+      } else if (col.matches("^[vV][A-Z].*")) {
+        // Handles names like VSomething → v_something
+        String normalized = "v_" + col.substring(1).toLowerCase().replace("$", "");
+        hdfsColumn.icebergCol = normalized;
+        hdfsColumn.select = "`" + col + "` AS " + normalized;
+
+      } else {
+
+        hdfsColumn.icebergCol = lower;
+        hdfsColumn.select = "`" + col + "` AS " + lower;
+      }
+
+      hdfsColumnList.add(hdfsColumn);
+    }
+    return hdfsColumnList;
   }
 
   /**

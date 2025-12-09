@@ -203,7 +203,7 @@ public class CalculateLineage {
         .map(
             (MapFunction<Row, EventLineage>)
                 row -> {
-                  String eventId = row.getString(0);
+                  String eventId = row.getString(0).split("\\|\\|")[0];
                   List<Parent> parents = new ArrayList<>();
                   List<Row> parentRows = row.getList(1);
                   for (Row parentRow : parentRows) {
