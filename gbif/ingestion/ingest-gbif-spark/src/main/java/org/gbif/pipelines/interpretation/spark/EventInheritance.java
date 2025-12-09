@@ -15,15 +15,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.function.MapFunction;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.io.avro.*;
+import scala.Tuple2;
 
+@Slf4j
 public class EventInheritance {
   public static void main(String[] args) throws Exception {
 
@@ -39,6 +39,16 @@ public class EventInheritance {
         getSparkSession("local[*]", "My app", config, Interpretation::configSparkSession);
     FileSystem fileSystem = getFileSystem(spark, config);
 
+    runEventInheritance(spark, outputPath);
+
+    fileSystem.close();
+    spark.stop();
+    spark.close();
+    System.exit(0);
+  }
+
+  public static void runEventInheritance(SparkSession spark, String outputPath) throws Exception {
+
     // load simple event
     Dataset<Event> events =
         spark.read().parquet(outputPath + "/simple-event").as(Encoders.bean(Event.class));
@@ -50,11 +60,9 @@ public class EventInheritance {
             """
             SELECT
                    se.eventCore as eventCore,
-                   se.taxon as taxa,
                    se.location as location,
                    se.temporal as temporal,
                    pe.eventCore as eventCoreInfo,
-                   pe.taxon as taxaInfo,
                    pe.location as locationInfo,
                    pe.temporal as temporalInfo
             FROM simple_event se
@@ -72,8 +80,6 @@ public class EventInheritance {
                   // main info
                   EventCoreRecord eventCore =
                       mapper.readValue((String) row.getAs("eventCore"), EventCoreRecord.class);
-                  MultiTaxonRecord taxon =
-                      mapper.readValue((String) row.getAs("taxa"), MultiTaxonRecord.class);
                   LocationRecord location =
                       mapper.readValue((String) row.getAs("location"), LocationRecord.class);
                   TemporalRecord temporal =
@@ -108,12 +114,30 @@ public class EventInheritance {
         .mode("overwrite")
         .parquet(outputPath + "/event-inherited-fields");
 
-    eventsWithInheritedInfo.show(false);
+    // join back to events and write final output if needed
+    events
+        .joinWith(
+            eventsWithInheritedInfo,
+            events.col("id").equalTo(eventsWithInheritedInfo.col("id")),
+            "left_outer")
+        .map(
+            (MapFunction<Tuple2<Event, EventInheritedFields>, Event>)
+                t -> {
+                  Event event = t._1;
+                  EventInheritedFields inherited = t._2;
+                  if (inherited != null) {
+                    event.setEventInherited(inherited.getEventInherited());
+                    event.setLocationInherited(inherited.getLocationInherited());
+                    event.setTemporalInherited(inherited.getTemporalInherited());
+                  }
+                  return event;
+                },
+            Encoders.bean(Event.class))
+        .write()
+        .mode("overwrite")
+        .parquet(outputPath + "/simple-event");
 
-    fileSystem.close();
-    spark.stop();
-    spark.close();
-    System.exit(0);
+    log.info("Event inheritance process finished");
   }
 
   private static EventCoreInheritedFields inheritEventFrom(

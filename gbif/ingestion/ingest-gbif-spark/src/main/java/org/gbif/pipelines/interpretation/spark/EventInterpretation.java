@@ -109,7 +109,8 @@ public class EventInterpretation {
       PipelinesConfig config,
       String datasetId,
       int attempt,
-      int numberOfShards) {
+      int numberOfShards)
+      throws Exception {
 
     long start = System.currentTimeMillis();
 
@@ -134,20 +135,7 @@ public class EventInterpretation {
         runTransforms(spark, config, extendedRecords, metadata, lineage, outputPath);
 
     // using the parent lineage, join back to get the full event records
-    /*
-    SELECT id FROM simple_event se
-    left outer JOIN simple_event AS parent_events pe ON
-    pe.id IN se.parentLineage
-     */
-
-    //    simpleRecords.createOrReplaceTempView("simple_event");
-    //
-    //
-    //    Dataset<Row> joinedToParents = spark.sql("""
-    //        SELECT se, pe FROM simple_event se
-    //        left outer JOIN simple_event AS parent_events pe
-    //        ON pe.id IN se.parentLineage
-    //    """);
+    EventInheritance.runEventInheritance(spark, outputPath);
 
     // write parquet for elastic
     toJson(simpleRecords, metadata)
