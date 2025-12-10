@@ -135,7 +135,7 @@ public class EventInterpretation {
         runTransforms(spark, config, extendedRecords, metadata, lineage, outputPath);
 
     // using the parent lineage, join back to get the full event records
-    EventInheritance.runEventInheritance(spark, outputPath);
+    simpleRecords = EventInheritance.runEventInheritance(spark, outputPath);
 
     // write parquet for elastic
     toJson(simpleRecords, metadata)
@@ -209,11 +209,19 @@ public class EventInterpretation {
                           MAPPER.readValue((String) r.getHumboldt(), HumboldtRecord.class))
                       .multimedia(
                           MAPPER.readValue((String) r.getMultimedia(), MultimediaRecord.class))
-
+                      .eventInheritedRecord(
+                          MAPPER.readValue(
+                              (String) r.getEventInherited(),
+                              org.gbif.pipelines.io.avro.json.EventInheritedRecord.class))
+                      .locationInheritedRecord(
+                          MAPPER.readValue(
+                              (String) r.getLocationInherited(),
+                              org.gbif.pipelines.io.avro.json.LocationInheritedRecord.class))
+                      .temporalInheritedRecord(
+                          MAPPER.readValue(
+                              (String) r.getTemporalInherited(),
+                              org.gbif.pipelines.io.avro.json.TemporalInheritedRecord.class))
                       //                          private DerivedMetadataRecord derivedMetadata;
-                      //                          private LocationInheritedRecord locationInherited;
-                      //                          private TemporalInheritedRecord temporalInherited;
-
                       .build();
               return c.convertToParent();
             },

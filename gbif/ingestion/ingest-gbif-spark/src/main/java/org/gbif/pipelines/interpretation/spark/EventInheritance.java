@@ -10,17 +10,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.io.avro.*;
+import org.gbif.pipelines.io.avro.json.EventInheritedRecord;
+import org.gbif.pipelines.io.avro.json.LocationInheritedRecord;
+import org.gbif.pipelines.io.avro.json.TemporalInheritedRecord;
 import scala.Tuple2;
 
 @Slf4j
@@ -47,7 +45,8 @@ public class EventInheritance {
     System.exit(0);
   }
 
-  public static void runEventInheritance(SparkSession spark, String outputPath) throws Exception {
+  public static Dataset<Event> runEventInheritance(SparkSession spark, String outputPath)
+      throws Exception {
 
     // load simple event
     Dataset<Event> events =
@@ -93,7 +92,7 @@ public class EventInheritance {
                   List<TemporalRecord> temporalFromParents =
                       getJoinValues(row, "temporalInfo", mapper, TemporalRecord.class);
 
-                  EventCoreInheritedFields eventInheritedFields =
+                  EventInheritedRecord eventInheritedFields =
                       inheritEventFrom(eventCore, eventCoreFromParents);
                   LocationInheritedRecord locationInheritedRecord =
                       inheritLocationFrom(location, locationsFromParents);
@@ -135,88 +134,93 @@ public class EventInheritance {
             Encoders.bean(Event.class))
         .write()
         .mode("overwrite")
-        .parquet(outputPath + "/simple-event");
+        .parquet(outputPath + "/simple-event-with-inherited");
 
     log.info("Event inheritance process finished");
+
+    return spark
+        .read()
+        .parquet(outputPath + "/simple-event-with-inherited")
+        .as(Encoders.bean(Event.class));
   }
 
-  private static EventCoreInheritedFields inheritEventFrom(
+  private static EventInheritedRecord inheritEventFrom(
       EventCoreRecord child, List<EventCoreRecord> parents) {
 
-    var builder = EventCoreInheritedFields.builder();
-    builder.id(child.getId());
-    builder.parentEventID(child.getParentEventID());
-    builder.locationID(child.getLocationID());
-    builder.eventTypes(
-        child.getParentsLineage().stream()
-            .map(Parent::getEventType)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList()));
+    EventInheritedRecord record =
+        EventInheritedRecord.newBuilder()
+            .setId(child.getId())
+            .setLocationID(child.getLocationID())
+            .setEventType(
+                child.getParentsLineage().stream()
+                    .map(Parent::getEventType)
+                    .filter(Objects::nonNull)
+                    .toList())
+            .build();
 
     for (EventCoreRecord parent : parents) {
-      if (builder.locationID == null && parent.getLocationID() != null) {
-        builder.locationID(parent.getLocationID());
+      if (record.getLocationID() == null && parent.getLocationID() != null) {
+        record.setLocationID(parent.getLocationID());
       }
     }
 
-    return builder.build();
+    return record;
   }
 
   private static LocationInheritedRecord inheritLocationFrom(
       LocationRecord child, List<LocationRecord> parents) {
 
-    var builder = LocationInheritedRecord.builder();
-    builder.id(child.getId());
-    builder.parentId(child.getParentId());
-    builder.countryCode(child.getCountryCode());
-    builder.stateProvince(child.getStateProvince());
-    builder.hasCoordinate(child.getHasCoordinate());
-    builder.decimalLatitude(child.getDecimalLatitude());
-    builder.decimalLongitude(child.getDecimalLongitude());
+    LocationInheritedRecord record =
+        LocationInheritedRecord.newBuilder()
+            .setId(child.getId())
+            .setCountryCode(child.getCountryCode())
+            .setStateProvince(child.getStateProvince())
+            .setDecimalLatitude(child.getDecimalLatitude())
+            .setDecimalLongitude(child.getDecimalLongitude())
+            .build();
 
     for (LocationRecord parent : parents) {
-      if (builder.countryCode == null && parent.getCountryCode() != null) {
-        builder.countryCode(parent.getCountryCode());
+      if (record.getCountryCode() == null && parent.getCountryCode() != null) {
+        record.setCountryCode(parent.getCountryCode());
       }
-      if (builder.stateProvince == null && parent.getStateProvince() != null) {
-        builder.stateProvince(parent.getStateProvince());
+      if (record.getStateProvince() == null && parent.getStateProvince() != null) {
+        record.setStateProvince(parent.getStateProvince());
       }
-      if (builder.hasCoordinate == null && parent.getHasCoordinate() != null) {
-        builder.hasCoordinate(parent.getHasCoordinate());
+
+      if (record.getDecimalLatitude() == null && parent.getDecimalLatitude() != null) {
+        record.setDecimalLatitude(parent.getDecimalLatitude());
       }
-      if (builder.decimalLatitude == null && parent.getDecimalLatitude() != null) {
-        builder.decimalLatitude(parent.getDecimalLatitude());
-      }
-      if (builder.decimalLongitude == null && parent.getDecimalLongitude() != null) {
-        builder.decimalLongitude(parent.getDecimalLongitude());
+      if (record.getDecimalLongitude() == null && parent.getDecimalLongitude() != null) {
+        record.setDecimalLongitude(parent.getDecimalLongitude());
       }
     }
 
-    return builder.build();
+    return record;
   }
 
   private static TemporalInheritedRecord inheritTemporalFrom(
       TemporalRecord child, List<TemporalRecord> parents) {
 
-    var builder = TemporalInheritedRecord.builder();
-    builder.id(child.getId());
-    builder.parentId(child.getParentId());
-    builder.year(child.getYear());
-    builder.month(child.getMonth());
-    builder.day(child.getDay());
+    TemporalInheritedRecord record =
+        TemporalInheritedRecord.newBuilder()
+            .setId(child.getId())
+            .setYear(child.getYear())
+            .setMonth(child.getMonth())
+            .setDay(child.getDay())
+            .build();
     for (TemporalRecord parent : parents) {
-      if (builder.year == null && parent.getYear() != null) {
-        builder.year(parent.getYear());
+      if (record.getYear() == null && parent.getYear() != null) {
+        record.setYear(parent.getYear());
       }
-      if (builder.month == null && parent.getMonth() != null) {
-        builder.month(parent.getMonth());
+      if (record.getMonth() == null && parent.getMonth() != null) {
+        record.setMonth(parent.getMonth());
       }
-      if (builder.day == null && parent.getDay() != null) {
-        builder.day(parent.getDay());
+      if (record.getDay() == null && parent.getDay() != null) {
+        record.setDay(parent.getDay());
       }
     }
 
-    return builder.build();
+    return record;
   }
 
   private static <T> List<T> getJoinValues(
@@ -239,42 +243,5 @@ public class EventInheritance {
       results = mapper.readValue(fieldValue, listType);
     }
     return results;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class EventCoreInheritedFields {
-    private String id;
-    private String parentEventID;
-    private String locationID;
-    private List<String> eventTypes;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class LocationInheritedRecord {
-    private String id;
-    private String parentId;
-    private String countryCode;
-    private String stateProvince;
-    private Boolean hasCoordinate;
-    private Double decimalLatitude;
-    private Double decimalLongitude;
-  }
-
-  @Data
-  @Builder
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class TemporalInheritedRecord {
-    private String id;
-    private String parentId;
-    private Integer year;
-    private Integer month;
-    private Integer day;
   }
 }
