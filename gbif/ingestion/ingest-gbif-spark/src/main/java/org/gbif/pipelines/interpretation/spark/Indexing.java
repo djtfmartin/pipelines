@@ -137,6 +137,8 @@ public class Indexing {
           args.indexNumberShards,
           ParentJsonRecord.class,
           "event-json");
+    } else {
+      log.error("Unsupported dataset type: {}", args.datasetType);
     }
 
     spark.stop();
