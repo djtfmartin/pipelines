@@ -2,6 +2,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import static org.gbif.pipelines.interpretation.spark.Interpretation.getMetadataRecord;
 import static org.gbif.pipelines.interpretation.spark.Interpretation.loadExtendedRecords;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -141,13 +142,13 @@ public class EventInterpretation {
     toJson(simpleRecords, metadata)
         .write()
         .mode(SaveMode.Overwrite)
-        .parquet(outputPath + "/event-json");
+        .parquet(outputPath + "/" + EVENT_JSON);
 
     // write parquet for hdfs view
     toHdfs(simpleRecords, metadata)
         .write()
         .mode(SaveMode.Overwrite)
-        .parquet(outputPath + "/event-hdfs");
+        .parquet(outputPath + "/" + EVENT_HDFS);
 
     final long eventCount = extendedRecords.count();
 
@@ -338,9 +339,9 @@ public class EventInterpretation {
             Encoders.bean(Event.class));
 
     // write simple interpreted records to disk
-    interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/simple-event");
+    interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + SIMPLE_EVENT);
 
     // re-load
-    return spark.read().parquet(outputPath + "/simple-event").as(Encoders.bean(Event.class));
+    return spark.read().parquet(outputPath + "/" + SIMPLE_EVENT).as(Encoders.bean(Event.class));
   }
 }

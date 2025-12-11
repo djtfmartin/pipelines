@@ -165,7 +165,7 @@ public class Fragmenter {
         spark
             .read()
             .format("parquet")
-            .load(outputPath + "/verbatim")
+            .load(outputPath + "/" + Directories.OCCURRENCE_VERBATIM)
             .as(Encoders.bean(ExtendedRecord.class));
 
     // convert to dwca

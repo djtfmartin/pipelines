@@ -2,6 +2,8 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.Directories.EVENT_JSON;
+import static org.gbif.pipelines.interpretation.spark.Directories.OCCURRENCE_JSON;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.timeAndRecPerSecond;
@@ -123,7 +125,7 @@ public class Indexing {
           "elasticsearch/es-occurrence-schema.json",
           args.indexNumberShards,
           OccurrenceJsonRecord.class,
-          "json");
+          OCCURRENCE_JSON);
     } else if (args.datasetType == DatasetType.SAMPLING_EVENT) {
       runIndexing(
           spark,
@@ -136,7 +138,7 @@ public class Indexing {
           "elasticsearch/es-event-schema.json",
           args.indexNumberShards,
           ParentJsonRecord.class,
-          "event-json");
+          EVENT_JSON);
     } else {
       log.error("Unsupported dataset type: {}", args.datasetType);
     }

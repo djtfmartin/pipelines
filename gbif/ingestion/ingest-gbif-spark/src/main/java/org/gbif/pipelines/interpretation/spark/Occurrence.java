@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Occurrence {
   String id;
+  String coreId;
   String internalId;
   String verbatim;
   String identifier;

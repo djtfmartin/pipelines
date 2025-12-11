@@ -87,7 +87,8 @@ public class DistributedUtil {
     double recPerSec = recordsNumber / secs;
 
     return String.format(
-        "Finished %s in %dh %dm %ds. Rec/s: %.2f", jobName, hours, minutes, seconds, recPerSec);
+        "Finished %s in %dh %dm %ds. Records: %d, Rec/s: %.2f",
+        jobName, hours, minutes, seconds, recordsNumber, recPerSec);
   }
 
   @NotNull

@@ -1,5 +1,7 @@
 package org.gbif.pipelines.interpretation.standalone;
 
+import static org.gbif.pipelines.interpretation.spark.Directories.EVENT_JSON;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.SparkSession;
 import org.gbif.api.model.pipelines.StepType;
@@ -43,7 +45,7 @@ public class EventsIndexingCallback
         pipelinesConfig.getStandalone().getEventIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         ParentJsonRecord.class,
-        "event-json");
+        EVENT_JSON);
   }
 
   @Override

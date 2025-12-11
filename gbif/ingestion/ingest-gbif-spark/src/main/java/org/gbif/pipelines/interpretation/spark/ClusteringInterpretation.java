@@ -15,6 +15,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import static org.gbif.pipelines.interpretation.spark.Interpretation.*;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
@@ -129,10 +130,16 @@ public class ClusteringInterpretation {
         runClusteringTransform(spark, config, simpleRecords, outputPath);
 
     // write parquet for elastic
-    toJson(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath + "/json");
+    toJson(interpreted, metadata)
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/" + OCCURRENCE_JSON);
 
     // write parquet for hdfs view
-    toHdfs(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath + "/hdfs");
+    toHdfs(interpreted, metadata)
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/" + OCCURRENCE_HDFS);
 
     long recordCount = simpleRecords.count();
 
@@ -151,7 +158,7 @@ public class ClusteringInterpretation {
   private static Dataset<Occurrence> loadSimpleRecords(SparkSession spark, String outputPath) {
     return spark
         .read()
-        .parquet(outputPath + "/simple-occurrence")
+        .parquet(outputPath + "/" + SIMPLE_OCCURRENCE)
         .as(Encoders.bean(Occurrence.class));
   }
 
@@ -205,12 +212,12 @@ public class ClusteringInterpretation {
     }
 
     // write simple interpreted records to disk
-    interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/simple-occurrence");
+    interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + SIMPLE_OCCURRENCE);
 
     // re-load
     return spark
         .read()
-        .parquet(outputPath + "/simple-occurrence")
+        .parquet(outputPath + "/" + SIMPLE_OCCURRENCE)
         .as(Encoders.bean(Occurrence.class));
   }
 }

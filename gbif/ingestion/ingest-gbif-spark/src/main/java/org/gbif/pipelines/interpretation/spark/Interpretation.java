@@ -15,6 +15,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.timeAndRecPerSecond;
@@ -105,7 +106,7 @@ public class Interpretation {
         required = false)
     private String master;
 
-    @Parameter(names = "--numberOfShards", description = "Number of shards", required = false)
+    @Parameter(names = "--numberOfShards", description = "Number of shards")
     private int numberOfShards = 10;
 
     @Parameter(
@@ -203,16 +204,22 @@ public class Interpretation {
         runTransforms(spark, config, simpleRecords, metadata, outputPath);
 
     // write parquet for elastic
-    toJson(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath + "/json");
+    toJson(interpreted, metadata)
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/" + OCCURRENCE_JSON);
 
     // write parquet for hdfs view
-    toHdfs(interpreted, metadata).write().mode(SaveMode.Overwrite).parquet(outputPath + "/hdfs");
+    toHdfs(interpreted, metadata)
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/" + OCCURRENCE_HDFS);
 
     // cleanup intermediate parquet outputs
     HdfsConfigs hdfsConfigs =
         HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/extended-identifiers");
-    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/verbatim_ext_filtered");
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/" + EXTENDED_IDENTIFIERS);
+    FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/" + VERBATIM_EXT_FILTERED);
 
     // write metrics to yaml
     writeMetricsYaml(
@@ -284,11 +291,11 @@ public class Interpretation {
         .filter((FilterFunction<Occurrence>) occurrence -> occurrence.getInternalId() != null)
         .write()
         .mode(SaveMode.Overwrite)
-        .parquet(outputPath + "/extended-identifiers");
+        .parquet(outputPath + "/" + EXTENDED_IDENTIFIERS);
 
     return spark
         .read()
-        .parquet(outputPath + "/extended-identifiers")
+        .parquet(outputPath + "/" + EXTENDED_IDENTIFIERS)
         .as(Encoders.bean(Occurrence.class));
   }
 
@@ -363,6 +370,7 @@ public class Interpretation {
 
                   return Occurrence.builder()
                       .id(verbatim.getId())
+                      .coreId(verbatim.getCoreId())
                       .identifier(simpleRecord.getIdentifier())
                       .verbatim(MAPPER.writeValueAsString(verbatim))
                       .basic(MAPPER.writeValueAsString(br))
@@ -384,12 +392,12 @@ public class Interpretation {
     }
 
     // write simple interpreted records to disk
-    interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/simple-occurrence");
+    interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + SIMPLE_OCCURRENCE);
 
     // re-load
     return spark
         .read()
-        .parquet(outputPath + "/simple-occurrence")
+        .parquet(outputPath + "/" + SIMPLE_OCCURRENCE)
         .as(Encoders.bean(Occurrence.class));
   }
 
@@ -423,8 +431,8 @@ public class Interpretation {
     Dataset<ExtendedRecord> extended =
         spark
             .read()
-            .format("avro")
-            .load(inputPath + "/verbatim.avro")
+            .format("parquet")
+            .load(inputPath + "/verbatim")
             .as(Encoders.bean(ExtendedRecord.class))
             .filter(
                 (FilterFunction<ExtendedRecord>) er -> er != null && !er.getCoreTerms().isEmpty())
@@ -446,12 +454,12 @@ public class Interpretation {
             .repartition(numberOfShards);
 
     // write to parquet for debug purposes
-    extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/verbatim_ext_filtered");
+    extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + VERBATIM_EXT_FILTERED);
 
     // reload
     return spark
         .read()
-        .parquet(outputPath + "/verbatim_ext_filtered")
+        .parquet(outputPath + "/" + VERBATIM_EXT_FILTERED)
         .as(Encoders.bean(ExtendedRecord.class));
   }
 

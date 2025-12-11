@@ -1,6 +1,7 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
@@ -23,6 +24,7 @@ import scala.Tuple2;
 
 @Slf4j
 public class EventInheritance {
+
   public static void main(String[] args) throws Exception {
 
     PipelinesConfig config =
@@ -45,12 +47,11 @@ public class EventInheritance {
     System.exit(0);
   }
 
-  public static Dataset<Event> runEventInheritance(SparkSession spark, String outputPath)
-      throws Exception {
+  public static Dataset<Event> runEventInheritance(SparkSession spark, String outputPath) {
 
     // load simple event
     Dataset<Event> events =
-        spark.read().parquet(outputPath + "/simple-event").as(Encoders.bean(Event.class));
+        spark.read().parquet(outputPath + "/" + SIMPLE_EVENT).as(Encoders.bean(Event.class));
 
     events.createOrReplaceTempView("simple_event");
 
@@ -86,11 +87,11 @@ public class EventInheritance {
 
                   // parent info
                   List<EventCoreRecord> eventCoreFromParents =
-                      getJoinValues(row, "eventCoreInfo", mapper, EventCoreRecord.class);
+                      deserializeFieldToList(row, "eventCoreInfo", mapper, EventCoreRecord.class);
                   List<LocationRecord> locationsFromParents =
-                      getJoinValues(row, "locationInfo", mapper, LocationRecord.class);
+                      deserializeFieldToList(row, "locationInfo", mapper, LocationRecord.class);
                   List<TemporalRecord> temporalFromParents =
-                      getJoinValues(row, "temporalInfo", mapper, TemporalRecord.class);
+                      deserializeFieldToList(row, "temporalInfo", mapper, TemporalRecord.class);
 
                   EventInheritedRecord eventInheritedFields =
                       inheritEventFrom(eventCore, eventCoreFromParents);
@@ -110,8 +111,8 @@ public class EventInheritance {
 
     eventsWithInheritedInfo
         .write()
-        .mode("overwrite")
-        .parquet(outputPath + "/event-inherited-fields");
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/" + EVENT_INHERITED_FIELDS);
 
     // join back to events and write final output if needed
     events
@@ -134,13 +135,13 @@ public class EventInheritance {
             Encoders.bean(Event.class))
         .write()
         .mode("overwrite")
-        .parquet(outputPath + "/simple-event-with-inherited");
+        .parquet(outputPath + "/" + SIMPLE_EVENT_WITH_INHERITED);
 
     log.info("Event inheritance process finished");
 
     return spark
         .read()
-        .parquet(outputPath + "/simple-event-with-inherited")
+        .parquet(outputPath + "/" + SIMPLE_EVENT_WITH_INHERITED)
         .as(Encoders.bean(Event.class));
   }
 
@@ -223,7 +224,7 @@ public class EventInheritance {
     return record;
   }
 
-  private static <T> List<T> getJoinValues(
+  private static <T> List<T> deserializeFieldToList(
       Row row, String field, ObjectMapper mapper, Class<T> clazz) throws JsonProcessingException {
     String fieldValue = row.getAs(field);
     List<T> results;

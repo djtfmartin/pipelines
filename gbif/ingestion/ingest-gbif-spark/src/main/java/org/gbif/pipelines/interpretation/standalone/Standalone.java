@@ -1,6 +1,7 @@
 package org.gbif.pipelines.interpretation.standalone;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.spark.Directories.*;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -106,23 +107,24 @@ public class Standalone {
       case TABLEBUILD:
         callbackFn =
             (messagePublisher ->
-                new TableBuildCallback(config, messagePublisher, "occurrence", "hdfs"));
+                new TableBuildCallback(config, messagePublisher, "occurrence", OCCURRENCE_HDFS));
         break;
       case TABLEBUILD_DISTRIBUTED:
         callbackFn =
             (messagePublisher ->
-                new TableBuildDistributedCallback(config, messagePublisher, "occurrence", "hdfs"));
+                new TableBuildDistributedCallback(
+                    config, messagePublisher, "occurrence", OCCURRENCE_HDFS));
         break;
       case EVENTS_TABLEBUILD:
         callbackFn =
             (messagePublisher ->
-                new EventsTableBuildCallback(config, messagePublisher, "event", "event-hdfs"));
+                new EventsTableBuildCallback(config, messagePublisher, "event", EVENT_HDFS));
         break;
       case EVENTS_TABLEBUILD_DISTRIBUTED:
         callbackFn =
             (messagePublisher ->
                 new EventsTableBuildDistributedCallback(
-                    config, messagePublisher, "event", "event-hdfs"));
+                    config, messagePublisher, "event", EVENT_HDFS));
         break;
       case INDEXING:
         callbackFn = (messagePublisher -> new IndexingCallback(config, messagePublisher));

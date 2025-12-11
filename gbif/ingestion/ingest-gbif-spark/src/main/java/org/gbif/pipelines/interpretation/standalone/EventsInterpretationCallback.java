@@ -1,5 +1,7 @@
 package org.gbif.pipelines.interpretation.standalone;
 
+import static org.gbif.pipelines.interpretation.spark.Directories.EVENT_JSON;
+
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.SparkSession;
@@ -61,7 +63,7 @@ public class EventsInterpretationCallback
 
     Boolean repeatAttempt = null;
     try {
-      repeatAttempt = pathExists(message, "event-json");
+      repeatAttempt = pathExists(message, EVENT_JSON);
     } catch (IOException e) {
       log.warn("Failed to check for existing event-json path", e);
     }

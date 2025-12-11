@@ -6,6 +6,7 @@ import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.G
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_INVALID;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
+import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 import static org.gbif.pipelines.interpretation.standalone.DistributedUtil.timeAndRecPerSecond;
@@ -206,14 +207,14 @@ public class ValidateIdentifiers {
         .repartition(numberOfShards)
         .write()
         .mode(SaveMode.Overwrite)
-        .parquet(outputPath + "/identifiers_transformed");
+        .parquet(outputPath + "/" + IDENTIFIERS_TRANSFORMED);
 
     // reload
     Dataset<IdentifierRecord> identifiers =
         spark
             .read()
             .format("parquet")
-            .load(outputPath + "/identifiers_transformed")
+            .load(outputPath + "/" + IDENTIFIERS_TRANSFORMED)
             .as(Encoders.bean(IdentifierRecord.class));
 
     // get the records that are valid and persisted - i.e. if the have an internalId (gbifId)
@@ -226,7 +227,7 @@ public class ValidateIdentifiers {
     Dataset<IdentifierRecord> invalidIdentifiers = invalid(absentIdentifiers, metrics);
 
     // 1. write unique ids
-    validIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/identifiers_valid");
+    validIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + IDENTIFIERS_VALID);
 
     // 2. write invalid ids
     invalidIdentifiers
@@ -235,13 +236,16 @@ public class ValidateIdentifiers {
         .parquet(outputPath + "/identifiers_invalid");
 
     // 3. write absent ids
-    absentIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/identifiers_absent");
+    absentIdentifiers
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/" + IDENTIFIERS_ABSENT);
 
     // 4. write metrics to yaml
     writeMetricsYaml(fs, metrics, outputPath + "/" + METRICS_FILENAME);
 
     // clean up
-    fs.delete(new Path(outputPath + "/identifiers_transformed"), true);
+    fs.delete(new Path(outputPath + "/" + IDENTIFIERS_TRANSFORMED), true);
 
     log.info(
         timeAndRecPerSecond("identifiers", start, metrics.get(VALID_GBIF_ID_COUNT + "Attempted")));
@@ -366,7 +370,8 @@ public class ValidateIdentifiers {
                       return Collections.<ExtendedRecord>emptyIterator();
                     }
                     // Convert and return occurrence extension records
-                    return OccurrenceExtensionConverter.convert(er).iterator();
+                    List<ExtendedRecord> erOcc = OccurrenceExtensionConverter.convert(er);
+                    return erOcc.iterator();
                   }
 
                   // Case 2: Core type is Occurrence
@@ -383,13 +388,13 @@ public class ValidateIdentifiers {
             Encoders.bean(ExtendedRecord.class));
 
     // write out the expanded records for debugging/inspection
-    expanded.write().mode("overwrite").parquet(outputPath + "/verbatim");
+    expanded.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + OCCURRENCE_VERBATIM);
 
     // reload
     return spark
         .read()
         .format("parquet")
-        .load(outputPath + "/verbatim")
+        .load(outputPath + "/" + OCCURRENCE_VERBATIM)
         .as(Encoders.bean(ExtendedRecord.class));
   }
 
