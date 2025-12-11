@@ -10,7 +10,6 @@ import io.github.resilience4j.retry.RetryConfig;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -337,9 +336,7 @@ public class PipelinesCallback<I extends PipelineBasedMessage, O extends Pipelin
                 .getAllNodesFor(Collections.singleton(stepType));
 
         PipelineExecution execution =
-            new PipelineExecution()
-                .setStepsToRun(stepTypes)
-                .setCreated(OffsetDateTime.from(LocalDateTime.now()));
+            new PipelineExecution().setStepsToRun(stepTypes).setCreated(LocalDateTime.now());
 
         Supplier<Long> executionIdSupplier =
             () -> {
@@ -384,7 +381,7 @@ public class PipelinesCallback<I extends PipelineBasedMessage, O extends Pipelin
       step.setMessage(OBJECT_MAPPER.writeValueAsString(message))
           .setState(PipelineStep.Status.RUNNING)
           .setRunner(StepRunner.valueOf(getRunner()))
-          .setStarted(OffsetDateTime.from(LocalDateTime.now()))
+          .setStarted(LocalDateTime.now())
           .setPipelinesVersion(getPipelinesVersion());
 
       Function<PipelineStep, Long> pipelineStepFn =
@@ -469,7 +466,7 @@ public class PipelinesCallback<I extends PipelineBasedMessage, O extends Pipelin
     }
 
     if (status == PipelineStep.Status.COMPLETED || status == PipelineStep.Status.ABORTED) {
-      pipelineStep.setFinished(OffsetDateTime.from(LocalDateTime.now()));
+      pipelineStep.setFinished(LocalDateTime.now());
     }
 
     try {
