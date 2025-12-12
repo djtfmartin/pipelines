@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -20,13 +23,13 @@ import org.apache.spark.api.java.function.MapGroupsFunction;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.parsers.location.parser.ConvexHullParser;
+import org.gbif.pipelines.core.parsers.temporal.StringToDateFunctions;
 import org.gbif.pipelines.io.avro.EventDate;
 import org.gbif.pipelines.io.avro.LocationRecord;
 import org.gbif.pipelines.io.avro.TemporalRecord;
 import org.gbif.pipelines.io.avro.json.DerivedMetadataRecord;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.io.WKTWriter;
-import scala.Function1;
 import scala.Tuple2;
 import scala.Tuple3;
 
@@ -80,7 +83,9 @@ public class CalculateDerivedMetadata implements Serializable {
     Dataset<EventCoordinate> coreIdOccurrenceCoordinates = getCoreIdCoordinates(occurrence);
     log.info("coreIdOccurrenceCoordinates {}", coreIdOccurrenceCoordinates.count());
 
-    // join to events to get eventId -> "lat||long"
+    Dataset<Tuple2<String, EventDate>> eventIdToEventDate =
+        gatherEventDatesFromChildEvents(spark, events);
+    log.info("eventIdToCoordinates {}", eventIdToCoordinates.count());
 
     // get unique occurrence temporal - coreId -> eventDate
     Dataset<Tuple2<String, EventDate>> coredIdOccurrenceEventDates =
@@ -102,8 +107,8 @@ public class CalculateDerivedMetadata implements Serializable {
             (MapGroupsFunction<String, EventCoordinate, Tuple2<String, String>>)
                 (eventId, coordsIter) -> {
                   List<Coordinate> coordList = new ArrayList<>();
-                  coordsIter.forEachRemaining(ec ->
-                          coordList.add(new Coordinate(ec.getLongitude(), ec.getLatitude())));
+                  coordsIter.forEachRemaining(
+                      ec -> coordList.add(new Coordinate(ec.getLongitude(), ec.getLatitude())));
                   String convexHullWkt =
                       new WKTWriter()
                           .write(ConvexHullParser.fromCoordinates(coordList).getConvexHull());
@@ -111,14 +116,71 @@ public class CalculateDerivedMetadata implements Serializable {
                 },
             Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
 
-    eventIdConvexHull
+    // convex hulls
+    eventIdConvexHull.write().mode(SaveMode.Overwrite).parquet(outputPath + "/derived/convex_hull");
+
+    KeyValueGroupedDataset<String, Tuple2<String, EventDate>> groupedByIdDates =
+        coredIdOccurrenceEventDates
+            .union(eventIdToEventDate)
+            .distinct()
+            .groupByKey(
+                (MapFunction<Tuple2<String, EventDate>, String>) Tuple2::_1, Encoders.STRING());
+
+    Dataset<Tuple2<String, EventDate>> temporalCoverages =
+        groupedByIdDates.mapGroups(
+            (MapGroupsFunction<String, Tuple2<String, EventDate>, Tuple2<String, EventDate>>)
+                (eventId, eventIter) -> {
+                  TemporalAccum accum = new TemporalAccum();
+                  eventIter.forEachRemaining(
+                      eventDate -> {
+                        accum.setMinDate(eventDate._2().getGte());
+                        accum.setMaxDate(eventDate._2().getLte());
+                      });
+                  return new Tuple2(eventId, accum.toEventDate().get());
+                },
+            Encoders.tuple(Encoders.STRING(), Encoders.bean(EventDate.class)));
+
+    temporalCoverages
         .write()
         .mode(SaveMode.Overwrite)
-        .parquet(outputPath + "/derived/event_convex_hull");
+        .parquet(outputPath + "/derived/temporal_coverage");
 
     log.info("Derived metadata calculation is not yet implemented.");
 
     return null;
+  }
+
+  private static Dataset<Tuple2<String, EventDate>> gatherEventDatesFromChildEvents(
+      SparkSession spark, Dataset<Event> events) {
+    events.createOrReplaceTempView("simple_event");
+    return spark
+        .sql(
+            """
+                                                SELECT
+                                                       parent_event.id as eventId,
+                                                       child_event.temporal
+                                                FROM simple_event parent_event
+                                                LEFT OUTER JOIN simple_event child_event
+                                                ON array_contains(child_event.lineage, parent_event.id)
+                                            """)
+        .filter(
+            (FilterFunction<Row>)
+                row -> {
+                  String temporalJson = row.getAs("temporal");
+                  TemporalRecord temporalRecord =
+                      MAPPER.readValue(temporalJson, TemporalRecord.class);
+                  return temporalRecord != null && temporalRecord.getEventDate() != null;
+                })
+        .map(
+            (MapFunction<Row, Tuple2<String, EventDate>>)
+                row -> {
+                  String eventId = row.getAs("eventId");
+                  String temporalJson = row.getAs("temporal");
+                  TemporalRecord temporalRecord =
+                      MAPPER.readValue(temporalJson, TemporalRecord.class);
+                  return new Tuple2(eventId, temporalRecord.getEventDate());
+                },
+            Encoders.tuple(Encoders.STRING(), Encoders.bean(EventDate.class)));
   }
 
   private static Dataset<EventCoordinate> gatherCoordinatesFromChildEvents(
@@ -141,12 +203,12 @@ public class CalculateDerivedMetadata implements Serializable {
                   LocationRecord locationRecord =
                       MAPPER.readValue(locationJson, LocationRecord.class);
                   return locationRecord.getHasCoordinate()
-                          && locationRecord.getDecimalLatitude() != null
-                          && locationRecord.getDecimalLongitude() != null
-                          && locationRecord.getDecimalLatitude() >= -90.0
-                          && locationRecord.getDecimalLatitude() <= 90.0
-                          && locationRecord.getDecimalLongitude() >= -180.0
-                          && locationRecord.getDecimalLongitude() <= 180.0;
+                      && locationRecord.getDecimalLatitude() != null
+                      && locationRecord.getDecimalLongitude() != null
+                      && locationRecord.getDecimalLatitude() >= -90.0
+                      && locationRecord.getDecimalLatitude() <= 90.0
+                      && locationRecord.getDecimalLongitude() >= -180.0
+                      && locationRecord.getDecimalLongitude() <= 180.0;
                 })
         .map(
             (MapFunction<Row, EventCoordinate>)
@@ -237,4 +299,61 @@ public class CalculateDerivedMetadata implements Serializable {
         .distinct();
   }
 
+  @Data
+  public static class TemporalAccum implements Serializable {
+
+    private String minDate;
+    private String maxDate;
+
+    public TemporalAccum acc(EventDate eventDate) {
+      Optional.ofNullable(eventDate.getGte()).ifPresent(this::setMinDate);
+      Optional.ofNullable(eventDate.getLte()).ifPresent(this::setMaxDate);
+      return this;
+    }
+
+    private void setMinDate(String date) {
+      if (Objects.isNull(minDate)) {
+        minDate = date;
+      } else {
+        minDate =
+            StringToDateFunctions.getStringToEarliestEpochSeconds(false)
+                        .apply(date)
+                        .compareTo(
+                            StringToDateFunctions.getStringToEarliestEpochSeconds(false)
+                                .apply(minDate))
+                    < 0
+                ? date
+                : minDate;
+      }
+    }
+
+    private void setMaxDate(String date) {
+      if (Objects.isNull(maxDate)) {
+        maxDate = date;
+      } else {
+        maxDate =
+            StringToDateFunctions.getStringToLatestEpochSeconds(false)
+                        .apply(date)
+                        .compareTo(
+                            StringToDateFunctions.getStringToLatestEpochSeconds(false)
+                                .apply(maxDate))
+                    > 0
+                ? date
+                : maxDate;
+      }
+    }
+
+    public Optional<EventDate> toEventDate() {
+      return Objects.isNull(minDate) && Objects.isNull(maxDate)
+          ? Optional.empty()
+          : Optional.of(getEventDate());
+    }
+
+    private EventDate getEventDate() {
+      EventDate.Builder evenDate = EventDate.newBuilder();
+      Optional.ofNullable(minDate).ifPresent(evenDate::setGte);
+      Optional.ofNullable(maxDate).ifPresent(evenDate::setLte);
+      return evenDate.build();
+    }
+  }
 }

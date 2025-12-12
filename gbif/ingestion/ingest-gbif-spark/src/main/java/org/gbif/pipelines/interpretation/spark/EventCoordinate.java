@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class EventCoordinate implements java.io.Serializable {
-    String eventId;
-    Double latitude;
-    Double longitude;
+  String eventId;
+  Double latitude;
+  Double longitude;
 }
