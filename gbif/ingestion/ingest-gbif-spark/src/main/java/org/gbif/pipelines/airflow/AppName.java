@@ -16,7 +16,7 @@ public class AppName {
 
   /**
    * A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.'.
-   * Must start and end with an alphanumeric character and its max lentgh is 64 characters.
+   * Must start and end with an alphanumeric character and its max length is 64 characters.
    */
   public static String get(StepType type, UUID datasetKey, int attempt) {
     String joined =

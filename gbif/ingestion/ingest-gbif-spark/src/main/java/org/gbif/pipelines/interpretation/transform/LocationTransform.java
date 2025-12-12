@@ -51,6 +51,7 @@ public class LocationTransform implements Serializable {
     LocationRecord record =
         LocationRecord.newBuilder()
             .setId(source.getId())
+            .setCoreId(source.getCoreId())
             .setCreated(Instant.now().toEpochMilli())
             .build();
 

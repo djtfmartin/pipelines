@@ -46,6 +46,7 @@ public class BasicTransform implements Serializable {
     BasicRecord record =
         BasicRecord.newBuilder()
             .setId(source.getId())
+            .setCoreId(source.getCoreId())
             .setCreated(Instant.now().toEpochMilli())
             .build();
 

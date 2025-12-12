@@ -46,6 +46,7 @@ public record MultiTaxonomyTransform(PipelinesConfig config) implements Serializ
     MultiTaxonRecord mtr =
         MultiTaxonRecord.newBuilder()
             .setId(source.getId())
+            .setCoreId(source.getCoreId())
             .setCreated(Instant.now().toEpochMilli())
             .build();
 
