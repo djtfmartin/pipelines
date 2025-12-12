@@ -126,9 +126,9 @@ public class CalculateDerivedMetadata implements Serializable {
             .groupByKey(
                 (MapFunction<Tuple2<String, EventDate>, String>) Tuple2::_1, Encoders.STRING());
 
-    Dataset<Tuple2<String, EventDate>> temporalCoverages =
+    Dataset<Tuple3<String, String, String>> temporalCoverages =
         groupedByIdDates.mapGroups(
-            (MapGroupsFunction<String, Tuple2<String, EventDate>, Tuple2<String, EventDate>>)
+            (MapGroupsFunction<String, Tuple2<String, EventDate>, Tuple3<String, String, String>>)
                 (eventId, eventIter) -> {
                   TemporalAccum accum = new TemporalAccum();
                   eventIter.forEachRemaining(
@@ -136,18 +136,46 @@ public class CalculateDerivedMetadata implements Serializable {
                         accum.setMinDate(eventDate._2().getGte());
                         accum.setMaxDate(eventDate._2().getLte());
                       });
-                  return new Tuple2(eventId, accum.toEventDate().get());
+                  return new Tuple3(
+                      eventId,
+                      accum.toEventDate().get().getLte(),
+                      accum.toEventDate().get().getGte());
                 },
-            Encoders.tuple(Encoders.STRING(), Encoders.bean(EventDate.class)));
+            Encoders.tuple(Encoders.STRING(), Encoders.STRING(), Encoders.STRING()));
 
     temporalCoverages
         .write()
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/derived/temporal_coverage");
 
-    log.info("Derived metadata calculation is not yet implemented.");
+    Dataset<Row> df1 = eventIdConvexHull.toDF("eventId", "convexHull");
+    Dataset<Row> df2 = temporalCoverages.toDF("eventId", "lte", "gte");
+    Dataset<DerivedMetadataRecord> derivedMetadataRecordDataset =
+        df1.join(df2, "eventId")
+            .map(
+                (MapFunction<Row, DerivedMetadataRecord>)
+                    row -> {
+                      String eventId = row.getAs("eventId");
+                      String convexHull = row.getAs("convexHull");
+                      String lte = row.getAs("lte");
+                      String gte = row.getAs("gte");
+                      DerivedMetadataRecord.Builder builder =
+                          DerivedMetadataRecord.newBuilder().setId(eventId);
+                      builder.setWktConvexHull(convexHull);
+                      builder.setTemporalCoverage(
+                          org.gbif.pipelines.io.avro.json.EventDate.newBuilder()
+                              .setGte(gte)
+                              .setLte(lte)
+                              .build());
+                      return builder.build();
+                    },
+                Encoders.bean(DerivedMetadataRecord.class));
+    derivedMetadataRecordDataset
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/event_derived_metadata");
 
-    return null;
+    return derivedMetadataRecordDataset;
   }
 
   private static Dataset<Tuple2<String, EventDate>> gatherEventDatesFromChildEvents(
@@ -156,13 +184,13 @@ public class CalculateDerivedMetadata implements Serializable {
     return spark
         .sql(
             """
-                                                SELECT
-                                                       parent_event.id as eventId,
-                                                       child_event.temporal
-                                                FROM simple_event parent_event
-                                                LEFT OUTER JOIN simple_event child_event
-                                                ON array_contains(child_event.lineage, parent_event.id)
-                                            """)
+                    SELECT
+                           parent_event.id as eventId,
+                           child_event.temporal
+                    FROM simple_event parent_event
+                    LEFT OUTER JOIN simple_event child_event
+                    ON array_contains(child_event.lineage, parent_event.id)
+                """)
         .filter(
             (FilterFunction<Row>)
                 row -> {
@@ -189,13 +217,13 @@ public class CalculateDerivedMetadata implements Serializable {
     return spark
         .sql(
             """
-                                    SELECT
-                                           parent_event.id as eventId,
-                                           child_event.location
-                                    FROM simple_event parent_event
-                                    LEFT OUTER JOIN simple_event child_event
-                                    ON array_contains(child_event.lineage, parent_event.id)
-                                """)
+                    SELECT
+                           parent_event.id as eventId,
+                           child_event.location
+                    FROM simple_event parent_event
+                    LEFT OUTER JOIN simple_event child_event
+                    ON array_contains(child_event.lineage, parent_event.id)
+                """)
         .filter(
             (FilterFunction<Row>)
                 row -> {
