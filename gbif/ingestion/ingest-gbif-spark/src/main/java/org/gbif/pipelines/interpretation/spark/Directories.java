@@ -34,7 +34,7 @@ public interface Directories {
   String OCCURRENCE_VERBATIM = "verbatim";
 
   String SIMPLE_EVENT = "simple-event";
-  String SIMPLE_EVENT_WITH_INHERITED = Directories.SIMPLE_EVENT + "-with-inherited";
+  String SIMPLE_EVENT_WITH_INHERITED = "simple-event-with-inherited";
   /** Directory for simple occurrence parquet files used as input for interpretation */
   String SIMPLE_OCCURRENCE = "simple-occurrence";
 
