@@ -183,16 +183,19 @@ public class EventInheritance {
     for (LocationRecord parent : parents) {
       if (record.getCountryCode() == null && parent.getCountryCode() != null) {
         record.setCountryCode(parent.getCountryCode());
+        record.setInheritedFrom(parent.getId());
       }
       if (record.getStateProvince() == null && parent.getStateProvince() != null) {
         record.setStateProvince(parent.getStateProvince());
+        record.setInheritedFrom(parent.getId());
       }
-
       if (record.getDecimalLatitude() == null && parent.getDecimalLatitude() != null) {
         record.setDecimalLatitude(parent.getDecimalLatitude());
+        record.setInheritedFrom(parent.getId());
       }
       if (record.getDecimalLongitude() == null && parent.getDecimalLongitude() != null) {
         record.setDecimalLongitude(parent.getDecimalLongitude());
+        record.setInheritedFrom(parent.getId());
       }
     }
 
@@ -212,12 +215,15 @@ public class EventInheritance {
     for (TemporalRecord parent : parents) {
       if (record.getYear() == null && parent.getYear() != null) {
         record.setYear(parent.getYear());
+        record.setInheritedFrom(parent.getId());
       }
       if (record.getMonth() == null && parent.getMonth() != null) {
         record.setMonth(parent.getMonth());
+        record.setInheritedFrom(parent.getId());
       }
       if (record.getDay() == null && parent.getDay() != null) {
         record.setDay(parent.getDay());
+        record.setInheritedFrom(parent.getId());
       }
     }
 

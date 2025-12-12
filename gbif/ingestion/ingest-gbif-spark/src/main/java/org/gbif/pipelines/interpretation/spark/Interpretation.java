@@ -247,7 +247,9 @@ public class Interpretation {
     if (recordsWithEmptyInternalId > 0) {
       IdentifierRecord record = missingId.first();
       log.warn(
-          "Records with empty internal identifiers: "
+          "Records with empty internal "
+              + IDENTIFIERS
+              + ": "
               + recordsWithEmptyInternalId
               + ". "
               + "Example record: "
@@ -466,7 +468,7 @@ public class Interpretation {
   private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {
     return spark
         .read()
-        .parquet(outputPath + "/identifiers")
+        .parquet(outputPath + "/" + IDENTIFIERS)
         .as(Encoders.bean(IdentifierRecord.class));
   }
 
@@ -489,11 +491,11 @@ public class Interpretation {
 
     if (FsUtils.fileExists(
             HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
-            outputPath + "/identifiers")
+            outputPath + "/" + IDENTIFIERS)
         && FsUtils.fileExists(
             HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
-            outputPath + "/identifiers/_SUCCESS")) {
-      log.debug("Skipping processing identifiers - re-using existing identifiers");
+            outputPath + "/" + IDENTIFIERS + "/_SUCCESS")) {
+      log.debug("Skipping processing " + IDENTIFIERS + " - re-using existing identifiers");
       return;
     }
 
@@ -510,7 +512,7 @@ public class Interpretation {
     Dataset<IdentifierRecord> allIdentifiers = identifiers.union(newlyAdded);
 
     // write out the final identifiers
-    allIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/identifiers");
+    allIdentifiers.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + IDENTIFIERS);
   }
 
   private static Dataset<IdentifierRecord> persistAbsentIdentifiers(
@@ -524,7 +526,7 @@ public class Interpretation {
     Dataset<IdentifierRecord> absentIdentifiers =
         spark
             .read()
-            .parquet(outputPath + "/identifiers_absent")
+            .parquet(outputPath + "/" + IDENTIFIERS + "_absent")
             .as(Encoders.bean(IdentifierRecord.class));
 
     GbifAbsentIdTransform absentIdTransform =
@@ -557,7 +559,7 @@ public class Interpretation {
       SparkSession spark, String outputPath) {
     return spark
         .read()
-        .parquet(outputPath + "/identifiers_valid")
+        .parquet(outputPath + "/" + IDENTIFIERS + "_valid")
         .as(Encoders.bean(IdentifierRecord.class));
   }
 
