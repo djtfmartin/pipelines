@@ -138,6 +138,9 @@ public class EventInterpretation {
     // using the parent lineage, join back to get the full event records
     simpleRecords = EventInheritance.runEventInheritance(spark, outputPath);
 
+    // calculate derived metadata and join to events
+    simpleRecords = CalculateDerivedMetadata.addCalculateDerivedMetadata(spark, fs, outputPath);
+
     // write parquet for elastic
     toJson(simpleRecords, metadata)
         .write()
@@ -222,7 +225,10 @@ public class EventInterpretation {
                           MAPPER.readValue(
                               (String) r.getTemporalInherited(),
                               org.gbif.pipelines.io.avro.json.TemporalInheritedRecord.class))
-                      //                          private DerivedMetadataRecord derivedMetadata;
+                      .derivedMetadata(
+                          MAPPER.readValue(
+                              (String) r.getDerivedMetadata(),
+                              org.gbif.pipelines.io.avro.json.DerivedMetadataRecord.class))
                       .build();
               return c.convertToParent();
             },

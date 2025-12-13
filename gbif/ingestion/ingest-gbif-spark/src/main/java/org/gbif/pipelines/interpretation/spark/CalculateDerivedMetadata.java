@@ -59,6 +59,37 @@ public class CalculateDerivedMetadata implements Serializable {
     System.exit(0);
   }
 
+  public static Dataset<Event> addCalculateDerivedMetadata(
+      SparkSession spark, FileSystem fs, String outputPath) throws IOException {
+
+    Dataset<DerivedMetadataRecord> derivedRecords =
+        runCalculateDerivedMetadata(spark, fs, outputPath);
+
+    // load simple event
+    Dataset<Event> events =
+        spark.read().parquet(outputPath + "/" + SIMPLE_EVENT).as(Encoders.bean(Event.class));
+
+    // join events and derived metadata
+    events
+        .joinWith(derivedRecords, events.col("id").equalTo(derivedRecords.col("id")), "left_outer")
+        .map(
+            (MapFunction<Tuple2<Event, DerivedMetadataRecord>, Event>)
+                row -> {
+                  Event event = row._1();
+                  DerivedMetadataRecord derived = row._2();
+                  if (derived != null) {
+                    event.setDerivedMetadata(MAPPER.writeValueAsString(derived));
+                  }
+                  return event;
+                },
+            Encoders.bean(Event.class))
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/" + SIMPLE_EVENT);
+
+    return spark.read().parquet(outputPath + "/" + SIMPLE_EVENT).as(Encoders.bean(Event.class));
+  }
+
   /**
    * Main method that calculates derived metadata for events based on occurrences and child events.
    *

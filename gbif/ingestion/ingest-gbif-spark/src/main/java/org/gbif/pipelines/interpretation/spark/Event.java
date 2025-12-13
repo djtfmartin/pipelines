@@ -35,4 +35,7 @@ public class Event {
   String locationInherited;
   String temporalInherited;
   String eventInherited;
+
+  // derived
+  String derivedMetadata;
 }
