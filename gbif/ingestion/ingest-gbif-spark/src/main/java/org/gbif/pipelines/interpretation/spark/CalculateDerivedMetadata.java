@@ -9,17 +9,12 @@ import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.spark.api.java.function.FilterFunction;
-import org.apache.spark.api.java.function.MapFunction;
-import org.apache.spark.api.java.function.MapGroupsFunction;
+import org.apache.spark.api.java.function.*;
 import org.apache.spark.sql.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.core.parsers.location.parser.ConvexHullParser;
@@ -30,6 +25,9 @@ import org.gbif.pipelines.io.avro.TemporalRecord;
 import org.gbif.pipelines.io.avro.json.DerivedMetadataRecord;
 import org.jetbrains.annotations.NotNull;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
 import scala.Tuple2;
 import scala.Tuple3;
@@ -202,33 +200,76 @@ public class CalculateDerivedMetadata implements Serializable {
     log.info("coreIdOccurrenceCoordinates {}", coreIdOccurrenceCoordinates.count());
 
     // Calculate Convex Hull
-    KeyValueGroupedDataset<String, EventCoordinate> groupedById =
+    Dataset<EventCoordinate> eventIdEventCoordinates =
         coreIdOccurrenceCoordinates
             .union(eventIdToCoordinates)
             .union(coreIdEventCoordinates)
-            .distinct()
-            .groupByKey(
-                (MapFunction<EventCoordinate, String>) EventCoordinate::getEventId,
-                Encoders.STRING());
+            .distinct();
 
     // Warning - this has the potential to OOM if there are too many coordinates for an event
-    Dataset<Tuple2<String, String>> eventIdConvexHull =
-        groupedById.mapGroups(
-            (MapGroupsFunction<String, EventCoordinate, Tuple2<String, String>>)
-                (eventId, coordsIter) -> {
-                  List<Coordinate> coordList = new ArrayList<>();
-                  coordsIter.forEachRemaining(
-                      ec -> coordList.add(new Coordinate(ec.getLongitude(), ec.getLatitude())));
-                  String convexHullWkt =
-                      new WKTWriter()
-                          .write(ConvexHullParser.fromCoordinates(coordList).getConvexHull());
-                  return new Tuple2<>(eventId, convexHullWkt);
+    Dataset<Tuple2<String, String>> partialHulls =
+        eventIdEventCoordinates.mapPartitions(
+            (MapPartitionsFunction<EventCoordinate, Tuple2<String, String>>)
+                iter -> {
+
+                  // eventid -> list of coordinates
+                  Map<String, List<Coordinate>> acc = new HashMap<>();
+
+                  while (iter.hasNext()) {
+                    EventCoordinate ec = iter.next();
+                    acc.computeIfAbsent(ec.getEventId(), k -> new ArrayList<>())
+                        .add(new Coordinate(ec.getLongitude(), ec.getLatitude()));
+                  }
+
+                  List<Tuple2<String, String>> out = new ArrayList<>();
+                  for (Map.Entry<String, List<Coordinate>> e : acc.entrySet()) {
+                    Geometry hull = ConvexHullParser.fromCoordinates(e.getValue()).getConvexHull();
+
+                    String partialHull = new WKTWriter().write(hull);
+                    out.add(new Tuple2<String, String>(e.getKey(), partialHull));
+                  }
+
+                  return out.iterator();
                 },
             Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
 
-    // convex hulls
-    eventIdConvexHull.write().mode(SaveMode.Overwrite).parquet(outputPath + "/derived/convex_hull");
-    return eventIdConvexHull;
+    KeyValueGroupedDataset<String, Tuple2<String, String>> groupedPartial =
+        partialHulls.groupByKey(
+            (MapFunction<Tuple2<String, String>, String>) Tuple2::_1, Encoders.STRING());
+
+    // merge partial hulls
+    Dataset<Tuple2<String, String>> hulls =
+        groupedPartial
+            .reduceGroups(
+                (ReduceFunction<Tuple2<String, String>>)
+                    (a, b) -> {
+                      List<Coordinate> mergedCoords = new ArrayList<>();
+                      String eventId = a._1();
+                      String wkt1 = a._2();
+                      String wkt2 = b._2();
+
+                      GeometryFactory geometryFactory = new GeometryFactory();
+                      WKTReader reader = new WKTReader(geometryFactory);
+
+                      Geometry geometry1 = reader.read(wkt1);
+                      Geometry geometry2 = reader.read(wkt2);
+                      mergedCoords.addAll(Arrays.asList(geometry1.getCoordinates()));
+                      mergedCoords.addAll(Arrays.asList(geometry2.getCoordinates()));
+                      Geometry mergedGeom =
+                          ConvexHullParser.fromCoordinates(mergedCoords).getConvexHull();
+                      String mergedWkt = new WKTWriter().write(mergedGeom);
+                      return new Tuple2(eventId, mergedWkt);
+                    })
+            .map(
+                (MapFunction<Tuple2<String, Tuple2<String, String>>, Tuple2<String, String>>)
+                    t -> {
+                      return new Tuple2<>(t._1, t._2._2);
+                    },
+                Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+
+    hulls.write().mode(SaveMode.Overwrite).parquet(outputPath + "/derived/convex_hull");
+
+    return hulls;
   }
 
   private static Dataset<Tuple2<String, EventDate>> gatherEventDatesFromChildEvents(
@@ -439,7 +480,7 @@ public class CalculateDerivedMetadata implements Serializable {
     }
   }
 
-  class HullState implements Serializable {
+  static class HullState implements Serializable {
     List<Coordinate> hullCoords;
   }
 }
