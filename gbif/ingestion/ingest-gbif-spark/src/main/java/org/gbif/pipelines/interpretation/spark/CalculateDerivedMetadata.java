@@ -28,6 +28,7 @@ import org.gbif.pipelines.io.avro.EventDate;
 import org.gbif.pipelines.io.avro.LocationRecord;
 import org.gbif.pipelines.io.avro.TemporalRecord;
 import org.gbif.pipelines.io.avro.json.DerivedMetadataRecord;
+import org.jetbrains.annotations.NotNull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.io.WKTWriter;
 import scala.Tuple2;
@@ -60,93 +61,52 @@ public class CalculateDerivedMetadata implements Serializable {
     System.exit(0);
   }
 
-  private static Dataset<DerivedMetadataRecord> runCalculateDerivedMetadata(
+  /**
+   * Main method that calculates derived metadata for events based on occurrences and child events.
+   *
+   * <p>This includes calculating spatial convex hulls and temporal coverage.
+   *
+   * @param spark Spark session
+   * @param fileSystem Hadoop file system
+   * @param outputPath Path to the dataset output
+   * @return Dataset of DerivedMetadataRecord
+   * @throws IOException if there is an error reading or writing data
+   */
+  public static Dataset<DerivedMetadataRecord> runCalculateDerivedMetadata(
       SparkSession spark, FileSystem fileSystem, String outputPath) throws IOException {
 
     // loads events
     Dataset<Event> events =
         spark.read().parquet(outputPath + "/" + SIMPLE_EVENT).as(Encoders.bean(Event.class));
 
-    // join to child events to get all coordinates associated with parent event
-    Dataset<EventCoordinate> eventIdToCoordinates = gatherCoordinatesFromChildEvents(spark, events);
-    log.info("eventIdToCoordinates {}", eventIdToCoordinates.count());
-
-    // join child events ?
-    Dataset<EventCoordinate> coreIdEventCoordinates = getEventCoordinates(events);
-    log.info("coreIdEventCoordinates {}", coreIdEventCoordinates.count());
-
-    // does this dataset have occurrences ?
+    // load occurrences (handling datasets without occurrences)
     Dataset<Occurrence> occurrence = loadOccurrences(spark, fileSystem, outputPath);
     log.info("occurrences {}", occurrence.count());
 
-    // get unique occurrence locations - coredId -> "lat||long"
-    Dataset<EventCoordinate> coreIdOccurrenceCoordinates = getCoreIdCoordinates(occurrence);
-    log.info("coreIdOccurrenceCoordinates {}", coreIdOccurrenceCoordinates.count());
-
-    Dataset<Tuple2<String, EventDate>> eventIdToEventDate =
-        gatherEventDatesFromChildEvents(spark, events);
-    log.info("eventIdToCoordinates {}", eventIdToCoordinates.count());
-
-    // get unique occurrence temporal - coreId -> eventDate
-    Dataset<Tuple2<String, EventDate>> coredIdOccurrenceEventDates =
-        getCoreIdEventDates(occurrence);
-    log.info("coredIdOccurrenceEventDates {}", coredIdOccurrenceEventDates.count());
-
     // Calculate Convex Hull
-    KeyValueGroupedDataset<String, EventCoordinate> groupedById =
-        coreIdOccurrenceCoordinates
-            .union(eventIdToCoordinates)
-            .union(coreIdEventCoordinates)
-            .distinct()
-            .groupByKey(
-                (MapFunction<EventCoordinate, String>) EventCoordinate::getEventId,
-                Encoders.STRING());
-
     Dataset<Tuple2<String, String>> eventIdConvexHull =
-        groupedById.mapGroups(
-            (MapGroupsFunction<String, EventCoordinate, Tuple2<String, String>>)
-                (eventId, coordsIter) -> {
-                  List<Coordinate> coordList = new ArrayList<>();
-                  coordsIter.forEachRemaining(
-                      ec -> coordList.add(new Coordinate(ec.getLongitude(), ec.getLatitude())));
-                  String convexHullWkt =
-                      new WKTWriter()
-                          .write(ConvexHullParser.fromCoordinates(coordList).getConvexHull());
-                  return new Tuple2<>(eventId, convexHullWkt);
-                },
-            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+        calculateConvexHull(spark, outputPath, events, occurrence);
 
-    // convex hulls
-    eventIdConvexHull.write().mode(SaveMode.Overwrite).parquet(outputPath + "/derived/convex_hull");
-
-    KeyValueGroupedDataset<String, Tuple2<String, EventDate>> groupedByIdDates =
-        coredIdOccurrenceEventDates
-            .union(eventIdToEventDate)
-            .distinct()
-            .groupByKey(
-                (MapFunction<Tuple2<String, EventDate>, String>) Tuple2::_1, Encoders.STRING());
-
+    // Calculate Temporal Coverage
     Dataset<Tuple3<String, String, String>> temporalCoverages =
-        groupedByIdDates.mapGroups(
-            (MapGroupsFunction<String, Tuple2<String, EventDate>, Tuple3<String, String, String>>)
-                (eventId, eventIter) -> {
-                  TemporalAccum accum = new TemporalAccum();
-                  eventIter.forEachRemaining(
-                      eventDate -> {
-                        accum.setMinDate(eventDate._2().getGte());
-                        accum.setMaxDate(eventDate._2().getLte());
-                      });
-                  return new Tuple3(
-                      eventId,
-                      accum.toEventDate().get().getLte(),
-                      accum.toEventDate().get().getGte());
-                },
-            Encoders.tuple(Encoders.STRING(), Encoders.STRING(), Encoders.STRING()));
+        calculateTemporalCoverage(spark, outputPath, events, occurrence);
 
-    temporalCoverages
-        .write()
-        .mode(SaveMode.Overwrite)
-        .parquet(outputPath + "/derived/temporal_coverage");
+    return createDerivedDataRecords(outputPath, eventIdConvexHull, temporalCoverages);
+  }
+
+  /**
+   * Creates derived metadata records by joining convex hulls and temporal coverages.
+   *
+   * @param outputPath path to save the derived metadata
+   * @param eventIdConvexHull
+   * @param temporalCoverages
+   * @return
+   */
+  @NotNull
+  private static Dataset<DerivedMetadataRecord> createDerivedDataRecords(
+      String outputPath,
+      Dataset<Tuple2<String, String>> eventIdConvexHull,
+      Dataset<Tuple3<String, String, String>> temporalCoverages) {
 
     Dataset<Row> df1 = eventIdConvexHull.toDF("eventId", "convexHull");
     Dataset<Row> df2 = temporalCoverages.toDF("eventId", "lte", "gte");
@@ -174,8 +134,101 @@ public class CalculateDerivedMetadata implements Serializable {
         .write()
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/event_derived_metadata");
-
     return derivedMetadataRecordDataset;
+  }
+
+  @NotNull
+  private static Dataset<Tuple3<String, String, String>> calculateTemporalCoverage(
+      SparkSession spark,
+      String outputPath,
+      Dataset<Event> events,
+      Dataset<Occurrence> occurrence) {
+    Dataset<Tuple2<String, EventDate>> eventIdToEventDate =
+        gatherEventDatesFromChildEvents(spark, events);
+    log.info("eventIdToEventDate {}", eventIdToEventDate.count());
+
+    // get unique occurrence temporal - coreId -> eventDate
+    Dataset<Tuple2<String, EventDate>> coredIdOccurrenceEventDates =
+        getCoreIdEventDates(occurrence);
+    log.info("coredIdOccurrenceEventDates {}", coredIdOccurrenceEventDates.count());
+
+    KeyValueGroupedDataset<String, Tuple2<String, EventDate>> groupedByIdDates =
+        coredIdOccurrenceEventDates
+            .union(eventIdToEventDate)
+            .distinct()
+            .groupByKey(
+                (MapFunction<Tuple2<String, EventDate>, String>) Tuple2::_1, Encoders.STRING());
+
+    Dataset<Tuple3<String, String, String>> temporalCoverages =
+        groupedByIdDates.mapGroups(
+            (MapGroupsFunction<String, Tuple2<String, EventDate>, Tuple3<String, String, String>>)
+                (eventId, eventIter) -> {
+                  TemporalAccum accum = new TemporalAccum();
+                  eventIter.forEachRemaining(
+                      eventDate -> {
+                        accum.setMinDate(eventDate._2().getGte());
+                        accum.setMaxDate(eventDate._2().getLte());
+                      });
+                  return new Tuple3<String, String, String>(
+                      eventId,
+                      accum.toEventDate().get().getLte(),
+                      accum.toEventDate().get().getGte());
+                },
+            Encoders.tuple(Encoders.STRING(), Encoders.STRING(), Encoders.STRING()));
+
+    temporalCoverages
+        .write()
+        .mode(SaveMode.Overwrite)
+        .parquet(outputPath + "/derived/temporal_coverage");
+    return temporalCoverages;
+  }
+
+  @NotNull
+  private static Dataset<Tuple2<String, String>> calculateConvexHull(
+      SparkSession spark,
+      String outputPath,
+      Dataset<Event> events,
+      Dataset<Occurrence> occurrence) {
+    // join to child events to get all coordinates associated with parent event
+    Dataset<EventCoordinate> eventIdToCoordinates = gatherCoordinatesFromChildEvents(spark, events);
+    log.info("eventIdToCoordinates {}", eventIdToCoordinates.count());
+
+    // join child events ?
+    Dataset<EventCoordinate> coreIdEventCoordinates = getEventCoordinates(events);
+    log.info("coreIdEventCoordinates {}", coreIdEventCoordinates.count());
+
+    // get unique occurrence locations - coredId -> "lat||long"
+    Dataset<EventCoordinate> coreIdOccurrenceCoordinates = getCoreIdCoordinates(occurrence);
+    log.info("coreIdOccurrenceCoordinates {}", coreIdOccurrenceCoordinates.count());
+
+    // Calculate Convex Hull
+    KeyValueGroupedDataset<String, EventCoordinate> groupedById =
+        coreIdOccurrenceCoordinates
+            .union(eventIdToCoordinates)
+            .union(coreIdEventCoordinates)
+            .distinct()
+            .groupByKey(
+                (MapFunction<EventCoordinate, String>) EventCoordinate::getEventId,
+                Encoders.STRING());
+
+    // Warning - this has the potential to OOM if there are too many coordinates for an event
+    Dataset<Tuple2<String, String>> eventIdConvexHull =
+        groupedById.mapGroups(
+            (MapGroupsFunction<String, EventCoordinate, Tuple2<String, String>>)
+                (eventId, coordsIter) -> {
+                  List<Coordinate> coordList = new ArrayList<>();
+                  coordsIter.forEachRemaining(
+                      ec -> coordList.add(new Coordinate(ec.getLongitude(), ec.getLatitude())));
+                  String convexHullWkt =
+                      new WKTWriter()
+                          .write(ConvexHullParser.fromCoordinates(coordList).getConvexHull());
+                  return new Tuple2<>(eventId, convexHullWkt);
+                },
+            Encoders.tuple(Encoders.STRING(), Encoders.STRING()));
+
+    // convex hulls
+    eventIdConvexHull.write().mode(SaveMode.Overwrite).parquet(outputPath + "/derived/convex_hull");
+    return eventIdConvexHull;
   }
 
   private static Dataset<Tuple2<String, EventDate>> gatherEventDatesFromChildEvents(
@@ -255,15 +308,16 @@ public class CalculateDerivedMetadata implements Serializable {
 
   private static Dataset<Occurrence> loadOccurrences(
       SparkSession spark, FileSystem fs, String outputPath) throws IOException {
-    if (fs.exists(new Path(outputPath + "/" + SIMPLE_OCCURRENCE))
-        && fs.exists(new Path(outputPath + "/" + SIMPLE_OCCURRENCE + "/_SUCCESS"))) {
-      return spark
-          .read()
-          .parquet(outputPath + "/" + SIMPLE_OCCURRENCE)
-          .as(Encoders.bean(Occurrence.class));
-    } else {
-      return spark.emptyDataset(Encoders.bean(Occurrence.class));
+
+    Encoder<Occurrence> encoder = Encoders.bean(Occurrence.class);
+    Path occurrencePath = new Path(outputPath, SIMPLE_OCCURRENCE);
+    Path successMarker = new Path(occurrencePath, "_SUCCESS");
+
+    if (fs.exists(occurrencePath) && fs.exists(successMarker)) {
+      return spark.read().parquet(occurrencePath.toString()).as(encoder);
     }
+
+    return spark.emptyDataset(encoder);
   }
 
   private static Dataset<EventCoordinate> getEventCoordinates(Dataset<Event> events) {
@@ -383,5 +437,9 @@ public class CalculateDerivedMetadata implements Serializable {
       Optional.ofNullable(maxDate).ifPresent(evenDate::setLte);
       return evenDate.build();
     }
+  }
+
+  class HullState implements Serializable {
+    List<Coordinate> hullCoords;
   }
 }

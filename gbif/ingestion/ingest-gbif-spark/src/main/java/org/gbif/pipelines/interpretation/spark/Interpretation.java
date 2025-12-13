@@ -24,9 +24,11 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.FilterFunction;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
@@ -165,7 +167,8 @@ public class Interpretation {
       int attempt,
       int numberOfShards,
       Boolean tripletValid,
-      Boolean occurrenceIdValid) {
+      Boolean occurrenceIdValid)
+      throws IOException {
 
     long start = System.currentTimeMillis();
 
@@ -183,7 +186,7 @@ public class Interpretation {
         loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards);
 
     // Process identifiers - persisting new identifiers
-    processIdentifiers(spark, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
+    processIdentifiers(spark, fs, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
 
     // load identifiers
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
@@ -483,19 +486,19 @@ public class Interpretation {
    */
   public static void processIdentifiers(
       SparkSession spark,
+      FileSystem fileSystem,
       PipelinesConfig config,
       String outputPath,
       String datasetId,
       boolean tripletValid,
-      boolean occurrenceIdValid) {
+      boolean occurrenceIdValid)
+      throws IOException {
 
-    if (FsUtils.fileExists(
-            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
-            outputPath + "/" + IDENTIFIERS)
-        && FsUtils.fileExists(
-            HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig()),
-            outputPath + "/" + IDENTIFIERS + "/_SUCCESS")) {
-      log.debug("Skipping processing " + IDENTIFIERS + " - re-using existing identifiers");
+    Path identifiersPath = new Path(outputPath, IDENTIFIERS);
+    Path successMarker = new Path(identifiersPath, "_SUCCESS");
+
+    if (fileSystem.exists(identifiersPath) && fileSystem.exists(successMarker)) {
+      log.debug("Skipping processing {} - re-using existing identifiers", IDENTIFIERS);
       return;
     }
 
