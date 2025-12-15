@@ -286,6 +286,7 @@ public class Interpretation {
                   IdentifierRecord ir = row._2;
                   return Occurrence.builder()
                       .id(er.getId())
+                      .coreId(er.getCoreId())
                       .internalId(ir.getInternalId())
                       .verbatim(MAPPER.writeValueAsString(er))
                       .identifier(MAPPER.writeValueAsString(ir))
@@ -374,8 +375,8 @@ public class Interpretation {
                   MultimediaRecord mmr = MultimediaConverter.merge(mr, ir, ar);
 
                   return Occurrence.builder()
-                      .id(verbatim.getId())
-                      .coreId(verbatim.getCoreId())
+                      .id(simpleRecord.getId())
+                      .coreId(simpleRecord.getCoreId())
                       .identifier(simpleRecord.getIdentifier())
                       .verbatim(MAPPER.writeValueAsString(verbatim))
                       .basic(MAPPER.writeValueAsString(br))
@@ -451,6 +452,7 @@ public class Interpretation {
                           .forEach(es -> extensions.put(es.getKey(), es.getValue()));
                       return ExtendedRecord.newBuilder()
                           .setId(er.getId())
+                          .setCoreId(er.getId())
                           .setCoreTerms(er.getCoreTerms())
                           .setExtensions(extensions)
                           .build();

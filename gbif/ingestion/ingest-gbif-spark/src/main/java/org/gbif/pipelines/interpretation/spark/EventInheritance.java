@@ -139,10 +139,7 @@ public class EventInheritance {
 
     log.info("Event inheritance process finished");
 
-    return spark
-        .read()
-        .parquet(outputPath + "/" + SIMPLE_EVENT)
-        .as(Encoders.bean(Event.class));
+    return spark.read().parquet(outputPath + "/" + SIMPLE_EVENT).as(Encoders.bean(Event.class));
   }
 
   private static EventInheritedRecord inheritEventFrom(
