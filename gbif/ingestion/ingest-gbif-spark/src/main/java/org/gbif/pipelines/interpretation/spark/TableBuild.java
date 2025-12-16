@@ -142,9 +142,6 @@ public class TableBuild {
     // load hdfs view
     Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
 
-    // get the hdfs columns from the parquet with mappings to iceberg columns
-    List<HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
-
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
 
@@ -170,11 +167,14 @@ public class TableBuild {
     }
 
     // Create or populate the occurrence table SQL
-    spark.sql(getTableSQL(tableName));
+    spark.sql(getCreateTableSQL(tableName));
 
     // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
     StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
-    HdfsColumn[] colsToSelect = getColsToSelect(tblSchema, hdfsColumnList);
+    //    HdfsColumn[] colsToSelect = getColsToSelect(tblSchema, hdfsColumnList);
+
+    // get the hdfs columns from the parquet with mappings to iceberg columns
+    Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
 
     // Build the insert query
     String insertQuery =
@@ -182,8 +182,10 @@ public class TableBuild {
             "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
             config.getHiveDB(),
             tableName,
-            Arrays.stream(colsToSelect).map(c -> c.icebergCol).collect(Collectors.joining(", ")),
-            Arrays.stream(colsToSelect).map(c -> c.select).collect(Collectors.joining(", ")),
+            Arrays.stream(tblSchema.fields())
+                .map(StructField::name)
+                .collect(Collectors.joining(", ")),
+            generateSelectColumns(tblSchema, hdfsColumnList),
             config.getHiveDB(),
             table);
 
@@ -207,13 +209,29 @@ public class TableBuild {
     log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
   }
 
+  private static String generateSelectColumns(
+      StructType tblSchema, Map<String, HdfsColumn> hdfsColumnList) {
+    return Arrays.stream(tblSchema.fields())
+        .map(
+            structField -> {
+              HdfsColumn hdfsColumn = hdfsColumnList.get(structField.name());
+              if (hdfsColumn != null) {
+                return hdfsColumn.select;
+              } else {
+                // Column not found in HDFS, select NULL with alias
+                return "NULL AS `" + structField.name() + "`";
+              }
+            })
+        .collect(Collectors.joining(", "));
+  }
+
   @NotNull
-  private static List<HdfsColumn> getHdfsColumns(Dataset<Row> hdfs) {
+  private static Map<String, HdfsColumn> getHdfsColumns(Dataset<Row> hdfs) {
     // get the hdfs columns from the parquet
     String[] columns = hdfs.columns();
 
     // map them to select statements
-    List<HdfsColumn> hdfsColumnList = new ArrayList<>();
+    Map<String, HdfsColumn> hdfsColumnList = new HashMap<>();
 
     for (String col : columns) {
 
@@ -244,8 +262,9 @@ public class TableBuild {
         hdfsColumn.select = "`" + col + "` AS " + lower;
       }
 
-      hdfsColumnList.add(hdfsColumn);
+      hdfsColumnList.put(hdfsColumn.icebergCol, hdfsColumn);
     }
+
     return hdfsColumnList;
   }
 
@@ -287,7 +306,7 @@ public class TableBuild {
   }
 
   // FIXME - the table definition needs to be loaded from elsewhere...
-  static String getTableSQL(String tableName) {
+  static String getCreateTableSQL(String tableName) {
     return String.format(
         """
       CREATE TABLE IF NOT EXISTS %s (
@@ -752,5 +771,6 @@ public class TableBuild {
     String originalName;
     String select;
     String icebergCol;
+    Boolean existsInSource;
   }
 }
