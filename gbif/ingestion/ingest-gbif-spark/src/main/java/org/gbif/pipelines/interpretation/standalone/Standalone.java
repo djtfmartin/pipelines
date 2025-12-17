@@ -126,7 +126,7 @@ public class Standalone {
       case TABLEBUILD:
         callbackFn =
             (messagePublisher ->
-                new TableBuildCallback(config, messagePublisher, "occurrence", OCCURRENCE_HDFS));
+                new TableBuildCallback(config, messagePublisher, master, "occurrence", OCCURRENCE_HDFS));
         break;
       case TABLEBUILD_DISTRIBUTED:
         callbackFn =
@@ -147,7 +147,7 @@ public class Standalone {
                     config, messagePublisher, "event", EVENT_HDFS));
         break;
       case INDEXING:
-        callbackFn = (messagePublisher -> new IndexingCallback(config, messagePublisher));
+        callbackFn = (messagePublisher -> new IndexingCallback(config, messagePublisher, master));
         break;
       case INDEXING_DISTRIBUTED:
         callbackFn =

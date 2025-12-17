@@ -20,9 +20,10 @@ public class TableBuildCallback
   public TableBuildCallback(
       PipelinesConfig pipelinesConfig,
       MessagePublisher publisher,
+      String master,
       String tableName,
       String sourceDirectory) {
-    super(pipelinesConfig, publisher);
+    super(pipelinesConfig, publisher, master);
     this.tableName = tableName;
     this.sourceDirectory = sourceDirectory;
   }
