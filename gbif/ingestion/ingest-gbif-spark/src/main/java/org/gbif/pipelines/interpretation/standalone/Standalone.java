@@ -11,6 +11,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.prometheus.client.exporter.HTTPServer;
 import io.prometheus.client.hotspot.DefaultExports;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.common.messaging.ConnectionParameters;
@@ -54,6 +55,9 @@ public class Standalone {
 
     @Parameter(names = "--threadSleepMillis", description = "exchange", required = false)
     private long threadSleepMillis = 2000;
+
+    @Parameter(names = "--prometheusPort", description = "metrics port", required = false)
+    private int prometheusPort = 9404;
   }
 
   public static void main(String[] argsv) throws Exception {
@@ -64,15 +68,18 @@ public class Standalone {
     Mode mode = Mode.valueOf(args.mode);
     PipelinesConfig config = loadConfig(args.config);
 
-    new Standalone()
-        .start(
-            mode,
-            config,
-            args.queueName,
-            args.routingKey,
-            args.exchange,
-            args.threads,
-            args.threadSleepMillis);
+    // start Prometheus HTTP server
+    try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)){
+      new Standalone()
+              .start(
+                      mode,
+                      config,
+                      args.queueName,
+                      args.routingKey,
+                      args.exchange,
+                      args.threads,
+                      args.threadSleepMillis);
+    }
   }
 
   public void start(
