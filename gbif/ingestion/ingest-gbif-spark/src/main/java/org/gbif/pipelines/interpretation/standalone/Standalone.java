@@ -6,13 +6,12 @@ import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import io.prometheus.client.exporter.HTTPServer;
+import io.prometheus.client.hotspot.DefaultExports;
 import java.io.IOException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import io.prometheus.client.exporter.HTTPServer;
-import io.prometheus.client.hotspot.DefaultExports;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.common.messaging.ConnectionParameters;
 import org.gbif.common.messaging.DefaultMessagePublisher;
@@ -69,16 +68,16 @@ public class Standalone {
     PipelinesConfig config = loadConfig(args.config);
 
     // start Prometheus HTTP server
-    try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)){
+    try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)) {
       new Standalone()
-              .start(
-                      mode,
-                      config,
-                      args.queueName,
-                      args.routingKey,
-                      args.exchange,
-                      args.threads,
-                      args.threadSleepMillis);
+          .start(
+              mode,
+              config,
+              args.queueName,
+              args.routingKey,
+              args.exchange,
+              args.threads,
+              args.threadSleepMillis);
     }
   }
 

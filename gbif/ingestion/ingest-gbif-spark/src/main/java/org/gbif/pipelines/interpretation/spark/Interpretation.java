@@ -111,7 +111,10 @@ public class Interpretation {
     @Parameter(names = "--numberOfShards", description = "Number of shards")
     private int numberOfShards = 10;
 
-    @Parameter(names = "--useCheckpoints", description = "Use checkpoints where possible")
+    @Parameter(
+        names = "--useCheckpoints",
+        description = "Use checkpoints where possible",
+        arity = 1)
     private boolean useCheckpoints = true;
 
     @Parameter(
@@ -201,20 +204,25 @@ public class Interpretation {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     // Load the extended records
+    sparkLog(spark, "loadExtendedRecords", "Loading extended records", useCheckpoints);
     Dataset<ExtendedRecord> extendedRecords =
         loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards, useCheckpoints);
 
     // Process identifiers - persisting new identifiers
+    sparkLog(spark, "processIdentifiers", "Processing identifiers", useCheckpoints);
     processIdentifiers(spark, fs, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
 
     // load identifiers
+    sparkLog(spark, "loadIdentifiers", "Loading identifiers", useCheckpoints);
     Dataset<IdentifierRecord> identifiers = loadIdentifiers(spark, outputPath);
     final long identifiersCount = identifiers.count();
 
     // check all identifier records have a valid internal ID
+    sparkLog(spark, "checkIdentifiers", "Checking identifiers", useCheckpoints);
     checkIdentifiers(identifiers);
 
     // join extended records and identifiers
+    sparkLog(spark, "joinRecordsAndIdentifiers", "Joining records and identifiers", useCheckpoints);
     Dataset<Occurrence> simpleRecords =
         joinRecordsAndIdentifiers(spark, extendedRecords, identifiers, outputPath, useCheckpoints);
 
@@ -222,16 +230,19 @@ public class Interpretation {
     final MetadataRecord metadata = getMetadataRecord(config, datasetId);
 
     // run all transforms
+    sparkLog(spark, "runTransforms", "Running transforms", useCheckpoints);
     Dataset<Occurrence> interpreted =
         runTransforms(spark, config, simpleRecords, metadata, outputPath, useCheckpoints);
 
     // write parquet for elastic
+    sparkLog(spark, "toJson", "Writing JSON output", useCheckpoints);
     toJson(interpreted, metadata)
         .write()
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/" + OCCURRENCE_JSON);
 
     // write parquet for hdfs view
+    sparkLog(spark, "toHdfs", "Writing HDFS output", useCheckpoints);
     toHdfs(interpreted, metadata)
         .write()
         .mode(SaveMode.Overwrite)
@@ -455,10 +466,6 @@ public class Interpretation {
       int numberOfShards,
       boolean useCheckpoints) {
 
-    spark
-        .sparkContext()
-        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
-
     final Set<String> allowExtensions =
         Optional.ofNullable(config.getExtensionsAllowedForVerbatimSet())
             .orElse(Collections.emptySet());
@@ -499,6 +506,13 @@ public class Interpretation {
           .as(Encoders.bean(ExtendedRecord.class));
     } else {
       return extended;
+    }
+  }
+
+  private static void sparkLog(
+      SparkSession spark, String groupId, String message, boolean useCheckpoints) {
+    if (useCheckpoints) {
+      spark.sparkContext().setJobGroup(groupId, message, true);
     }
   }
 
