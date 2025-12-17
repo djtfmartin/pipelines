@@ -43,6 +43,9 @@ public class Standalone {
     @Parameter(names = "--threads", description = "Number of threads")
     private int threads = 1;
 
+    @Parameter(names = "--master", description = "Master - relevant for embedded spark only")
+    private String master = "local[1]";
+
     @Parameter(names = "--queueName", description = "queueName", required = true)
     private String queueName;
 
@@ -76,6 +79,7 @@ public class Standalone {
               args.queueName,
               args.routingKey,
               args.exchange,
+              args.master,
               args.threads,
               args.threadSleepMillis);
     }
@@ -87,6 +91,7 @@ public class Standalone {
       String queueName,
       String routingKey,
       String exchange,
+      String master,
       int threads,
       long threadSleepMillis) {
 
@@ -94,14 +99,15 @@ public class Standalone {
 
     switch (mode) {
       case IDENTIFIER:
-        callbackFn = (messagePublisher -> new IdentifierCallback(config, messagePublisher));
+        callbackFn = (messagePublisher -> new IdentifierCallback(config, messagePublisher, master));
         break;
       case IDENTIFIER_DISTRIBUTED:
         callbackFn =
             (messagePublisher -> new IdentifierDistributedCallback(config, messagePublisher));
         break;
       case INTERPRETATION:
-        callbackFn = (messagePublisher -> new InterpretationCallback(config, messagePublisher));
+        callbackFn =
+            (messagePublisher -> new InterpretationCallback(config, messagePublisher, master));
         break;
       case INTERPRETATION_DISTRIBUTED:
         callbackFn =
@@ -109,7 +115,8 @@ public class Standalone {
         break;
       case EVENTS_INTERPRETATION:
         callbackFn =
-            (messagePublisher -> new EventsInterpretationCallback(config, messagePublisher));
+            (messagePublisher ->
+                new EventsInterpretationCallback(config, messagePublisher, master));
         break;
       case EVENTS_INTERPRETATION_DISTRIBUTED:
         callbackFn =
@@ -130,7 +137,8 @@ public class Standalone {
       case EVENTS_TABLEBUILD:
         callbackFn =
             (messagePublisher ->
-                new EventsTableBuildCallback(config, messagePublisher, "event", EVENT_HDFS));
+                new EventsTableBuildCallback(
+                    config, messagePublisher, master, "event", EVENT_HDFS));
         break;
       case EVENTS_TABLEBUILD_DISTRIBUTED:
         callbackFn =
@@ -146,14 +154,15 @@ public class Standalone {
             (messagePublisher -> new IndexingDistributedCallback(config, messagePublisher));
         break;
       case EVENTS_INDEXING:
-        callbackFn = (messagePublisher -> new EventsIndexingCallback(config, messagePublisher));
+        callbackFn =
+            (messagePublisher -> new EventsIndexingCallback(config, messagePublisher, master));
         break;
       case EVENTS_INDEXING_DISTRIBUTED:
         callbackFn =
             (messagePublisher -> new EventsIndexingDistributedCallback(config, messagePublisher));
         break;
       case FRAGMENTER:
-        callbackFn = (messagePublisher -> new FragmenterCallback(config, messagePublisher));
+        callbackFn = (messagePublisher -> new FragmenterCallback(config, messagePublisher, master));
         break;
       case FRAGMENTER_DISTRIBUTED:
         callbackFn =

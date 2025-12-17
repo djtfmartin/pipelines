@@ -17,8 +17,9 @@ public class IdentifierCallback
     extends PipelinesCallback<PipelinesVerbatimMessage, PipelinesVerbatimMessage>
     implements MessageCallback<PipelinesVerbatimMessage> {
 
-  public IdentifierCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+  public IdentifierCallback(
+      PipelinesConfig pipelinesConfig, MessagePublisher publisher, String master) {
+    super(pipelinesConfig, publisher, master);
   }
 
   @Override

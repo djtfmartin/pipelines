@@ -14,7 +14,7 @@ public class EventsIndexingDistributedCallback extends EventsIndexingCallback {
 
   public EventsIndexingDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+    super(pipelinesConfig, publisher, null);
   }
 
   @Override

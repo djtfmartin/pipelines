@@ -11,7 +11,7 @@ public class IdentifierDistributedCallback extends IdentifierCallback {
 
   public IdentifierDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+    super(pipelinesConfig, publisher, null);
   }
 
   @Override

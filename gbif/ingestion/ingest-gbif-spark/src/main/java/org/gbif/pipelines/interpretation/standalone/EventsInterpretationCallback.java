@@ -20,8 +20,9 @@ public class EventsInterpretationCallback
     extends PipelinesCallback<PipelinesEventsMessage, PipelinesEventsInterpretedMessage>
     implements MessageCallback<PipelinesEventsMessage> {
 
-  public EventsInterpretationCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+  public EventsInterpretationCallback(
+      PipelinesConfig pipelinesConfig, MessagePublisher publisher, String master) {
+    super(pipelinesConfig, publisher, master);
   }
 
   @Override

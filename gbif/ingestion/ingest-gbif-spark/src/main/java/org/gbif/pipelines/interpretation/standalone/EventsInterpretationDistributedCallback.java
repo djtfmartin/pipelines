@@ -11,7 +11,7 @@ public class EventsInterpretationDistributedCallback extends EventsInterpretatio
 
   public EventsInterpretationDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+    super(pipelinesConfig, publisher, null);
   }
 
   @Override

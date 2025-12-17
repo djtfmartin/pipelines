@@ -18,8 +18,9 @@ public class EventsIndexingCallback
     extends PipelinesCallback<PipelinesEventsInterpretedMessage, PipelinesEventsIndexedMessage>
     implements MessageCallback<PipelinesEventsInterpretedMessage> {
 
-  public EventsIndexingCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+  public EventsIndexingCallback(
+      PipelinesConfig pipelinesConfig, MessagePublisher publisher, String master) {
+    super(pipelinesConfig, publisher, master);
   }
 
   @Override

@@ -15,8 +15,9 @@ public class FragmenterCallback
     extends PipelinesCallback<PipelinesInterpretedMessage, PipelinesFragmenterMessage>
     implements MessageCallback<PipelinesInterpretedMessage>, AutoCloseable {
 
-  public FragmenterCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+  public FragmenterCallback(
+      PipelinesConfig pipelinesConfig, MessagePublisher publisher, String master) {
+    super(pipelinesConfig, publisher, master);
   }
 
   @Override

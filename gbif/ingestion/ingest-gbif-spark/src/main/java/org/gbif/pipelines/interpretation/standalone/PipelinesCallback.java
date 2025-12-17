@@ -55,6 +55,7 @@ public abstract class PipelinesCallback<
   protected final CloseableHttpClient httpClient;
   protected SparkSession sparkSession;
   protected FileSystem fileSystem;
+  protected String sparkMaster;
 
   private static final Set<PipelineStep.Status> FINISHED_STATE_SET =
       new HashSet<>(
@@ -94,7 +95,8 @@ public abstract class PipelinesCallback<
               .retryOnResult(Objects::isNull)
               .build());
 
-  public PipelinesCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
+  public PipelinesCallback(
+      PipelinesConfig pipelinesConfig, MessagePublisher publisher, String sparkMaster) {
     this.pipelinesConfig = pipelinesConfig;
     this.publisher = publisher;
     this.historyClient =
@@ -112,6 +114,11 @@ public abstract class PipelinesCallback<
             .setDefaultRequestConfig(
                 RequestConfig.custom().setConnectTimeout(60_000).setSocketTimeout(60_000).build())
             .build();
+    this.sparkMaster = sparkMaster;
+  }
+
+  public PipelinesCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
+    this(pipelinesConfig, publisher, null);
   }
 
   public void init() throws IOException {
@@ -119,7 +126,7 @@ public abstract class PipelinesCallback<
     Configuration hadoopConf = null;
     if (isStandalone()) {
       SparkSession.Builder sparkBuilder = SparkSession.builder().appName("pipelines_standalone");
-      sparkBuilder = sparkBuilder.master("local[*]");
+      sparkBuilder = sparkBuilder.master(sparkMaster);
 
       sparkBuilder.config("spark.driver.extraClassPath", "/etc/hadoop/conf");
       sparkBuilder.config("spark.executor.extraClassPath", "/etc/hadoop/conf");

@@ -11,7 +11,7 @@ public class InterpretationDistributedCallback extends InterpretationCallback {
 
   public InterpretationDistributedCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+    super(pipelinesConfig, publisher, null);
   }
 
   @Override

@@ -15,8 +15,9 @@ public class InterpretationCallback
     extends PipelinesCallback<PipelinesVerbatimMessage, PipelinesInterpretedMessage>
     implements MessageCallback<PipelinesVerbatimMessage> {
 
-  public InterpretationCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+  public InterpretationCallback(
+      PipelinesConfig pipelinesConfig, MessagePublisher publisher, String master) {
+    super(pipelinesConfig, publisher, master);
   }
 
   @Override
