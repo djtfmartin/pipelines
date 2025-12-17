@@ -73,6 +73,7 @@ public class DistributedUtil {
 
     MDC.put("datasetKey", message.getDatasetUuid().toString());
     log.info(timeAndRecPerSecond(jobName, start, recordsNumber));
+    MDC.remove("datasetKey");
   }
 
   public static String timeAndRecPerSecond(String jobName, long start, long recordsNumber) {

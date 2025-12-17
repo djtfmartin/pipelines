@@ -262,7 +262,9 @@ public class Interpretation {
             PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
         outputPath + "/" + METRICS_FILENAME);
 
+    MDC.put("datasetKey", datasetId);
     log.info(timeAndRecPerSecond("interpretation", start, identifiersCount));
+    MDC.remove("datasetKey");
   }
 
   private static void checkIdentifiers(Dataset<IdentifierRecord> identifiers) {
