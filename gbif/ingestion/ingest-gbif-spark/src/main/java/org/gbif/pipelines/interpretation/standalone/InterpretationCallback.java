@@ -41,7 +41,8 @@ public class InterpretationCallback
         message.getAttempt(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         message.getValidationResult().isTripletValid(),
-        message.getValidationResult().isOccurrenceIdValid());
+        message.getValidationResult().isOccurrenceIdValid(),
+        false);
   }
 
   @Override

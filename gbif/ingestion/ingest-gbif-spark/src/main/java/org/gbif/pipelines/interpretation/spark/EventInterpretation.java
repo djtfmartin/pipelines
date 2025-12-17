@@ -125,7 +125,7 @@ public class EventInterpretation {
 
     // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
-        loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards);
+        loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards, true);
 
     Dataset<EventLineage> lineage = generateLineage(spark, extendedRecords);
 

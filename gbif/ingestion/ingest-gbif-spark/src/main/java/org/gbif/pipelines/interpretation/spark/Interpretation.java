@@ -111,6 +111,9 @@ public class Interpretation {
     @Parameter(names = "--numberOfShards", description = "Number of shards")
     private int numberOfShards = 10;
 
+    @Parameter(names = "--useCheckpoints", description = "Use checkpoints where possible")
+    private boolean useCheckpoints = true;
+
     @Parameter(
         names = {"--help", "-h"},
         help = true,
@@ -147,7 +150,8 @@ public class Interpretation {
         attempt,
         args.numberOfShards,
         args.tripletValid,
-        args.occurrenceIdValid);
+        args.occurrenceIdValid,
+        args.useCheckpoints);
 
     fileSystem.close();
     spark.stop();
@@ -167,7 +171,8 @@ public class Interpretation {
       int attempt,
       int numberOfShards,
       Boolean tripletValid,
-      Boolean occurrenceIdValid)
+      Boolean occurrenceIdValid,
+      Boolean useCheckpoints)
       throws IOException {
 
     long start = System.currentTimeMillis();
@@ -183,7 +188,7 @@ public class Interpretation {
 
     // Load the extended records
     Dataset<ExtendedRecord> extendedRecords =
-        loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards);
+        loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards, useCheckpoints);
 
     // Process identifiers - persisting new identifiers
     processIdentifiers(spark, fs, config, outputPath, datasetId, tripletValid, occurrenceIdValid);
@@ -197,14 +202,14 @@ public class Interpretation {
 
     // join extended records and identifiers
     Dataset<Occurrence> simpleRecords =
-        joinRecordsAndIdentifiers(extendedRecords, identifiers, outputPath, spark);
+        joinRecordsAndIdentifiers(spark, extendedRecords, identifiers, outputPath, useCheckpoints);
 
     // a single call to the registry to get the dataset metadata
     final MetadataRecord metadata = getMetadataRecord(config, datasetId);
 
     // run all transforms
     Dataset<Occurrence> interpreted =
-        runTransforms(spark, config, simpleRecords, metadata, outputPath);
+        runTransforms(spark, config, simpleRecords, metadata, outputPath, useCheckpoints);
 
     // write parquet for elastic
     toJson(interpreted, metadata)
@@ -268,41 +273,46 @@ public class Interpretation {
    * @param identifiers
    * @param outputPath
    * @param spark
-   * @return
+   * @return The dataset of simple occurrence records.
    */
   private static Dataset<Occurrence> joinRecordsAndIdentifiers(
+      SparkSession spark,
       Dataset<ExtendedRecord> extendedRecords,
       Dataset<IdentifierRecord> identifiers,
       String outputPath,
-      SparkSession spark) {
+      boolean useCheckpoints) {
 
-    extendedRecords
-        .as("extendedRecord")
-        .joinWith(identifiers, extendedRecords.col("id").equalTo(identifiers.col("id")))
-        .map(
-            (MapFunction<Tuple2<ExtendedRecord, IdentifierRecord>, Occurrence>)
-                row -> {
-                  ExtendedRecord er = row._1;
-                  IdentifierRecord ir = row._2;
-                  return Occurrence.builder()
-                      .id(er.getId())
-                      .coreId(er.getCoreId())
-                      .internalId(ir.getInternalId())
-                      .verbatim(MAPPER.writeValueAsString(er))
-                      .identifier(MAPPER.writeValueAsString(ir))
-                      .build();
-                },
-            Encoders.bean(Occurrence.class))
-        // only include records with ids
-        .filter((FilterFunction<Occurrence>) occurrence -> occurrence.getInternalId() != null)
-        .write()
-        .mode(SaveMode.Overwrite)
-        .parquet(outputPath + "/" + EXTENDED_IDENTIFIERS);
+    Dataset<Occurrence> occurrences =
+        extendedRecords
+            .as("extendedRecord")
+            .joinWith(identifiers, extendedRecords.col("id").equalTo(identifiers.col("id")))
+            .map(
+                (MapFunction<Tuple2<ExtendedRecord, IdentifierRecord>, Occurrence>)
+                    row -> {
+                      ExtendedRecord er = row._1;
+                      IdentifierRecord ir = row._2;
+                      return Occurrence.builder()
+                          .id(er.getId())
+                          .coreId(er.getCoreId())
+                          .internalId(ir.getInternalId())
+                          .verbatim(MAPPER.writeValueAsString(er))
+                          .identifier(MAPPER.writeValueAsString(ir))
+                          .build();
+                    },
+                Encoders.bean(Occurrence.class))
+            // only include records with ids
+            .filter((FilterFunction<Occurrence>) occurrence -> occurrence.getInternalId() != null);
 
-    return spark
-        .read()
-        .parquet(outputPath + "/" + EXTENDED_IDENTIFIERS)
-        .as(Encoders.bean(Occurrence.class));
+    if (useCheckpoints) {
+      occurrences.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + EXTENDED_IDENTIFIERS);
+
+      return spark
+          .read()
+          .parquet(outputPath + "/" + EXTENDED_IDENTIFIERS)
+          .as(Encoders.bean(Occurrence.class));
+    } else {
+      return occurrences;
+    }
   }
 
   /**
@@ -333,7 +343,8 @@ public class Interpretation {
       PipelinesConfig config,
       Dataset<Occurrence> simpleRecords,
       MetadataRecord metadata,
-      String outputPath) {
+      String outputPath,
+      Boolean useCheckpoints) {
 
     // Set up our transforms
     DefaultValuesTransform defaultValuesTransform = DefaultValuesTransform.create(config, metadata);
@@ -400,11 +411,15 @@ public class Interpretation {
     // write simple interpreted records to disk
     interpreted.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + SIMPLE_OCCURRENCE);
 
-    // re-load
-    return spark
-        .read()
-        .parquet(outputPath + "/" + SIMPLE_OCCURRENCE)
-        .as(Encoders.bean(Occurrence.class));
+    if (useCheckpoints) {
+      // re-load
+      return spark
+          .read()
+          .parquet(outputPath + "/" + SIMPLE_OCCURRENCE)
+          .as(Encoders.bean(Occurrence.class));
+    } else {
+      return interpreted;
+    }
   }
 
   /**
@@ -424,7 +439,8 @@ public class Interpretation {
       PipelinesConfig config,
       String inputPath,
       String outputPath,
-      int numberOfShards) {
+      int numberOfShards,
+      boolean useCheckpoints) {
 
     spark
         .sparkContext()
@@ -460,14 +476,19 @@ public class Interpretation {
                 Encoders.bean(ExtendedRecord.class))
             .repartition(numberOfShards);
 
-    // write to parquet for debug purposes
+    // write to parquet for downstream steps
     extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + VERBATIM_EXT_FILTERED);
 
-    // reload
-    return spark
-        .read()
-        .parquet(outputPath + "/" + VERBATIM_EXT_FILTERED)
-        .as(Encoders.bean(ExtendedRecord.class));
+    if (useCheckpoints) {
+
+      // reload
+      return spark
+          .read()
+          .parquet(outputPath + "/" + VERBATIM_EXT_FILTERED)
+          .as(Encoders.bean(ExtendedRecord.class));
+    } else {
+      return extended;
+    }
   }
 
   private static Dataset<IdentifierRecord> loadIdentifiers(SparkSession spark, String outputPath) {

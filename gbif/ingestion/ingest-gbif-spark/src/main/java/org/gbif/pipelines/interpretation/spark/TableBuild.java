@@ -166,6 +166,14 @@ public class TableBuild {
       spark.sql("SELECT COUNT(*) FROM " + table).show(false);
     }
 
+    Dataset<Row> df =
+        spark.sql("SELECT COUNT(*) AS cnt FROM " + table + " WHERE datasetKey IS NULL");
+    long count = df.collectAsList().get(0).getLong(0);
+    if (count > 0) {
+      log.warn("There are {} records with NULL datasetKey in the temporary table {}", count, table);
+      throw new IllegalStateException("There are " + count + " records with NULL datasetKey");
+    }
+
     // Create or populate the occurrence table SQL
     spark.sql(getCreateTableSQL(tableName));
 
