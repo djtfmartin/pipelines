@@ -44,7 +44,7 @@ public class Standalone {
     private int threads = 1;
 
     @Parameter(names = "--master", description = "Master - relevant for embedded spark only")
-    private String master = "local[1]";
+    private String master = "local[*]";
 
     @Parameter(names = "--queueName", description = "queueName", required = true)
     private String queueName;
@@ -126,7 +126,8 @@ public class Standalone {
       case TABLEBUILD:
         callbackFn =
             (messagePublisher ->
-                new TableBuildCallback(config, messagePublisher, master, "occurrence", OCCURRENCE_HDFS));
+                new TableBuildCallback(
+                    config, messagePublisher, master, "occurrence", OCCURRENCE_HDFS));
         break;
       case TABLEBUILD_DISTRIBUTED:
         callbackFn =

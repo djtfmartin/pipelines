@@ -16,7 +16,8 @@ public class IndexingCallback
     extends PipelinesCallback<PipelinesInterpretedMessage, PipelinesIndexedMessage>
     implements MessageCallback<PipelinesInterpretedMessage> {
 
-  public IndexingCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher, String master) {
+  public IndexingCallback(
+      PipelinesConfig pipelinesConfig, MessagePublisher publisher, String master) {
     super(pipelinesConfig, publisher, master);
   }
 

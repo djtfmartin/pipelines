@@ -15,7 +15,7 @@ public class TableBuildDistributedCallback extends TableBuildCallback {
       MessagePublisher publisher,
       String tableName,
       String sourceDirectory) {
-    super(pipelinesConfig, publisher, tableName, sourceDirectory);
+    super(pipelinesConfig, publisher, null, tableName, sourceDirectory);
   }
 
   @Override
