@@ -13,7 +13,7 @@ import org.gbif.pipelines.interpretation.spark.Indexing;
 public class IndexingDistributedCallback extends IndexingCallback {
 
   public IndexingDistributedCallback(PipelinesConfig pipelinesConfig, MessagePublisher publisher) {
-    super(pipelinesConfig, publisher);
+    super(pipelinesConfig, publisher, null);
   }
 
   @Override
