@@ -437,6 +437,37 @@
           <scope>compile</scope>
       </dependency>
 
+
+      <!-- Prometheus monitoring for Spark -->
+      <dependency>
+          <groupId>io.prometheus</groupId>
+          <artifactId>simpleclient</artifactId>
+          <version>0.16.0</version>
+      </dependency>
+
+      <!-- Choose ONE HTTP exposure option -->
+
+      <!-- Servlet-based apps -->
+      <dependency>
+          <groupId>io.prometheus</groupId>
+          <artifactId>simpleclient_servlet</artifactId>
+          <version>0.16.0</version>
+      </dependency>
+
+      <!-- OR: Embedded HTTP server -->
+      <dependency>
+          <groupId>io.prometheus</groupId>
+          <artifactId>simpleclient_httpserver</artifactId>
+          <version>0.16.0</version>
+      </dependency>
+
+      <!-- Optional JVM metrics -->
+      <dependency>
+          <groupId>io.prometheus</groupId>
+          <artifactId>simpleclient_hotspot</artifactId>
+          <version>0.16.0</version>
+      </dependency>
+
   </dependencies>
 
   <build>

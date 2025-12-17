@@ -163,6 +163,20 @@ public class Interpretation {
     sparkBuilder.config("spark.jars.packages", "org.apache.spark:spark-avro_2.12:3.5.1");
   }
 
+  /**
+   * Runs the interpretation pipeline.
+   *
+   * @param spark The Spark session
+   * @param fs The Hadoop file system
+   * @param config The pipelines configuration
+   * @param datasetId The dataset ID
+   * @param attempt The attempt number
+   * @param numberOfShards The number of shards to repartition the data
+   * @param tripletValid Whether all triplets are valid
+   * @param occurrenceIdValid Whether all occurrence IDs are valid
+   * @param useCheckpoints Whether to use checkpoints for intermediate datasets
+   * @throws IOException If an I/O error occurs
+   */
   public static void runInterpretation(
       SparkSession spark,
       FileSystem fs,
@@ -305,7 +319,6 @@ public class Interpretation {
 
     if (useCheckpoints) {
       occurrences.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + EXTENDED_IDENTIFIERS);
-
       return spark
           .read()
           .parquet(outputPath + "/" + EXTENDED_IDENTIFIERS)
@@ -454,7 +467,7 @@ public class Interpretation {
         spark
             .read()
             .format("parquet")
-            .load(inputPath + "/verbatim")
+            .load(inputPath + "/" + OCCURRENCE_VERBATIM)
             .as(Encoders.bean(ExtendedRecord.class))
             .filter(
                 (FilterFunction<ExtendedRecord>) er -> er != null && !er.getCoreTerms().isEmpty())
@@ -476,11 +489,9 @@ public class Interpretation {
                 Encoders.bean(ExtendedRecord.class))
             .repartition(numberOfShards);
 
-    // write to parquet for downstream steps
-    extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + VERBATIM_EXT_FILTERED);
-
     if (useCheckpoints) {
-
+      // write to parquet for downstream steps
+      extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + VERBATIM_EXT_FILTERED);
       // reload
       return spark
           .read()
@@ -597,26 +608,17 @@ public class Interpretation {
               OccurrenceJsonConverter c =
                   OccurrenceJsonConverter.builder()
                       .metadata(metadataRecord)
-                      .verbatim(
-                          MAPPER.readValue((String) record.getVerbatim(), ExtendedRecord.class))
-                      .basic(MAPPER.readValue((String) record.getBasic(), BasicRecord.class))
-                      .location(
-                          MAPPER.readValue((String) record.getLocation(), LocationRecord.class))
-                      .temporal(
-                          MAPPER.readValue((String) record.getTemporal(), TemporalRecord.class))
-                      .multiTaxon(
-                          MAPPER.readValue((String) record.getTaxon(), MultiTaxonRecord.class))
-                      .grscicoll(
-                          MAPPER.readValue((String) record.getGrscicoll(), GrscicollRecord.class))
-                      .identifier(
-                          MAPPER.readValue((String) record.getIdentifier(), IdentifierRecord.class))
-                      .multimedia(
-                          MAPPER.readValue((String) record.getMultimedia(), MultimediaRecord.class))
+                      .verbatim(MAPPER.readValue(record.getVerbatim(), ExtendedRecord.class))
+                      .basic(MAPPER.readValue(record.getBasic(), BasicRecord.class))
+                      .location(MAPPER.readValue(record.getLocation(), LocationRecord.class))
+                      .temporal(MAPPER.readValue(record.getTemporal(), TemporalRecord.class))
+                      .multiTaxon(MAPPER.readValue(record.getTaxon(), MultiTaxonRecord.class))
+                      .grscicoll(MAPPER.readValue(record.getGrscicoll(), GrscicollRecord.class))
+                      .identifier(MAPPER.readValue(record.getIdentifier(), IdentifierRecord.class))
+                      .multimedia(MAPPER.readValue(record.getMultimedia(), MultimediaRecord.class))
                       .dnaDerivedData(
-                          MAPPER.readValue(
-                              (String) record.getDnaDerivedData(), DnaDerivedDataRecord.class))
-                      .clustering(
-                          MAPPER.readValue((String) record.getClustering(), ClusteringRecord.class))
+                          MAPPER.readValue(record.getDnaDerivedData(), DnaDerivedDataRecord.class))
+                      .clustering(MAPPER.readValue(record.getClustering(), ClusteringRecord.class))
                       .build();
 
               return c.convert();
@@ -632,26 +634,21 @@ public class Interpretation {
               OccurrenceHdfsRecordConverter c =
                   OccurrenceHdfsRecordConverter.builder()
                       .metadataRecord(metadataRecord)
-                      .extendedRecord(
-                          MAPPER.readValue((String) record.getVerbatim(), ExtendedRecord.class))
-                      .basicRecord(MAPPER.readValue((String) record.getBasic(), BasicRecord.class))
-                      .locationRecord(
-                          MAPPER.readValue((String) record.getLocation(), LocationRecord.class))
-                      .temporalRecord(
-                          MAPPER.readValue((String) record.getTemporal(), TemporalRecord.class))
-                      .multiTaxonRecord(
-                          MAPPER.readValue((String) record.getTaxon(), MultiTaxonRecord.class))
+                      .extendedRecord(MAPPER.readValue(record.getVerbatim(), ExtendedRecord.class))
+                      .basicRecord(MAPPER.readValue(record.getBasic(), BasicRecord.class))
+                      .locationRecord(MAPPER.readValue(record.getLocation(), LocationRecord.class))
+                      .temporalRecord(MAPPER.readValue(record.getTemporal(), TemporalRecord.class))
+                      .multiTaxonRecord(MAPPER.readValue(record.getTaxon(), MultiTaxonRecord.class))
                       .grscicollRecord(
-                          MAPPER.readValue((String) record.getGrscicoll(), GrscicollRecord.class))
+                          MAPPER.readValue(record.getGrscicoll(), GrscicollRecord.class))
                       .identifierRecord(
-                          MAPPER.readValue((String) record.getIdentifier(), IdentifierRecord.class))
+                          MAPPER.readValue(record.getIdentifier(), IdentifierRecord.class))
                       .multimediaRecord(
-                          MAPPER.readValue((String) record.getMultimedia(), MultimediaRecord.class))
+                          MAPPER.readValue(record.getMultimedia(), MultimediaRecord.class))
                       .dnaDerivedDataRecord(
-                          MAPPER.readValue(
-                              (String) record.getDnaDerivedData(), DnaDerivedDataRecord.class))
+                          MAPPER.readValue(record.getDnaDerivedData(), DnaDerivedDataRecord.class))
                       .clusteringRecord(
-                          MAPPER.readValue((String) record.getClustering(), ClusteringRecord.class))
+                          MAPPER.readValue(record.getClustering(), ClusteringRecord.class))
                       .build();
 
               return c.convert();

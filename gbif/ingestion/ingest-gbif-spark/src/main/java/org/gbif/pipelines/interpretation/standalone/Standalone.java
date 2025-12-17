@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import io.prometheus.client.hotspot.DefaultExports;
 import lombok.extern.slf4j.Slf4j;
 import org.gbif.common.messaging.ConnectionParameters;
 import org.gbif.common.messaging.DefaultMessagePublisher;
@@ -22,6 +24,10 @@ import org.jetbrains.annotations.NotNull;
 /** The runnable */
 @Slf4j
 public class Standalone {
+
+  static {
+    DefaultExports.initialize();
+  }
 
   private volatile boolean running = true;
 
