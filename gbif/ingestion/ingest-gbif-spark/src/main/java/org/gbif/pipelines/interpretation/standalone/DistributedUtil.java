@@ -88,7 +88,7 @@ public class DistributedUtil {
 
     return String.format(
         "Finished %s in %02dh %02dm %02ds. Rec/s: %6.2f, Total records: %,d",
-        jobName, hours, minutes, seconds, recordsNumber, recPerSec);
+        jobName, hours, minutes, seconds, recPerSec, recordsNumber);
   }
 
   @NotNull
