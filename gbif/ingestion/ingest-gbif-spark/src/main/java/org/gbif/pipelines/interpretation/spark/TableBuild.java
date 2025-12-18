@@ -167,7 +167,12 @@ public class TableBuild {
     }
 
     Dataset<Row> df =
-        spark.sql("SELECT COUNT(*) AS cnt FROM " + table + " WHERE datasetKey IS NULL");
+        spark.sql("SELECT COUNT(*) AS cnt FROM " + table + " " +
+                "WHERE datasetKey IS NULL " +
+                "OR datasetKey = '' " +
+                "OR gbifId IS NULL " +
+                "OR gbifId = ''"
+        );
     long count = df.collectAsList().get(0).getLong(0);
     if (count > 0) {
       log.warn("There are {} records with NULL datasetKey in the temporary table {}", count, table);
