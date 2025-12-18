@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -105,6 +106,7 @@ public class TableBuild {
   public static void configSparkSession(SparkSession.Builder sparkBuilder, PipelinesConfig config) {
     sparkBuilder
         .enableHiveSupport()
+        .config("spark.jars.packages", "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.6.0")
         .config("spark.sql.catalog.iceberg", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.iceberg.type", "hive")
         .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
@@ -146,13 +148,17 @@ public class TableBuild {
 
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
+    StructType schema =
+        new StructType()
+            .add("extHumboldt", DataTypes.StringType)
+            .add("extMultimedia", DataTypes.StringType);
+
     // load hdfs view
     Dataset<T> hdfs =
         spark
             .read()
+            .schema(schema)
             .parquet(outputPath + "/" + sourceDirectory)
-            .withColumn("extMultimedia", functions.to_json(functions.col("extMultimedia")))
-            .withColumn("extHumboldt", functions.to_json(functions.col("extHumboldt")))
             .as(Encoders.bean(recordClass));
 
     // Generate a unique temporary table name
