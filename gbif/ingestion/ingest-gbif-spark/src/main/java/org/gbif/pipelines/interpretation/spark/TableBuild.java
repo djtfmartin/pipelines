@@ -1,6 +1,8 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.lit;
+import static org.apache.spark.sql.functions.concat;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -174,7 +176,7 @@ public class TableBuild {
             .map(
                 name -> {
                   if (List.of("extmultimedia", "exthumboldt").contains(name)) {
-                    return col(name).cast("string");
+                    return concat(lit("JSON "), col(name)).alias(name);
                   } else {
                     return col(name);
                   }
