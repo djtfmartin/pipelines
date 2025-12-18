@@ -83,7 +83,7 @@ public class DistributedUtil {
     long hours = d.toHours();
     long minutes = d.toMinutesPart();
     long seconds = d.toSecondsPart();
-    long millis = d.toMillis();
+    long millis = d.toMillis() % 1000;
 
     double secs = Math.max(d.toMillis() / 1000.0, 0.000001);
     double recPerSec = recordsNumber / secs;
