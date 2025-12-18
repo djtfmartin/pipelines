@@ -992,8 +992,8 @@ public class OccurrenceHdfsRecordConverter {
             .map(TextNode::asText)
             .collect(Collectors.toList());
 
-    occurrenceHdfsRecord.setExtMultimedia(base64Encode(
-        MediaSerDeser.multimediaToJson(multimediaRecord.getMultimediaItems())));
+    occurrenceHdfsRecord.setExtMultimedia(
+        base64Encode(MediaSerDeser.multimediaToJson(multimediaRecord.getMultimediaItems())));
 
     setCreatedIfGreater(occurrenceHdfsRecord, multimediaRecord.getCreated());
     occurrenceHdfsRecord.setMediatype(mediaTypes);
@@ -1005,8 +1005,7 @@ public class OccurrenceHdfsRecordConverter {
     if (original == null) {
       return null;
     }
-    return Base64.getEncoder()
-            .encodeToString(original.getBytes(StandardCharsets.UTF_8));
+    return Base64.getEncoder().encodeToString(original.getBytes(StandardCharsets.UTF_8));
   }
 
   private void mapDnaDerivedDataRecord(OccurrenceHdfsRecord occurrenceHdfsRecord) {
