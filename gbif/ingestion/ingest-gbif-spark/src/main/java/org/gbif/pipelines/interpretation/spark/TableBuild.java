@@ -1,8 +1,6 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.apache.spark.sql.functions.col;
-import static org.apache.spark.sql.functions.concat;
-import static org.apache.spark.sql.functions.lit;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -151,8 +149,7 @@ public class TableBuild {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     // load hdfs view
-    Dataset<T> hdfs =
-        spark.read().parquet(outputPath + "/" + sourceDirectory).as(Encoders.bean(recordClass));
+    Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
 
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
@@ -165,27 +162,7 @@ public class TableBuild {
 
     // Check HDFS for remnant DB files from failed attempts
     cleanHdfsPath(fileSystem, config, table);
-    StructField[] fields = hdfs.schema().fields();
-
-    // map fields to columns
-    Column[] columns =
-        Arrays.stream(fields)
-            .map(StructField::name)
-            //            .filter(name -> !List.of("extmultimedia",
-            // "exthumboldt").contains(name.toLowerCase()))
-            //            .map(Column::new)
-            .map(
-                name -> {
-                  if (List.of("extmultimedia", "exthumboldt").contains(name.toLowerCase())) {
-                    return concat(lit("JSON "), col(name)).alias(name);
-                  } else {
-                    return col(name);
-                  }
-                })
-            .toList()
-            .toArray(new Column[0]);
-
-    hdfs.select(columns).writeTo(table).create();
+    hdfs.writeTo(table).create();
 
     log.debug("Created Iceberg table: {}", table);
 
@@ -222,7 +199,7 @@ public class TableBuild {
     StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
 
     // get the hdfs columns from the parquet with mappings to iceberg columns
-    Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(columns);
+    Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
 
     // Build the insert query
     String insertQuery =
@@ -274,15 +251,13 @@ public class TableBuild {
   }
 
   @NotNull
-  private static <T> Map<String, HdfsColumn> getHdfsColumns(Column[] columns) {
+  private static Map<String, HdfsColumn> getHdfsColumns(Dataset<Row> hdfs) {
     // get the hdfs columns from the parquet
 
     // map them to select statements
     Map<String, HdfsColumn> hdfsColumnList = new HashMap<>();
 
-    for (Column column : columns) {
-
-      String col = column.toString();
+    for (String col : hdfs.columns()) {
 
       HdfsColumn hdfsColumn = new HdfsColumn();
       hdfsColumn.originalName = col;
