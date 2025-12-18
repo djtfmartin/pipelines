@@ -169,8 +169,8 @@ public class TableBuild {
         Arrays.stream(fields)
             .map(StructField::name)
             .filter(name -> !List.of("extmultimedia", "exthumboldt").contains(name.toLowerCase()))
-            .map(name -> new Column(name))
-            .collect(Collectors.toList())
+            .map(Column::new)
+            .toList()
             .toArray(new Column[0]);
 
     hdfs.select(columns).writeTo(table).create();
@@ -210,7 +210,7 @@ public class TableBuild {
     StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
 
     // get the hdfs columns from the parquet with mappings to iceberg columns
-    Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
+    Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(columns);
 
     // Build the insert query
     String insertQuery =
@@ -262,14 +262,15 @@ public class TableBuild {
   }
 
   @NotNull
-  private static <T> Map<String, HdfsColumn> getHdfsColumns(Dataset<T> hdfs) {
+  private static <T> Map<String, HdfsColumn> getHdfsColumns(Column[] columns) {
     // get the hdfs columns from the parquet
-    String[] columns = hdfs.columns();
 
     // map them to select statements
     Map<String, HdfsColumn> hdfsColumnList = new HashMap<>();
 
-    for (String col : columns) {
+    for (Column column : columns) {
+
+      String col = column.toString();
 
       HdfsColumn hdfsColumn = new HdfsColumn();
       hdfsColumn.originalName = col;
