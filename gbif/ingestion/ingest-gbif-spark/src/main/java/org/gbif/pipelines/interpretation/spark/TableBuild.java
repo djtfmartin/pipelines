@@ -175,7 +175,7 @@ public class TableBuild {
             //            .map(Column::new)
             .map(
                 name -> {
-                  if (List.of("extmultimedia", "exthumboldt").contains(name)) {
+                  if (List.of("extmultimedia", "exthumboldt").contains(name.toLowerCase())) {
                     return concat(lit("JSON "), col(name)).alias(name);
                   } else {
                     return col(name);
