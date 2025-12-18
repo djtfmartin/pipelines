@@ -148,16 +148,12 @@ public class TableBuild {
 
     // load hdfs view
     Dataset<T> hdfs =
-        spark.read().parquet(outputPath + "/" + sourceDirectory)
-                .withColumn(
-                        "extMultimedia",
-                        functions.to_json(functions.col("extMultimedia"))
-                )
-                .withColumn(
-                        "extHumboldt",
-                        functions.to_json(functions.col("extHumboldt"))
-                )
-                .as(Encoders.bean(recordClass));
+        spark
+            .read()
+            .parquet(outputPath + "/" + sourceDirectory)
+            .withColumn("extMultimedia", functions.to_json(functions.col("extMultimedia")))
+            .withColumn("extHumboldt", functions.to_json(functions.col("extHumboldt")))
+            .as(Encoders.bean(recordClass));
 
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
