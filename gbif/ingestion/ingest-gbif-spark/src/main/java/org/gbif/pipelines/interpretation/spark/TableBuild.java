@@ -162,7 +162,18 @@ public class TableBuild {
 
     // Check HDFS for remnant DB files from failed attempts
     cleanHdfsPath(fileSystem, config, table);
-    hdfs.writeTo(table).create();
+    StructField[] fields = hdfs.schema().fields();
+
+    // map fields to columns
+    Column[] columns =
+        Arrays.stream(fields)
+            .map(StructField::name)
+            .filter(name -> List.of("extmultimedia", "exthumboldt").contains(name.toLowerCase()))
+            .map(name -> new Column(name))
+            .collect(Collectors.toList())
+            .toArray(new Column[0]);
+
+    hdfs.select(columns).writeTo(table).create();
 
     log.debug("Created Iceberg table: {}", table);
 
