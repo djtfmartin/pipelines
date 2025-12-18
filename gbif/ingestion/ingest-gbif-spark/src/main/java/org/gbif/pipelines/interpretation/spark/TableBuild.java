@@ -16,11 +16,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.io.avro.OccurrenceHdfsRecord;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.MDC;
 
@@ -85,10 +87,17 @@ public class TableBuild {
     SparkSession spark =
         getSparkSession(args.master, args.appName, config, TableBuild::configSparkSession);
     FileSystem fileSystem = getFileSystem(spark, config);
-    /* ############ standard init block - end ########## */
 
+    /* ############ standard init block - end ########## */
     runTableBuild(
-        spark, fileSystem, config, datasetId, attempt, args.tableName, args.sourceDirectory);
+        spark,
+        fileSystem,
+        config,
+        datasetId,
+        attempt,
+        args.tableName,
+        args.sourceDirectory,
+        OccurrenceHdfsRecord.class);
 
     spark.stop();
     spark.close();
@@ -123,14 +132,15 @@ public class TableBuild {
    * @param tableName table name e.g. occurrence or event
    * @param sourceDirectory Source directory of parquet files
    */
-  public static void runTableBuild(
+  public static <T> void runTableBuild(
       SparkSession spark,
       FileSystem fileSystem,
       PipelinesConfig config,
       String datasetId,
       int attempt,
       String tableName,
-      String sourceDirectory)
+      String sourceDirectory,
+      Class<T> recordClass)
       throws Exception {
 
     long start = System.currentTimeMillis();
@@ -140,7 +150,8 @@ public class TableBuild {
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
     // load hdfs view
-    Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
+    Dataset<T> hdfs =
+        spark.read().parquet(outputPath + "/" + sourceDirectory).as(Encoders.bean(recordClass));
 
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
@@ -170,14 +181,16 @@ public class TableBuild {
         spark.sql(
             "SELECT COUNT(*) AS cnt FROM "
                 + table
-                + " "
-                + "WHERE datasetKey IS NULL "
-                + "OR datasetKey = '' "
-                + "OR gbifId IS NULL "
-                + "OR gbifId = ''");
+                + " WHERE datasetKey IS NULL"
+                + " OR datasetKey = ''"
+                + " OR gbifId IS NULL"
+                + " OR gbifId = ''");
     long count = df.collectAsList().get(0).getLong(0);
     if (count > 0) {
-      log.warn("There are {} records with NULL datasetKey in the temporary table {}", count, table);
+      log.warn(
+          "There are {} records with NULL or empty datasetKey or gbifId in the temporary table {}",
+          count,
+          table);
       throw new IllegalStateException("There are " + count + " records with NULL datasetKey");
     }
 
@@ -186,7 +199,6 @@ public class TableBuild {
 
     // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
     StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
-    //    HdfsColumn[] colsToSelect = getColsToSelect(tblSchema, hdfsColumnList);
 
     // get the hdfs columns from the parquet with mappings to iceberg columns
     Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
@@ -241,7 +253,7 @@ public class TableBuild {
   }
 
   @NotNull
-  private static Map<String, HdfsColumn> getHdfsColumns(Dataset<Row> hdfs) {
+  private static <T> Map<String, HdfsColumn> getHdfsColumns(Dataset<T> hdfs) {
     // get the hdfs columns from the parquet
     String[] columns = hdfs.columns();
 
@@ -281,26 +293,6 @@ public class TableBuild {
     }
 
     return hdfsColumnList;
-  }
-
-  /**
-   * Builds a list of columns to select from the DataFrame, aligning with the target table schema.
-   */
-  @NotNull
-  private static HdfsColumn[] getColsToSelect(StructType tblSchema, List<HdfsColumn> hdfsColumns) {
-    List<HdfsColumn> colsToSelect = new ArrayList<>();
-
-    // create a map icebergCol -> HdfsColumn lookup
-    Map<String, HdfsColumn> map =
-        hdfsColumns.stream().collect(Collectors.toMap(c -> c.icebergCol, c -> c));
-
-    for (StructField f : tblSchema.fields()) {
-      String fieldName = f.name();
-      if (map.containsKey(fieldName)) {
-        colsToSelect.add(map.get(fieldName));
-      }
-    }
-    return colsToSelect.toArray(new HdfsColumn[0]);
   }
 
   @NotNull
