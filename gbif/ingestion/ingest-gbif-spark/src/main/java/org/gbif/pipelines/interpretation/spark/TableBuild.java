@@ -15,10 +15,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -151,7 +148,16 @@ public class TableBuild {
 
     // load hdfs view
     Dataset<T> hdfs =
-        spark.read().parquet(outputPath + "/" + sourceDirectory).as(Encoders.bean(recordClass));
+        spark.read().parquet(outputPath + "/" + sourceDirectory)
+                .withColumn(
+                        "extMultimedia",
+                        functions.to_json(functions.col("extMultimedia"))
+                )
+                .withColumn(
+                        "extHumboldt",
+                        functions.to_json(functions.col("extHumboldt"))
+                )
+                .as(Encoders.bean(recordClass));
 
     // Generate a unique temporary table name
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
