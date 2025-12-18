@@ -169,7 +169,7 @@ public class TableBuild {
     Column[] columns =
         Arrays.stream(fields)
             .map(StructField::name)
-            .filter(name -> !List.of("extmultimedia", "exthumboldt").contains(name.toLowerCase()))
+//            .filter(name -> !List.of("extmultimedia", "exthumboldt").contains(name.toLowerCase()))
             //            .map(Column::new)
             .map(
                 name -> {
