@@ -1,8 +1,8 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.apache.spark.sql.functions.col;
-import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.concat;
+import static org.apache.spark.sql.functions.lit;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -171,7 +171,8 @@ public class TableBuild {
     Column[] columns =
         Arrays.stream(fields)
             .map(StructField::name)
-//            .filter(name -> !List.of("extmultimedia", "exthumboldt").contains(name.toLowerCase()))
+            //            .filter(name -> !List.of("extmultimedia",
+            // "exthumboldt").contains(name.toLowerCase()))
             //            .map(Column::new)
             .map(
                 name -> {
