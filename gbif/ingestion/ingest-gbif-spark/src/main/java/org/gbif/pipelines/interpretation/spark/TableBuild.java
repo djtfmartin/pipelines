@@ -155,14 +155,14 @@ public class TableBuild {
     String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
 
     // Switch to the configured Hive database
-    //    spark.sql("USE " + config.getHiveDB());
+    spark.sql("USE " + config.getHiveDB());
 
     // Drop the table if it already exists
-    //    spark.sql("DROP TABLE IF EXISTS " + table);
+    spark.sql("DROP TABLE IF EXISTS " + table);
 
     // Check HDFS for remnant DB files from failed attempts
-    //    cleanHdfsPath(fileSystem, config, table);
-    //    hdfs.writeTo(table).create();
+    cleanHdfsPath(fileSystem, config, table);
+    hdfs.writeTo(table).create();
 
     log.debug("Created Iceberg table: {}", table);
 
