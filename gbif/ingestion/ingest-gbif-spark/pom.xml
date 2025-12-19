@@ -64,10 +64,10 @@
           <artifactId>registry-ws-client</artifactId>
           <version>${registry.version}</version>
           <exclusions>
-              <exclusion>
-                  <groupId>org.springframework</groupId>
-                  <artifactId>*</artifactId>
-              </exclusion>
+<!--              <exclusion>-->
+<!--                  <groupId>org.springframework</groupId>-->
+<!--                  <artifactId>*</artifactId>-->
+<!--              </exclusion>-->
               <exclusion>
                   <groupId>org.gbif.registry</groupId>
                   <artifactId>registry-doi</artifactId>
@@ -297,8 +297,13 @@
           <groupId>com.fasterxml.jackson.module</groupId>
           <artifactId>jackson-module-scala_2.12</artifactId>
           <version>${jackson.version}</version>
+          <exclusions>
+                <exclusion>
+                  <groupId>org.apache.kerby</groupId>
+                  <artifactId>*</artifactId>
+                </exclusion>
+          </exclusions>
       </dependency>
-
       <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-common</artifactId>
