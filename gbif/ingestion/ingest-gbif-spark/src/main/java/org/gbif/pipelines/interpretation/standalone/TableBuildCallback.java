@@ -8,7 +8,6 @@ import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.*;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.spark.TableBuild;
-import org.gbif.pipelines.io.avro.OccurrenceHdfsRecord;
 
 @Slf4j
 public class TableBuildCallback
@@ -48,8 +47,7 @@ public class TableBuildCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         tableName,
-        sourceDirectory,
-        OccurrenceHdfsRecord.class);
+        sourceDirectory);
   }
 
   @Override

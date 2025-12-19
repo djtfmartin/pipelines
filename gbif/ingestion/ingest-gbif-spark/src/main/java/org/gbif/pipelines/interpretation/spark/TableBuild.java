@@ -23,7 +23,6 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.pipelines.io.avro.OccurrenceHdfsRecord;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.MDC;
 
@@ -91,14 +90,7 @@ public class TableBuild {
 
     /* ############ standard init block - end ########## */
     runTableBuild(
-        spark,
-        fileSystem,
-        config,
-        datasetId,
-        attempt,
-        args.tableName,
-        args.sourceDirectory,
-        OccurrenceHdfsRecord.class);
+        spark, fileSystem, config, datasetId, attempt, args.tableName, args.sourceDirectory);
 
     spark.stop();
     spark.close();
@@ -141,8 +133,7 @@ public class TableBuild {
       String datasetId,
       int attempt,
       String tableName,
-      String sourceDirectory,
-      Class<T> recordClass)
+      String sourceDirectory)
       throws Exception {
 
     spark.udf().register("base64_decode", new Base64DecodeUDF(), DataTypes.StringType);

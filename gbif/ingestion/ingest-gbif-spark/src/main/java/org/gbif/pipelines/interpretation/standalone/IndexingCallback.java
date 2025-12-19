@@ -8,6 +8,7 @@ import org.gbif.common.messaging.api.MessagePublisher;
 import org.gbif.common.messaging.api.messages.PipelinesIndexedMessage;
 import org.gbif.common.messaging.api.messages.PipelinesInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
+import org.gbif.pipelines.interpretation.spark.Directories;
 import org.gbif.pipelines.interpretation.spark.Indexing;
 import org.gbif.pipelines.io.avro.json.OccurrenceJsonRecord;
 
@@ -44,7 +45,7 @@ public class IndexingCallback
         pipelinesConfig.getStandalone().getOccurrenceIndexSchema(),
         pipelinesConfig.getStandalone().getNumberOfShards(),
         OccurrenceJsonRecord.class,
-        "json");
+        Directories.OCCURRENCE_JSON);
   }
 
   @Override
@@ -63,8 +64,8 @@ public class IndexingCallback
         message.getDatasetUuid(),
         message.getAttempt(),
         message.getPipelineSteps(),
-        null, // Set in balancer cli
-        null,
+        isStandalone() ? "STANDALONE" : "DISTRIBUTED",
+        message.getExecutionId(),
         message.getEndpointType());
   }
 }

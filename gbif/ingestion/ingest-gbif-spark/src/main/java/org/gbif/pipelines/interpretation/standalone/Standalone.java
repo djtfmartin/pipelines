@@ -34,13 +34,15 @@ public class Standalone {
   @Parameters(separators = "=")
   private static class Args {
 
-    @Parameter(names = "--mode", description = "mode", required = true)
+    @Parameter(names = "--mode", description = "e.g. INTERPRETATION", required = true)
     private String mode;
 
     @Parameter(names = "--config", description = "Path to YAML configuration file")
     private String config = "/tmp/pipelines-spark.yaml";
 
-    @Parameter(names = "--threads", description = "Number of threads")
+    @Parameter(
+        names = "--listenerThreads",
+        description = "Number of queue listener threads (no of parallel messages processed)")
     private int threads = 1;
 
     @Parameter(names = "--master", description = "Master - relevant for embedded spark only")
@@ -55,10 +57,12 @@ public class Standalone {
     @Parameter(names = "--exchange", description = "exchange")
     private String exchange = "occurrence";
 
-    @Parameter(names = "--threadSleepMillis", description = "exchange", required = false)
-    private long threadSleepMillis = 2000;
+    @Parameter(
+        names = "--listenerThreadSleepMillis",
+        description = "Number of millis to sleep for the listener thread")
+    private long listenerThreadSleepMillis = 2000;
 
-    @Parameter(names = "--prometheusPort", description = "metrics port", required = false)
+    @Parameter(names = "--prometheusPort", description = "metrics port. Set to 0 to disable")
     private int prometheusPort = 9404;
   }
 
@@ -71,7 +75,22 @@ public class Standalone {
     PipelinesConfig config = loadConfig(args.config);
 
     // start Prometheus HTTP server
-    try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)) {
+    if (args.prometheusPort > 0) {
+      log.info("Starting Prometheus HTTP server on port {}", args.prometheusPort);
+      try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)) {
+        new Standalone()
+            .start(
+                mode,
+                config,
+                args.queueName,
+                args.routingKey,
+                args.exchange,
+                args.master,
+                args.threads,
+                args.listenerThreadSleepMillis);
+      }
+    } else {
+      log.info("Prometheus HTTP server disabled");
       new Standalone()
           .start(
               mode,
@@ -81,7 +100,7 @@ public class Standalone {
               args.exchange,
               args.master,
               args.threads,
-              args.threadSleepMillis);
+              args.listenerThreadSleepMillis);
     }
   }
 

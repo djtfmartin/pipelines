@@ -9,7 +9,6 @@ import org.gbif.common.messaging.api.messages.PipelinesEventsHdfsViewMessage;
 import org.gbif.common.messaging.api.messages.PipelinesEventsInterpretedMessage;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.interpretation.spark.TableBuild;
-import org.gbif.pipelines.io.avro.OccurrenceHdfsRecord;
 
 @Slf4j
 public class EventsTableBuildCallback
@@ -49,8 +48,7 @@ public class EventsTableBuildCallback
         message.getDatasetUuid().toString(),
         message.getAttempt(),
         tableName,
-        sourceDirectory,
-        OccurrenceHdfsRecord.class);
+        sourceDirectory);
   }
 
   @Override
@@ -67,8 +65,8 @@ public class EventsTableBuildCallback
         message.getPipelineSteps(),
         message.getNumberOfOccurrenceRecords(),
         message.getNumberOfEventRecords(),
-        null,
-        null);
+        isStandalone() ? "STANDALONE" : "DISTRIBUTED",
+        message.getExecutionId());
   }
 
   @Override
