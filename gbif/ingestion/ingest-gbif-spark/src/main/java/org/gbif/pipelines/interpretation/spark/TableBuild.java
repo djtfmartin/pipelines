@@ -10,6 +10,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.ToString;
@@ -17,6 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.api.java.UDF1;
+import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
@@ -141,6 +144,8 @@ public class TableBuild {
       String sourceDirectory,
       Class<T> recordClass)
       throws Exception {
+
+    spark.udf().register("base64_decode", new Base64DecodeUDF(), DataTypes.StringType);
 
     long start = System.currentTimeMillis();
     MDC.put("datasetKey", datasetId);
@@ -273,12 +278,12 @@ public class TableBuild {
       if (parquetColumn.equalsIgnoreCase("extMultimedia")) {
 
         hdfsColumn.icebergCol = "ext_multimedia";
-        hdfsColumn.select = "`extMultimedia` AS `ext_multimedia`";
+        hdfsColumn.select = "base64_decode(extMultimedia) AS `ext_multimedia`";
 
       } else if (parquetColumn.equalsIgnoreCase("extHumboldt")) {
 
         hdfsColumn.icebergCol = "ext_humboldt";
-        hdfsColumn.select = "`extHumboldt` AS `ext_humboldt`";
+        hdfsColumn.select = "base64_decode(extHumboldt) AS `ext_humboldt`";
 
       } else if (parquetColumn.matches("^[vV][A-Z].*")) {
 
@@ -787,5 +792,23 @@ public class TableBuild {
   static class HdfsColumn {
     String select;
     String icebergCol;
+  }
+
+  public static class Base64DecodeUDF implements UDF1<String, String> {
+
+    @Override
+    public String call(String encoded) throws Exception {
+      if (encoded == null) {
+        return null;
+      }
+
+      try {
+        byte[] decodedBytes = Base64.getDecoder().decode(encoded);
+        return new String(decodedBytes, StandardCharsets.UTF_8);
+      } catch (IllegalArgumentException e) {
+        // Invalid Base64 input
+        return null;
+      }
+    }
   }
 }
