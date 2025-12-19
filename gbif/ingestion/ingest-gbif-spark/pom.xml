@@ -26,7 +26,7 @@
     <slf4j.version>2.0.7</slf4j.version>
     <guava.version>33.4.6-jre</guava.version>
     <dwca-io.version>3.0.0</dwca-io.version>
-    <gbif-parsers.version>0.67</gbif-parsers.version>
+    <gbif-parsers.version>0.68</gbif-parsers.version>
     <commons-io.version>2.14.0</commons-io.version>
     <fastutil.version>8.5.15</fastutil.version>
     <dwc-api.version>2.1.8-spark-refactor-SNAPSHOT</dwc-api.version>
@@ -37,7 +37,6 @@
     <geotools.version>20.5</geotools.version>
     <java.version>17</java.version>
     <junit4.version>4.13.2</junit4.version>
-    <amqp-client.version>4.8.0</amqp-client.version>
     <registry.version>4.1.0</registry.version>
   </properties>
 
@@ -65,6 +64,22 @@
           <artifactId>registry-ws-client</artifactId>
           <version>${registry.version}</version>
           <exclusions>
+              <exclusion>
+                  <groupId>org.springframework</groupId>
+                  <artifactId>*</artifactId>
+              </exclusion>
+              <exclusion>
+                  <groupId>org.gbif.registry</groupId>
+                  <artifactId>registry-doi</artifactId>
+              </exclusion>
+              <exclusion>
+                  <groupId>org.gbif.registry</groupId>
+                  <artifactId>registry-domain</artifactId>
+              </exclusion>
+              <exclusion>
+                  <groupId>io.github.openfeign</groupId>
+                  <artifactId>*</artifactId>
+              </exclusion>
               <exclusion>
                   <groupId>org.springframework.boot</groupId>
                   <artifactId>*</artifactId>
@@ -112,6 +127,10 @@
       <artifactId>core</artifactId>
         <version>${project.version}</version>
       <exclusions>
+          <exclusion>
+              <groupId>org.elasticsearch</groupId>
+              <artifactId>*</artifactId>
+          </exclusion>
         <exclusion>
           <groupId>org.gbif.pipelines</groupId>
           <artifactId>models</artifactId>
@@ -150,11 +169,11 @@
       <artifactId>slf4j-api</artifactId>
       <version>${slf4j.version}</version>
     </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>${guava.version}</version>
-    </dependency>
+<!--    <dependency>-->
+<!--      <groupId>com.google.guava</groupId>-->
+<!--      <artifactId>guava</artifactId>-->
+<!--      <version>${guava.version}</version>-->
+<!--    </dependency>-->
     <dependency>
       <groupId>org.gbif</groupId>
       <artifactId>dwca-io</artifactId>
@@ -431,12 +450,6 @@
           <artifactId>hbase-mapreduce</artifactId>
           <version>2.5.4-hadoop3</version>
           <scope>compile</scope>
-          <exclusions>
-              <exclusion>
-                  <groupId>org.apache.hbase</groupId>
-                  <artifactId>hbase-server</artifactId>
-              </exclusion>
-          </exclusions>
       </dependency>
 
       <!-- Prometheus monitoring for Spark -->
@@ -446,16 +459,7 @@
           <version>0.16.0</version>
       </dependency>
 
-      <!-- Choose ONE HTTP exposure option -->
-
-      <!-- Servlet-based apps -->
-      <dependency>
-          <groupId>io.prometheus</groupId>
-          <artifactId>simpleclient_servlet</artifactId>
-          <version>0.16.0</version>
-      </dependency>
-
-      <!-- OR: Embedded HTTP server -->
+      <!-- Embedded HTTP server -->
       <dependency>
           <groupId>io.prometheus</groupId>
           <artifactId>simpleclient_httpserver</artifactId>
