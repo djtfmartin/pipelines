@@ -102,11 +102,6 @@
           <artifactId>models-pojo</artifactId>
           <version>${project.version}</version>
       </dependency>
-    <dependency>
-      <groupId>org.gbif.pipelines</groupId>
-      <artifactId>models-pojo</artifactId>
-        <version>${project.version}</version>
-    </dependency>
       <dependency>
           <groupId>org.gbif.pipelines</groupId>
           <artifactId>elasticsearch-tools</artifactId>
@@ -243,12 +238,6 @@
             </exclusion>
         </exclusions>
     </dependency>
-      <dependency>
-          <groupId>com.rabbitmq</groupId>
-          <artifactId>amqp-client</artifactId>
-          <scope>runtime</scope>
-          <version>${amqp-client.version}</version>
-      </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
       <artifactId>gbif-common</artifactId>
@@ -345,22 +334,6 @@
             </exclusion>
       </exclusions>
     </dependency>
-      <dependency>
-          <groupId>org.apache.spark</groupId>
-          <artifactId>spark-core_${scala.binary.version}</artifactId>
-          <version>${spark.version}</version>
-          <scope>provided</scope>
-          <exclusions>
-              <exclusion>
-                  <groupId>org.apache.hadoop</groupId>
-                  <artifactId>hadoop-client-api</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>org.apache.hadoop</groupId>
-                  <artifactId>hadoop-client-runtime</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql-api_${scala.binary.version}</artifactId>
