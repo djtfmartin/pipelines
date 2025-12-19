@@ -136,10 +136,10 @@
 <!--              <groupId>org.elasticsearch</groupId>-->
 <!--              <artifactId>*</artifactId>-->
 <!--          </exclusion>-->
-                    <exclusion>
-                        <groupId>org.apache.lucene</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
+<!--                    <exclusion>-->
+<!--                        <groupId>org.apache.lucene</groupId>-->
+<!--                        <artifactId>*</artifactId>-->
+<!--                    </exclusion>-->
         <exclusion>
           <groupId>org.gbif.pipelines</groupId>
           <artifactId>models</artifactId>
