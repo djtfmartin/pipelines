@@ -80,10 +80,10 @@
                   <groupId>org.springframework.boot</groupId>
                   <artifactId>*</artifactId>
               </exclusion>
-              <exclusion>
-                  <groupId>org.springframework.cloud</groupId>
-                  <artifactId>*</artifactId>
-              </exclusion>
+<!--              <exclusion>-->
+<!--                  <groupId>org.springframework.cloud</groupId>-->
+<!--                  <artifactId>*</artifactId>-->
+<!--              </exclusion>-->
               <exclusion>
                   <groupId>org.apache.logging.log4j</groupId>
                   <artifactId>log4j-to-slf4j</artifactId>
