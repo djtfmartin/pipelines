@@ -98,6 +98,12 @@
               </exclusion>
           </exclusions>
       </dependency>
+      <!-- Spring Security Core - needed for pipelines history client -->
+      <dependency>
+          <groupId>org.springframework.security</groupId>
+          <artifactId>spring-security-core</artifactId>
+          <version>5.2.15.RELEASE</version>
+      </dependency>
       <dependency>
           <groupId>org.gbif.common</groupId>
           <artifactId>gbif-postal-service</artifactId>
