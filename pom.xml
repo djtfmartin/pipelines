@@ -111,7 +111,7 @@
     <gbif-api.version>2.2.1-reverted-offset-change-SNAPSHOT</gbif-api.version>
     <gbif-common.version>0.60</gbif-common.version>
     <dwc-api.version>2.1.8-spark-refactor-SNAPSHOT</dwc-api.version>
-    <kvs.version>3.0</kvs.version>
+    <kvs.version>3.1-reducedeps-SNAPSHOT</kvs.version>
     <hbase-utils.version>1.0.0</hbase-utils.version>
     <gbif-wrangler.version>1.0.0</gbif-wrangler.version>
     <gbif-occurrence.version>1.1.9-spark-refactor-SNAPSHOT</gbif-occurrence.version>

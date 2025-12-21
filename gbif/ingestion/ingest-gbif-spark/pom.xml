@@ -33,7 +33,7 @@
     <gbif-api.version>2.2.1-reverted-offset-change-SNAPSHOT</gbif-api.version>
     <gbif-common.version>0.60</gbif-common.version>
     <vocabulary-lookup.version>2.0.4</vocabulary-lookup.version>
-    <jackson.version>2.18.4</jackson.version>
+    <jackson.version>2.19.4</jackson.version>
     <geotools.version>20.5</geotools.version>
     <java.version>17</java.version>
     <junit4.version>4.13.2</junit4.version>
@@ -64,10 +64,6 @@
           <artifactId>registry-ws-client</artifactId>
           <version>${registry.version}</version>
           <exclusions>
-<!--              <exclusion>-->
-<!--                  <groupId>org.springframework</groupId>-->
-<!--                  <artifactId>*</artifactId>-->
-<!--              </exclusion>-->
               <exclusion>
                   <groupId>org.gbif.registry</groupId>
                   <artifactId>registry-doi</artifactId>
@@ -103,11 +99,6 @@
           </exclusions>
       </dependency>
       <dependency>
-          <groupId>org.springframework.security</groupId>
-          <artifactId>spring-security-core</artifactId>
-          <version>5.2.15.RELEASE</version>
-      </dependency>
-      <dependency>
           <groupId>org.gbif.common</groupId>
           <artifactId>gbif-postal-service</artifactId>
           <version>2.1.3</version>
@@ -132,18 +123,18 @@
       <artifactId>core</artifactId>
         <version>${project.version}</version>
       <exclusions>
-<!--          <exclusion>-->
-<!--              <groupId>org.elasticsearch</groupId>-->
-<!--              <artifactId>*</artifactId>-->
-<!--          </exclusion>-->
-<!--                    <exclusion>-->
-<!--                        <groupId>org.apache.lucene</groupId>-->
-<!--                        <artifactId>*</artifactId>-->
-<!--                    </exclusion>-->
+          <exclusion>
+              <groupId>org.elasticsearch</groupId>
+              <artifactId>elasticsearch</artifactId>
+          </exclusion>
         <exclusion>
           <groupId>org.gbif.pipelines</groupId>
           <artifactId>models</artifactId>
         </exclusion>
+          <exclusion>
+              <groupId>org.gbif.occurrence</groupId>
+              <artifactId>occurrence-hdfs-table</artifactId>
+          </exclusion>
       </exclusions>
     </dependency>
   <dependency>
@@ -211,9 +202,8 @@
     <dependency>
       <groupId>org.gbif.kvs</groupId>
       <artifactId>kvs-gbif</artifactId>
-        <version>3.0</version>
+        <version>3.1-reducedeps-SNAPSHOT</version>
       <exclusions>
-        <!-- TODO: Review this - was just a guess! -->
           <exclusion>
               <groupId>org.apache.logging.log4j</groupId>
               <artifactId>log4j-to-slf4j</artifactId>
@@ -365,6 +355,10 @@
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-client-runtime</artifactId>
             </exclusion>
+          <exclusion>
+              <groupId>org.gbif.occurrence</groupId>
+              <artifactId>occurrence-hdfs-table</artifactId>
+          </exclusion>
       </exclusions>
     </dependency>
     <dependency>
