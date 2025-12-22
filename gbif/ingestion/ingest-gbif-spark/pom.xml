@@ -38,6 +38,7 @@
     <java.version>17</java.version>
     <junit4.version>4.13.2</junit4.version>
     <registry.version>4.1.0</registry.version>
+    <guava.version>14.0.1</guava.version>
   </properties>
     <repositories>
         <repository>
@@ -161,11 +162,69 @@
                 </exclusion>
           </exclusions>
       </dependency>
-    <dependency>
+
+      <!-- Netty dependencies to be provided to avoid version conflicts with Hadoop -->
+      <dependency>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-buffer</artifactId>
+          <version>4.1.96.Final</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-codec</artifactId>
+          <version>4.1.96.Final</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-common</artifactId>
+          <version>4.1.96.Final</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-transport-native-unix-common</artifactId>
+          <version>4.1.96.Final</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-transport</artifactId>
+          <version>4.1.96.Final</version>
+          <scope>provided</scope>
+      </dependency>
+
+
+      <dependency>
+      <groupId>org.gbif.pipelines</groupId>
+      <artifactId>variables</artifactId>
+      <version>${project.version}</version>
+          <exclusions>
+          <exclusion>
+              <groupId>*</groupId>
+              <artifactId>*</artifactId>
+          </exclusion>
+          </exclusions>
+      </dependency>
+
+      <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>core</artifactId>
-        <version>${project.version}</version>
+      <version>${project.version}</version>
       <exclusions>
+          <exclusion>
+              <groupId>org.gbif.pipelines</groupId>
+              <artifactId>variables</artifactId>
+          </exclusion>
+          <exclusion>
+              <groupId>ch.qos.logback</groupId>
+              <artifactId>logback-classic</artifactId>
+          </exclusion>
+          <exclusion>
+              <groupId>ch.qos.logback</groupId>
+              <artifactId>logback-core</artifactId>
+          </exclusion>
           <exclusion>
               <groupId>org.elasticsearch</groupId>
               <artifactId>elasticsearch</artifactId>
@@ -225,11 +284,12 @@
       <version>${slf4j.version}</version>
       <scope>provided</scope>
     </dependency>
-<!--    <dependency>-->
-<!--      <groupId>com.google.guava</groupId>-->
-<!--      <artifactId>guava</artifactId>-->
-<!--      <version>${guava.version}</version>-->
-<!--    </dependency>-->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+        <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
       <artifactId>dwca-io</artifactId>
@@ -361,6 +421,7 @@
           <groupId>com.fasterxml.jackson.datatype</groupId>
           <artifactId>jackson-datatype-jsr310</artifactId>
           <version>${jackson.version}</version>
+          <scope>provided</scope>
       </dependency>
       <dependency>
           <groupId>com.fasterxml.jackson.module</groupId>
