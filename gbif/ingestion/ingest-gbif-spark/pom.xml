@@ -22,7 +22,7 @@
     <!-- TODO: review and use parent pom  -->
     <spark.version>3.5.6</spark.version>
     <scala.binary.version>2.12</scala.binary.version>
-    <lombok.version>1.18.36</lombok.version>
+    <lombok.version>1.18.42</lombok.version>
     <slf4j.version>2.0.7</slf4j.version>
     <dwca-io.version>3.0.0</dwca-io.version>
     <gbif-parsers.version>0.68</gbif-parsers.version>
@@ -39,7 +39,6 @@
     <junit4.version>4.13.2</junit4.version>
     <registry.version>4.1.0</registry.version>
   </properties>
-
     <repositories>
         <repository>
             <id>gbif-all</id>
@@ -369,6 +368,10 @@
           <version>${jackson.version}</version>
           <scope>provided</scope>
           <exclusions>
+              <exclusion>
+                  <groupId>org.scala-lang</groupId>
+                  <artifactId>scala-library</artifactId>
+              </exclusion>
                 <exclusion>
                   <groupId>org.apache.kerby</groupId>
                   <artifactId>*</artifactId>
@@ -419,6 +422,30 @@
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-mapreduce-client-core</artifactId>
           <version>3.3.6</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.scala-lang.modules</groupId>
+          <artifactId>scala-collection-compat_2.12</artifactId>
+          <version>2.7.0</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.scala-lang</groupId>
+          <artifactId>scala-compiler</artifactId>
+          <version>2.12.18</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.scala-lang</groupId>
+          <artifactId>scala-library</artifactId>
+          <version>2.12.18</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.scala-lang</groupId>
+          <artifactId>scala-reflect</artifactId>
+          <version>2.12.18</version>
           <scope>provided</scope>
       </dependency>
     <dependency>
