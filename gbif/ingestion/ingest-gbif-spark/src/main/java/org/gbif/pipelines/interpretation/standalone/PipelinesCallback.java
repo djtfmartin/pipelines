@@ -10,6 +10,7 @@ import feign.Feign;
 import feign.auth.BasicAuthRequestInterceptor;
 import feign.httpclient.ApacheHttpClient;
 import feign.jackson.JacksonDecoder;
+import feign.jackson.JacksonEncoder;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -116,6 +117,7 @@ public abstract class PipelinesCallback<
             .client(new ApacheHttpClient())
             //        . queryMapEncoder(new CollectionsSearchClient.SearchRequestEncoder())
             .decoder(new JacksonDecoder(mapper))
+            .encoder(new JacksonEncoder(mapper))
             .contract(new Contract.Default())
             .requestInterceptor(
                 new BasicAuthRequestInterceptor(
