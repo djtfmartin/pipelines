@@ -5,6 +5,11 @@ import static org.gbif.api.model.pipelines.PipelineStep.Status.RUNNING;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.google.common.base.Strings;
+import feign.Contract;
+import feign.Feign;
+import feign.auth.BasicAuthRequestInterceptor;
+import feign.httpclient.ApacheHttpClient;
+import feign.jackson.JacksonDecoder;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -38,9 +43,6 @@ import org.gbif.common.messaging.api.messages.PipelinesBalancerMessage;
 import org.gbif.common.messaging.api.messages.PipelinesEventsMessage;
 import org.gbif.pipelines.common.PipelinesException;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
-import org.gbif.registry.ws.client.pipelines.PipelinesHistoryClient;
-import org.gbif.ws.client.ClientBuilder;
-import org.gbif.ws.json.JacksonJsonObjectMapperProvider;
 import org.slf4j.MDC;
 
 @Slf4j
@@ -97,18 +99,32 @@ public abstract class PipelinesCallback<
 
   public PipelinesCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher, String sparkMaster) {
+
+    com.fasterxml.jackson.databind.ObjectMapper mapper =
+        new com.fasterxml.jackson.databind.ObjectMapper();
+    //    mapper.setAnnotationIntrospector(new JacksonAnnotationIntrospector() {
+    //      public JsonPOJOBuilder.Value findPOJOBuilderConfig(AnnotatedClass ac) {
+    //        return ac.hasAnnotation(JsonPOJOBuilder.class) ? super.findPOJOBuilderConfig(ac) : new
+    // JsonPOJOBuilder.Value("build", "");
+    //      }
+    //    });
+
     this.pipelinesConfig = pipelinesConfig;
     this.publisher = publisher;
     this.historyClient =
-        new ClientBuilder()
-            .withUrl(pipelinesConfig.getStandalone().getRegistry().getWsUrl())
-            .withCredentials(
-                pipelinesConfig.getStandalone().getRegistry().getUser(),
-                pipelinesConfig.getStandalone().getRegistry().getPassword())
-            .withObjectMapper(JacksonJsonObjectMapperProvider.getObjectMapperWithBuilderSupport())
-            .withExponentialBackoffRetry(Duration.ofSeconds(3L), 2d, 10)
-            .withFormEncoder()
-            .build(PipelinesHistoryClient.class);
+        Feign.builder()
+            .client(new ApacheHttpClient())
+            //        . queryMapEncoder(new CollectionsSearchClient.SearchRequestEncoder())
+            .decoder(new JacksonDecoder(mapper))
+            .contract(new Contract.Default())
+            .requestInterceptor(
+                new BasicAuthRequestInterceptor(
+                    pipelinesConfig.getStandalone().getRegistry().getUser(),
+                    pipelinesConfig.getStandalone().getRegistry().getPassword()))
+            .decode404()
+            .target(
+                PipelinesHistoryClient.class,
+                pipelinesConfig.getStandalone().getRegistry().getWsUrl());
     this.httpClient =
         HttpClients.custom()
             .setDefaultRequestConfig(
@@ -397,7 +413,7 @@ public abstract class PipelinesCallback<
             if (FINISHED_STATE_SET.contains(step.getState())) {
               return step.getKey();
             }
-            return historyClient.updatePipelineStep(s);
+            return historyClient.updatePipelineStep(s.getKey(), s);
           };
       long stepKey = Retry.decorateFunction(RETRY, pipelineStepFn).apply(pipelineStep);
       log.debug(
@@ -558,7 +574,7 @@ public abstract class PipelinesCallback<
     Function<PipelineStep, Long> pipelineStepFn =
         s -> {
           log.debug("History client: update pipeline step: {}", s);
-          return historyClient.updatePipelineStep(s);
+          return historyClient.updatePipelineStep(s.getKey(), s);
         };
     long stepKey = Retry.decorateFunction(RETRY, pipelineStepFn).apply(step);
 

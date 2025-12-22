@@ -24,10 +24,10 @@
     <scala.binary.version>2.12</scala.binary.version>
     <lombok.version>1.18.36</lombok.version>
     <slf4j.version>2.0.7</slf4j.version>
-    <guava.version>33.4.6-jre</guava.version>
     <dwca-io.version>3.0.0</dwca-io.version>
     <gbif-parsers.version>0.68</gbif-parsers.version>
-    <commons-io.version>2.14.0</commons-io.version>
+    <commons-io.version>2.13.0</commons-io.version>
+    <commons-lang3.version>3.12.0</commons-lang3.version>
     <fastutil.version>8.5.15</fastutil.version>
     <dwc-api.version>2.1.8-spark-refactor-SNAPSHOT</dwc-api.version>
     <gbif-api.version>2.2.1-reverted-offset-change-SNAPSHOT</gbif-api.version>
@@ -59,51 +59,51 @@
     </repositories>
 
   <dependencies>
-      <dependency>
-          <groupId>org.gbif.registry</groupId>
-          <artifactId>registry-ws-client</artifactId>
-          <version>${registry.version}</version>
-          <exclusions>
-              <exclusion>
-                  <groupId>org.gbif.registry</groupId>
-                  <artifactId>registry-doi</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>org.gbif.registry</groupId>
-                  <artifactId>registry-domain</artifactId>
-              </exclusion>
+<!--      <dependency>-->
+<!--          <groupId>org.gbif.registry</groupId>-->
+<!--          <artifactId>registry-ws-client</artifactId>-->
+<!--          <version>${registry.version}</version>-->
+<!--          <exclusions>-->
 <!--              <exclusion>-->
-<!--                  <groupId>io.github.openfeign</groupId>-->
+<!--                  <groupId>org.gbif.registry</groupId>-->
+<!--                  <artifactId>registry-doi</artifactId>-->
+<!--              </exclusion>-->
+<!--              <exclusion>-->
+<!--                  <groupId>org.gbif.registry</groupId>-->
+<!--                  <artifactId>registry-domain</artifactId>-->
+<!--              </exclusion>-->
+<!--&lt;!&ndash;              <exclusion>&ndash;&gt;-->
+<!--&lt;!&ndash;                  <groupId>io.github.openfeign</groupId>&ndash;&gt;-->
+<!--&lt;!&ndash;                  <artifactId>*</artifactId>&ndash;&gt;-->
+<!--&lt;!&ndash;              </exclusion>&ndash;&gt;-->
+<!--              <exclusion>-->
+<!--                  <groupId>org.springframework.boot</groupId>-->
 <!--                  <artifactId>*</artifactId>-->
 <!--              </exclusion>-->
-              <exclusion>
-                  <groupId>org.springframework.boot</groupId>
-                  <artifactId>*</artifactId>
-              </exclusion>
+<!--&lt;!&ndash;              <exclusion>&ndash;&gt;-->
+<!--&lt;!&ndash;                  <groupId>org.springframework.cloud</groupId>&ndash;&gt;-->
+<!--&lt;!&ndash;                  <artifactId>*</artifactId>&ndash;&gt;-->
+<!--&lt;!&ndash;              </exclusion>&ndash;&gt;-->
+<!--              <exclusion>-->
+<!--                  <groupId>org.apache.logging.log4j</groupId>-->
+<!--                  <artifactId>log4j-to-slf4j</artifactId>-->
+<!--              </exclusion>-->
+<!--              <exclusion>-->
+<!--                  <groupId>org.gbif.occurrence</groupId>-->
+<!--                  <artifactId>download-query-tools</artifactId>-->
+<!--              </exclusion>-->
 <!--              <exclusion>-->
 <!--                  <groupId>org.springframework.cloud</groupId>-->
-<!--                  <artifactId>*</artifactId>-->
+<!--                  <artifactId>spring-cloud-starter-openfeign</artifactId>-->
 <!--              </exclusion>-->
-              <exclusion>
-                  <groupId>org.apache.logging.log4j</groupId>
-                  <artifactId>log4j-to-slf4j</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>org.gbif.occurrence</groupId>
-                  <artifactId>download-query-tools</artifactId>
-              </exclusion>
-              <exclusion>
-                  <groupId>org.springframework.cloud</groupId>
-                  <artifactId>spring-cloud-starter-openfeign</artifactId>
-              </exclusion>
-          </exclusions>
-      </dependency>
+<!--          </exclusions>-->
+<!--      </dependency>-->
       <!-- Spring Security Core - needed for pipelines history client -->
-      <dependency>
-          <groupId>org.springframework.security</groupId>
-          <artifactId>spring-security-core</artifactId>
-          <version>5.2.15.RELEASE</version>
-      </dependency>
+<!--      <dependency>-->
+<!--          <groupId>org.springframework.security</groupId>-->
+<!--          <artifactId>spring-security-core</artifactId>-->
+<!--          <version>5.2.15.RELEASE</version>-->
+<!--      </dependency>-->
       <dependency>
           <groupId>org.gbif.common</groupId>
           <artifactId>gbif-postal-service</artifactId>
@@ -119,6 +119,12 @@
           <groupId>org.gbif</groupId>
           <artifactId>gbif-wrangler</artifactId>
           <version>1.0.0</version>
+          <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+          </exclusions>
       </dependency>
       <dependency>
           <groupId>org.gbif.pipelines</groupId>
@@ -130,11 +136,41 @@
           <artifactId>elasticsearch-tools</artifactId>
           <version>${project.version}</version>
       </dependency>
+      <dependency>
+          <groupId>org.elasticsearch.client</groupId>
+          <artifactId>elasticsearch-rest-high-level-client</artifactId>
+          <version>7.9.2</version>
+          <exclusions>
+              <exclusion>
+                  <groupId>org.apache.lucene</groupId>
+                  <artifactId>*</artifactId>
+              </exclusion>
+              <exclusion>
+                  <groupId>org.elasticsearch</groupId>
+                  <artifactId>elasticsearch-cli</artifactId>
+              </exclusion>
+          </exclusions>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.lucene</groupId>
+          <artifactId>lucene-core</artifactId>
+          <version>8.6.2</version>
+          <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+          </exclusions>
+      </dependency>
     <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>core</artifactId>
         <version>${project.version}</version>
       <exclusions>
+          <exclusion>
+              <groupId>javax.xml.ws</groupId>
+              <artifactId>jaxws-api</artifactId>
+          </exclusion>
           <exclusion>
               <groupId>org.elasticsearch</groupId>
               <artifactId>elasticsearch</artifactId>
@@ -149,6 +185,18 @@
           </exclusion>
       </exclusions>
     </dependency>
+
+  <dependency>
+      <groupId>org.gbif.occurrence</groupId>
+      <artifactId>occurrence-hdfs-table</artifactId>
+      <version>1.1.9-spark-refactor-SNAPSHOT</version>
+      <exclusions>
+          <exclusion>
+              <groupId>*</groupId>
+              <artifactId>*</artifactId>
+          </exclusion>
+      </exclusions>
+  </dependency>
   <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>keygen</artifactId>
@@ -180,6 +228,7 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <version>${slf4j.version}</version>
+      <scope>provided</scope>
     </dependency>
 <!--    <dependency>-->
 <!--      <groupId>com.google.guava</groupId>-->
@@ -238,10 +287,17 @@
       </exclusion>
       </exclusions>
     </dependency>
+      <dependency>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-lang3</artifactId>
+          <version>${commons-lang3.version}</version>
+          <scope>provided</scope>
+      </dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
       <version>${commons-io.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>it.unimi.dsi</groupId>
@@ -266,6 +322,10 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
             </exclusion>
+            <exclusion>
+                <groupId>*</groupId>
+                <artifactId>*</artifactId>
+            </exclusion>
         </exclusions>
     </dependency>
     <dependency>
@@ -288,16 +348,19 @@
           <groupId>com.fasterxml.jackson.core</groupId>
           <artifactId>jackson-core</artifactId>
           <version>${jackson.version}</version>
+          <scope>provided</scope>
       </dependency>
       <dependency>
           <groupId>com.fasterxml.jackson.core</groupId>
           <artifactId>jackson-annotations</artifactId>
           <version>${jackson.version}</version>
+          <scope>provided</scope>
       </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson.version}</version>
+        <scope>provided</scope>
     </dependency>
       <dependency>
           <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -308,11 +371,16 @@
           <groupId>com.fasterxml.jackson.module</groupId>
           <artifactId>jackson-module-scala_2.12</artifactId>
           <version>${jackson.version}</version>
+          <scope>provided</scope>
           <exclusions>
                 <exclusion>
                   <groupId>org.apache.kerby</groupId>
                   <artifactId>*</artifactId>
                 </exclusion>
+              <exclusion>
+                  <groupId>org.apache.kerby</groupId>
+                  <artifactId>*</artifactId>
+              </exclusion>
           </exclusions>
       </dependency>
       <dependency>
