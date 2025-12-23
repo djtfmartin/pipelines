@@ -59,51 +59,6 @@
     </repositories>
 
   <dependencies>
-<!--      <dependency>-->
-<!--          <groupId>org.gbif.registry</groupId>-->
-<!--          <artifactId>registry-ws-client</artifactId>-->
-<!--          <version>${registry.version}</version>-->
-<!--          <exclusions>-->
-<!--              <exclusion>-->
-<!--                  <groupId>org.gbif.registry</groupId>-->
-<!--                  <artifactId>registry-doi</artifactId>-->
-<!--              </exclusion>-->
-<!--              <exclusion>-->
-<!--                  <groupId>org.gbif.registry</groupId>-->
-<!--                  <artifactId>registry-domain</artifactId>-->
-<!--              </exclusion>-->
-<!--&lt;!&ndash;              <exclusion>&ndash;&gt;-->
-<!--&lt;!&ndash;                  <groupId>io.github.openfeign</groupId>&ndash;&gt;-->
-<!--&lt;!&ndash;                  <artifactId>*</artifactId>&ndash;&gt;-->
-<!--&lt;!&ndash;              </exclusion>&ndash;&gt;-->
-<!--              <exclusion>-->
-<!--                  <groupId>org.springframework.boot</groupId>-->
-<!--                  <artifactId>*</artifactId>-->
-<!--              </exclusion>-->
-<!--&lt;!&ndash;              <exclusion>&ndash;&gt;-->
-<!--&lt;!&ndash;                  <groupId>org.springframework.cloud</groupId>&ndash;&gt;-->
-<!--&lt;!&ndash;                  <artifactId>*</artifactId>&ndash;&gt;-->
-<!--&lt;!&ndash;              </exclusion>&ndash;&gt;-->
-<!--              <exclusion>-->
-<!--                  <groupId>org.apache.logging.log4j</groupId>-->
-<!--                  <artifactId>log4j-to-slf4j</artifactId>-->
-<!--              </exclusion>-->
-<!--              <exclusion>-->
-<!--                  <groupId>org.gbif.occurrence</groupId>-->
-<!--                  <artifactId>download-query-tools</artifactId>-->
-<!--              </exclusion>-->
-<!--              <exclusion>-->
-<!--                  <groupId>org.springframework.cloud</groupId>-->
-<!--                  <artifactId>spring-cloud-starter-openfeign</artifactId>-->
-<!--              </exclusion>-->
-<!--          </exclusions>-->
-<!--      </dependency>-->
-      <!-- Spring Security Core - needed for pipelines history client -->
-<!--      <dependency>-->
-<!--          <groupId>org.springframework.security</groupId>-->
-<!--          <artifactId>spring-security-core</artifactId>-->
-<!--          <version>5.2.15.RELEASE</version>-->
-<!--      </dependency>-->
       <dependency>
           <groupId>org.gbif.common</groupId>
           <artifactId>gbif-postal-service</artifactId>
@@ -195,7 +150,6 @@
           <scope>provided</scope>
       </dependency>
 
-
       <dependency>
       <groupId>org.gbif.pipelines</groupId>
       <artifactId>variables</artifactId>
@@ -237,8 +191,18 @@
               <groupId>org.gbif.occurrence</groupId>
               <artifactId>occurrence-hdfs-table</artifactId>
           </exclusion>
+          <exclusion>
+              <groupId>org.gbif.occurrence</groupId>
+              <artifactId>occurrence-common</artifactId>
+          </exclusion>
       </exclusions>
     </dependency>
+
+      <dependency>
+          <groupId>com.beust</groupId>
+          <artifactId>jcommander</artifactId>
+          <version>1.82</version>
+      </dependency>
 
   <dependency>
       <groupId>org.gbif.occurrence</groupId>
@@ -363,6 +327,7 @@
           <groupId>org.apache.commons</groupId>
           <artifactId>commons-text</artifactId>
           <version>1.10.0</version>
+          <scope>provided</scope>
       </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
@@ -388,6 +353,14 @@
       <artifactId>gbif-common</artifactId>
       <version>${gbif-common.version}</version>
     </dependency>
+
+      <dependency>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-compress</artifactId>
+          <version>1.23.0</version>
+          <scope>provided</scope>
+      </dependency>
+
     <dependency>
       <groupId>org.gbif.vocabulary</groupId>
       <artifactId>vocabulary-lookup</artifactId>
@@ -398,6 +371,7 @@
       <groupId>com.fasterxml.jackson.dataformat</groupId>
       <artifactId>jackson-dataformat-yaml</artifactId>
       <version>${jackson.version}</version>
+      <scope>provided</scope>
     </dependency>
       <dependency>
           <groupId>com.fasterxml.jackson.core</groupId>
@@ -596,7 +570,6 @@
           <artifactId>commons-httpclient</artifactId>
           <version>3.1</version>
       </dependency>
-
       <!-- Old Jackson 1.x (needed by ES-Hadoop 7.x) -->
       <dependency>
           <groupId>org.codehaus.jackson</groupId>
@@ -639,14 +612,13 @@
           <artifactId>hbase-server</artifactId>
           <version>2.5.4-hadoop3</version>
           <scope>compile</scope>
-                    <exclusions>
-                        <exclusion>
-                            <groupId>*</groupId>
-                            <artifactId>*</artifactId>
-                        </exclusion>
-                    </exclusions>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
       </dependency>
-
 
       <!-- Prometheus monitoring for Spark -->
       <dependency>
@@ -654,21 +626,16 @@
           <artifactId>simpleclient</artifactId>
           <version>0.16.0</version>
       </dependency>
-
-      <!-- Embedded HTTP server -->
       <dependency>
           <groupId>io.prometheus</groupId>
           <artifactId>simpleclient_httpserver</artifactId>
           <version>0.16.0</version>
       </dependency>
-
-      <!-- Optional JVM metrics -->
       <dependency>
           <groupId>io.prometheus</groupId>
           <artifactId>simpleclient_hotspot</artifactId>
           <version>0.16.0</version>
       </dependency>
-
   </dependencies>
 
   <build>
