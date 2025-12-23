@@ -37,7 +37,7 @@
         <elasticsearch.version>7.11.2</elasticsearch.version>
         <elasticsearch-spark.version>7.17.29</elasticsearch-spark.version>
         <netty.version>4.1.96.Final</netty.version>
-        <occurrence-hdfs-table.version>1.1.9-spark-refactor-SNAPSHOT</occurrence-hdfs-table.version>
+        <occurrence.version>1.1.9-spark-refactor-SNAPSHOT</occurrence.version>
         <hbase.version>2.5.4-hadoop3</hbase.version>
         <prometheus.version>0.16.0</prometheus.version>
     </properties>
@@ -202,7 +202,18 @@
         <dependency>
             <groupId>org.gbif.occurrence</groupId>
             <artifactId>occurrence-hdfs-table</artifactId>
-            <version>${occurrence-hdfs-table.version}</version>
+            <version>${occurrence.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.gbif.occurrence</groupId>
+            <artifactId>occurrence-common</artifactId>
+            <version>${occurrence.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>*</groupId>
