@@ -355,6 +355,26 @@
     </dependency>
 
       <dependency>
+          <groupId>org.apache.spark</groupId>
+          <artifactId>spark-tags_2.12</artifactId>
+          <version>3.5.6</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-api</artifactId>
+          <version>2.20.0</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.jetbrains</groupId>
+          <artifactId>annotations</artifactId>
+          <version>17.0.0</version>
+          <scope>provided</scope>
+      </dependency>
+
+
+      <dependency>
           <groupId>org.apache.commons</groupId>
           <artifactId>commons-compress</artifactId>
           <version>1.23.0</version>
@@ -399,7 +419,7 @@
       </dependency>
       <dependency>
           <groupId>com.fasterxml.jackson.module</groupId>
-          <artifactId>jackson-module-scala_2.12</artifactId>
+          <artifactId>jackson-module-scala_${scala.binary.version}</artifactId>
           <version>${jackson.version}</version>
           <scope>provided</scope>
           <exclusions>
@@ -461,7 +481,7 @@
       </dependency>
       <dependency>
           <groupId>org.scala-lang.modules</groupId>
-          <artifactId>scala-collection-compat_2.12</artifactId>
+          <artifactId>scala-collection-compat_${scala.binary.version}</artifactId>
           <version>2.7.0</version>
           <scope>provided</scope>
       </dependency>
@@ -542,7 +562,7 @@
     </dependency>
       <dependency>
           <groupId>org.apache.spark</groupId>
-          <artifactId>spark-sql_2.12</artifactId>
+          <artifactId>spark-sql_${scala.binary.version}</artifactId>
           <version>${spark.version}</version>
           <scope>provided</scope>
       </dependency>
@@ -561,7 +581,7 @@
 
       <dependency>
           <groupId>org.elasticsearch</groupId>
-          <artifactId>elasticsearch-spark-30_2.12</artifactId>
+          <artifactId>elasticsearch-spark-30_${scala.binary.version}</artifactId>
           <version>7.17.29</version> <!-- match your ES-Hadoop/Elasticsearch version -->
       </dependency>
       <!-- Old Apache Commons HttpClient (needed by ES-Hadoop 7.x) -->
