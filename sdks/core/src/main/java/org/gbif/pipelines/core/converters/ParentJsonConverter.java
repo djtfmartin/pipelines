@@ -123,7 +123,7 @@ public class ParentJsonConverter {
 
   private void mapEventCoreRecord(EventJsonRecord.Builder builder) {
 
-    String eventID = extractOptValue(verbatim, DwcTerm.eventID).orElseGet(null);
+    String eventID = extractOptValue(verbatim, DwcTerm.eventID).orElse(null);
 
     if (eventCore.getEventType() != null
         && eventCore.getEventType().getConcept().equalsIgnoreCase(ConverterConstants.SURVEY)) {
@@ -512,7 +512,7 @@ public class ParentJsonConverter {
   }
 
   private void mapSortField(EventJsonRecord.Builder builder) {
-    String eventID = extractOptValue(verbatim, DwcTerm.eventID).orElseGet(null);
+    String eventID = extractOptValue(verbatim, DwcTerm.eventID).orElse(null);
     builder.setYearMonthEventIDSort(
         SortUtils.yearDescMonthAscEventIDAscSortKey(
             temporal.getYear(), temporal.getMonth(), eventID));

@@ -529,26 +529,26 @@ public class OccurrenceHdfsRecordConverter {
           taxonRecord.getUsage().getStatus() != null ? taxonRecord.getUsage().getStatus() : "");
     }
 
-    //    if (Objects.nonNull(taxonRecord.getUsageParsedName())
-    //        && Objects.nonNull(taxonRecord.getUsage())) {
-    //      String rank = taxonRecord.getUsage().getRank();
-    //      if (Rank.GENUS.compareTo(Rank.valueOf(rank)) <= 0) {
-    //        occurrenceHdfsRecord.setGenericname(
-    //            Objects.nonNull(taxonRecord.getUsageParsedName().getGenus())
-    //                ? taxonRecord.getUsageParsedName().getGenus()
-    //                : taxonRecord.getUsageParsedName().getUninomial());
-    //      }
-    //
-    //      if (Rank.SPECIES.compareTo(Rank.valueOf(rank)) <= 0) {
-    //        occurrenceHdfsRecord.setSpecificepithet(
-    //            taxonRecord.getUsageParsedName().getSpecificEpithet());
-    //      }
-    //
-    //      if (Rank.INFRASPECIFIC_NAME.compareTo(Rank.valueOf(rank)) <= 0) {
-    //        occurrenceHdfsRecord.setInfraspecificepithet(
-    //            taxonRecord.getUsageParsedName().getInfraspecificEpithet());
-    //      }
-    //    }
+    if (Objects.nonNull(taxonRecord.getUsageParsedName())
+        && Objects.nonNull(taxonRecord.getUsage())) {
+      String rank = taxonRecord.getUsage().getRank();
+      if (Rank.GENUS.compareTo(Rank.valueOf(rank)) <= 0) {
+        occurrenceHdfsRecord.setGenericname(
+            Objects.nonNull(taxonRecord.getUsageParsedName().getGenus())
+                ? taxonRecord.getUsageParsedName().getGenus()
+                : taxonRecord.getUsageParsedName().getUninomial());
+      }
+
+      if (Rank.SPECIES.compareTo(Rank.valueOf(rank)) <= 0) {
+        occurrenceHdfsRecord.setSpecificepithet(
+            taxonRecord.getUsageParsedName().getSpecificEpithet());
+      }
+
+      if (Rank.INFRASPECIFIC_NAME.compareTo(Rank.valueOf(rank)) <= 0) {
+        occurrenceHdfsRecord.setInfraspecificepithet(
+            taxonRecord.getUsageParsedName().getInfraspecificEpithet());
+      }
+    }
 
     setCreatedIfGreater(occurrenceHdfsRecord, taxonRecord.getCreated());
 
@@ -927,8 +927,15 @@ public class OccurrenceHdfsRecordConverter {
           .ifPresent(
               field -> {
                 try {
+
                   String verbatimField =
                       "V" + StringUtils.capitalize(term.simpleName().toLowerCase());
+
+                  // special case for class, as always
+                  if (DwcTerm.class_ == term) {
+                    verbatimField = "VClass$";
+                  }
+
                   PropertyUtils.setProperty(occurrenceHdfsRecord, verbatimField, v);
                 } catch (Exception e) {
                   throw new RuntimeException(e);
@@ -1155,6 +1162,11 @@ public class OccurrenceHdfsRecordConverter {
   /** Gets the {@link Schema.Field} associated to a verbatim term. */
   private static Field verbatimSchemaField(Term term) {
     try {
+
+      if (term == DwcTerm.class_) {
+        return OccurrenceHdfsRecord.class.getDeclaredField("vClass$");
+      }
+
       return OccurrenceHdfsRecord.class.getDeclaredField(
           "v" + StringUtils.capitalize(term.simpleName().toLowerCase()));
     } catch (NoSuchFieldException e) {

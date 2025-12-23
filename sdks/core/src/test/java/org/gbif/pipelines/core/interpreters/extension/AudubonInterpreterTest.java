@@ -1,5 +1,6 @@
 package org.gbif.pipelines.core.interpreters.extension;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,37 +15,11 @@ import org.junit.Test;
 public class AudubonInterpreterTest {
 
   @Test
-  public void audubonTest() {
+  public void audubonTest() throws Exception {
 
     // Expected
     String expected =
-        "{\"id\": \"id\", \"created\": null, \"audubonItems\": [{\"creator\": \"Jose Padial\", "
-            + "\"creatorUri\": null, \"providerLiteral\": \"CM\", \"provider\": null, \"metadataCreatorLiteral\": null, "
-            + "\"metadataCreator\": null, \"metadataProviderLiteral\": null, \"metadataProvider\": null, \"rights\": "
-            + "\"http://creativecommons.org/publicdomain/zero/1.0/\", "
-            + "\"rightsUri\": \"http://creativecommons.org/publicdomain/zero/1.0/\", \"owner\": "
-            + "\"Carnegie Museum of Natural History Herps Collection (CM:Herps)\", \"usageTerms\": "
-            + "\"CC0 1.0 (Public-domain)\", \"webStatement\": null, \"licenseLogoUrl\": null, \"credit\": null, "
-            + "\"attributionLogoUrl\": null, \"attributionLinkUrl\": null, \"fundingAttribution\": null, \"source\": null, "
-            + "\"sourceUri\": null, \"description\": \"Photo taken in 2013\", \"caption\": null, \"language\": null, "
-            + "\"languageUri\": null, \"physicalSetting\": null, \"cvTerm\": null, \"subjectCategoryVocabulary\": null, "
-            + "\"tag\": null, \"locationShown\": null, \"worldRegion\": null, \"countryCode\": null, \"countryName\": null, "
-            + "\"provinceState\": null, \"city\": null, \"sublocation\": null, \"identifier\": \"1b384fd8-8559-42ba-980f-22661a4b5f75\", "
-            + "\"type\": \"StillImage\", \"typeUri\": null, \"subtypeLiteral\": \"Photograph\", \"subtype\": null, \"title\": "
-            + "\"AMBYSTOMA MACULATUM\", \"modified\": \"2017-08-15\", \"metadataDate\": null, \"metadataLanguageLiteral\": null, "
-            + "\"metadataLanguage\": null, \"providerManagedId\": null, \"rating\": null, \"commenterLiteral\": null, "
-            + "\"commenter\": null, \"comments\": null, \"reviewerLiteral\": null, \"reviewer\": null, \"reviewerComments\": null, "
-            + "\"available\": null, \"hasServiceAccessPoint\": null, \"idOfContainingCollection\": null, \"relatedResourceId\": null, "
-            + "\"providerId\": null, \"derivedFrom\": null, \"associatedSpecimenReference\": \"urn:catalog:CM:Herps:156879\", "
-            + "\"associatedObservationReference\": null, \"locationCreated\": null, \"digitizationDate\": null, \"captureDevice\": null, "
-            + "\"resourceCreationTechnique\": null, \"accessUri\": \"https://api.idigbio.org/v2/media/414560e3c8514266b6d9e1888a792564\", "
-            + "\"format\": \"image/jpeg\", \"formatUri\": null, \"variantLiteral\": null, \"variant\": null, \"variantDescription\": null, "
-            + "\"furtherInformationUrl\": null, \"licensingException\": null, \"serviceExpectation\": \"online\", \"hashFunction\": null, "
-            + "\"hashValue\": null, \"PixelXDimension\": null, \"PixelYDimension\": null, \"taxonCoverage\": null, \"scientificName\": null, "
-            + "\"identificationQualifier\": null, \"vernacularName\": null, \"nameAccordingTo\": null, \"scientificNameId\": null, "
-            + "\"otherScientificName\": null, \"identifiedBy\": null, \"dateIdentified\": null, \"taxonCount\": null, \"subjectPart\": null, "
-            + "\"sex\": null, \"lifeStage\": null, \"subjectOrientation\": null, \"preparations\": null, \"temporal\": null, "
-            + "\"createDate\": \"2010-12-10\", \"timeOfDay\": null}], \"issues\": {\"issueList\": []}}";
+        "{\"id\":\"id\",\"created\":null,\"audubonItems\":[{\"creator\":\"Jose Padial\",\"creatorUri\":null,\"providerLiteral\":\"CM\",\"provider\":null,\"metadataCreatorLiteral\":null,\"metadataCreator\":null,\"metadataProviderLiteral\":null,\"metadataProvider\":null,\"rights\":\"http://creativecommons.org/publicdomain/zero/1.0/\",\"rightsUri\":\"http://creativecommons.org/publicdomain/zero/1.0/\",\"owner\":\"Carnegie Museum of Natural History Herps Collection (CM:Herps)\",\"usageTerms\":\"CC0 1.0 (Public-domain)\",\"webStatement\":null,\"licenseLogoUrl\":null,\"credit\":null,\"attributionLogoUrl\":null,\"attributionLinkUrl\":null,\"fundingAttribution\":null,\"source\":null,\"sourceUri\":null,\"description\":\"Photo taken in 2013\",\"caption\":null,\"language\":null,\"languageUri\":null,\"physicalSetting\":null,\"cvTerm\":null,\"subjectCategoryVocabulary\":null,\"tag\":null,\"locationShown\":null,\"worldRegion\":null,\"countryCode\":null,\"countryName\":null,\"provinceState\":null,\"city\":null,\"sublocation\":null,\"identifier\":\"1b384fd8-8559-42ba-980f-22661a4b5f75\",\"type\":\"StillImage\",\"typeUri\":null,\"subtypeLiteral\":\"Photograph\",\"subtype\":null,\"title\":\"AMBYSTOMA MACULATUM\",\"modified\":\"2017-08-15\",\"metadataDate\":null,\"metadataLanguageLiteral\":null,\"metadataLanguage\":null,\"providerManagedId\":null,\"rating\":null,\"commenterLiteral\":null,\"commenter\":null,\"comments\":null,\"reviewerLiteral\":null,\"reviewer\":null,\"reviewerComments\":null,\"available\":null,\"hasServiceAccessPoint\":null,\"idOfContainingCollection\":null,\"relatedResourceId\":null,\"providerId\":null,\"derivedFrom\":null,\"associatedSpecimenReference\":\"urn:catalog:CM:Herps:156879\",\"associatedObservationReference\":null,\"locationCreated\":null,\"digitizationDate\":null,\"captureDevice\":null,\"resourceCreationTechnique\":null,\"accessUri\":\"https://api.idigbio.org/v2/media/414560e3c8514266b6d9e1888a792564\",\"format\":\"image/jpeg\",\"formatUri\":null,\"variantLiteral\":null,\"variant\":null,\"variantDescription\":null,\"furtherInformationUrl\":null,\"licensingException\":null,\"serviceExpectation\":\"online\",\"hashFunction\":null,\"hashValue\":null,\"taxonCoverage\":null,\"scientificName\":null,\"identificationQualifier\":null,\"vernacularName\":null,\"nameAccordingTo\":null,\"scientificNameId\":null,\"otherScientificName\":null,\"identifiedBy\":null,\"dateIdentified\":null,\"taxonCount\":null,\"subjectPart\":null,\"sex\":null,\"lifeStage\":null,\"subjectOrientation\":null,\"preparations\":null,\"temporal\":null,\"createDate\":\"2010-12-10\",\"timeOfDay\":null,\"pixelXDimension\":null,\"pixelYDimension\":null}],\"issues\":{\"issueList\":[]}}";
 
     // State
     Map<String, List<Map<String, String>>> ext = new HashMap<>(1);
@@ -81,38 +56,15 @@ public class AudubonInterpreterTest {
     AudubonInterpreter.builder().create().interpret(er, ar);
 
     // Should
-    Assert.assertEquals(expected, ar.toString());
+    Assert.assertEquals(expected, new ObjectMapper().writeValueAsString(ar));
   }
 
   @Test
-  public void wrongFormatTest() {
+  public void wrongFormatTest() throws Exception {
 
     // Expected
     String expected =
-        "{\"id\": \"id\", \"created\": null, \"audubonItems\": [{\"creator\": null, \"creatorUri\": null, "
-            + "\"providerLiteral\": null, \"provider\": null, \"metadataCreatorLiteral\": null, \"metadataCreator\": null, "
-            + "\"metadataProviderLiteral\": null, \"metadataProvider\": null, \"rights\": \"CC0 4.0\", \"rightsUri\": \"CC0 4.0\", "
-            + "\"owner\": \"Naturalis Biodiversity Center\", \"usageTerms\": null, \"webStatement\": null, \"licenseLogoUrl\": null, "
-            + "\"credit\": null, \"attributionLogoUrl\": null, \"attributionLinkUrl\": null, \"fundingAttribution\": null, "
-            + "\"source\": null, \"sourceUri\": null, \"description\": null, \"caption\": \"ZMA.AVES.11080\", \"language\": null, "
-            + "\"languageUri\": null, \"physicalSetting\": null, \"cvTerm\": null, \"subjectCategoryVocabulary\": null, \"tag\": null, "
-            + "\"locationShown\": null, \"worldRegion\": null, \"countryCode\": null, \"countryName\": null, \"provinceState\": null, "
-            + "\"city\": null, \"sublocation\": null, \"identifier\": \"http://medialib.naturalis.nl/file/id/ZMA.AVES.11080/format/large\", "
-            + "\"type\": \"MovingImage\", \"typeUri\": null, \"subtypeLiteral\": null, \"subtype\": null, \"title\": null, \"modified\": null, "
-            + "\"metadataDate\": null, \"metadataLanguageLiteral\": null, \"metadataLanguage\": null, \"providerManagedId\": null, "
-            + "\"rating\": null, \"commenterLiteral\": null, \"commenter\": null, \"comments\": null, \"reviewerLiteral\": null, "
-            + "\"reviewer\": null, \"reviewerComments\": null, \"available\": null, \"hasServiceAccessPoint\": null, "
-            + "\"idOfContainingCollection\": null, \"relatedResourceId\": null, \"providerId\": null, \"derivedFrom\": null, "
-            + "\"associatedSpecimenReference\": null, \"associatedObservationReference\": null, \"locationCreated\": null, "
-            + "\"digitizationDate\": null, \"captureDevice\": null, \"resourceCreationTechnique\": null, \"accessUri\": "
-            + "\"http://medialib.naturalis.nl/file/id/ZMA.AVES.11080/format/large\", \"format\": \"video/mp4\", \"formatUri\": null, "
-            + "\"variantLiteral\": null, \"variant\": \"ac:GoodQuality\", \"variantDescription\": null, \"furtherInformationUrl\": null, "
-            + "\"licensingException\": null, \"serviceExpectation\": null, \"hashFunction\": null, \"hashValue\": null, "
-            + "\"PixelXDimension\": null, \"PixelYDimension\": null, \"taxonCoverage\": null, \"scientificName\": null, "
-            + "\"identificationQualifier\": null, \"vernacularName\": null, \"nameAccordingTo\": null, \"scientificNameId\": null, "
-            + "\"otherScientificName\": null, \"identifiedBy\": null, \"dateIdentified\": null, \"taxonCount\": null, "
-            + "\"subjectPart\": null, \"sex\": null, \"lifeStage\": null, \"subjectOrientation\": null, \"preparations\": null, "
-            + "\"temporal\": null, \"createDate\": null, \"timeOfDay\": null}], \"issues\": {\"issueList\": []}}";
+        "{\"id\":\"id\",\"created\":null,\"audubonItems\":[{\"creator\":null,\"creatorUri\":null,\"providerLiteral\":null,\"provider\":null,\"metadataCreatorLiteral\":null,\"metadataCreator\":null,\"metadataProviderLiteral\":null,\"metadataProvider\":null,\"rights\":\"CC0 4.0\",\"rightsUri\":\"CC0 4.0\",\"owner\":\"Naturalis Biodiversity Center\",\"usageTerms\":null,\"webStatement\":null,\"licenseLogoUrl\":null,\"credit\":null,\"attributionLogoUrl\":null,\"attributionLinkUrl\":null,\"fundingAttribution\":null,\"source\":null,\"sourceUri\":null,\"description\":null,\"caption\":\"ZMA.AVES.11080\",\"language\":null,\"languageUri\":null,\"physicalSetting\":null,\"cvTerm\":null,\"subjectCategoryVocabulary\":null,\"tag\":null,\"locationShown\":null,\"worldRegion\":null,\"countryCode\":null,\"countryName\":null,\"provinceState\":null,\"city\":null,\"sublocation\":null,\"identifier\":\"http://medialib.naturalis.nl/file/id/ZMA.AVES.11080/format/large\",\"type\":\"MovingImage\",\"typeUri\":null,\"subtypeLiteral\":null,\"subtype\":null,\"title\":null,\"modified\":null,\"metadataDate\":null,\"metadataLanguageLiteral\":null,\"metadataLanguage\":null,\"providerManagedId\":null,\"rating\":null,\"commenterLiteral\":null,\"commenter\":null,\"comments\":null,\"reviewerLiteral\":null,\"reviewer\":null,\"reviewerComments\":null,\"available\":null,\"hasServiceAccessPoint\":null,\"idOfContainingCollection\":null,\"relatedResourceId\":null,\"providerId\":null,\"derivedFrom\":null,\"associatedSpecimenReference\":null,\"associatedObservationReference\":null,\"locationCreated\":null,\"digitizationDate\":null,\"captureDevice\":null,\"resourceCreationTechnique\":null,\"accessUri\":\"http://medialib.naturalis.nl/file/id/ZMA.AVES.11080/format/large\",\"format\":\"video/mp4\",\"formatUri\":null,\"variantLiteral\":null,\"variant\":\"ac:GoodQuality\",\"variantDescription\":null,\"furtherInformationUrl\":null,\"licensingException\":null,\"serviceExpectation\":null,\"hashFunction\":null,\"hashValue\":null,\"taxonCoverage\":null,\"scientificName\":null,\"identificationQualifier\":null,\"vernacularName\":null,\"nameAccordingTo\":null,\"scientificNameId\":null,\"otherScientificName\":null,\"identifiedBy\":null,\"dateIdentified\":null,\"taxonCount\":null,\"subjectPart\":null,\"sex\":null,\"lifeStage\":null,\"subjectOrientation\":null,\"preparations\":null,\"temporal\":null,\"createDate\":null,\"timeOfDay\":null,\"pixelXDimension\":null,\"pixelYDimension\":null}],\"issues\":{\"issueList\":[]}}";
 
     // State
     Map<String, List<Map<String, String>>> ext = new HashMap<>(1);
@@ -141,36 +93,15 @@ public class AudubonInterpreterTest {
     AudubonInterpreter.builder().create().interpret(er, ar);
 
     // Should
-    Assert.assertEquals(expected, ar.toString());
+    Assert.assertEquals(expected, new ObjectMapper().writeValueAsString(ar));
   }
 
   @Test
-  public void dateIssueTest() {
+  public void dateIssueTest() throws Exception {
 
     // Expected
     String expected =
-        "{\"id\": \"id\", \"created\": null, \"audubonItems\": [{\"creator\": null, \"creatorUri\": null, \"providerLiteral\": "
-            + "null, \"provider\": null, \"metadataCreatorLiteral\": null, \"metadataCreator\": null, \"metadataProviderLiteral\": null, "
-            + "\"metadataProvider\": null, \"rights\": null, \"rightsUri\": null, \"owner\": null, \"usageTerms\": null, "
-            + "\"webStatement\": null, \"licenseLogoUrl\": null, \"credit\": null, \"attributionLogoUrl\": null, "
-            + "\"attributionLinkUrl\": null, \"fundingAttribution\": null, \"source\": null, \"sourceUri\": null, \"description\": null, "
-            + "\"caption\": null, \"language\": null, \"languageUri\": null, \"physicalSetting\": null, \"cvTerm\": null, "
-            + "\"subjectCategoryVocabulary\": null, \"tag\": null, \"locationShown\": null, \"worldRegion\": null, \"countryCode\": null, "
-            + "\"countryName\": null, \"provinceState\": null, \"city\": null, \"sublocation\": null, \"identifier\": null, \"type\": "
-            + "\"StillImage\", \"typeUri\": null, \"subtypeLiteral\": null, \"subtype\": null, \"title\": null, \"modified\": null, "
-            + "\"metadataDate\": null, \"metadataLanguageLiteral\": null, \"metadataLanguage\": null, \"providerManagedId\": null, "
-            + "\"rating\": null, \"commenterLiteral\": null, \"commenter\": null, \"comments\": null, \"reviewerLiteral\": null, "
-            + "\"reviewer\": null, \"reviewerComments\": null, \"available\": null, \"hasServiceAccessPoint\": null, "
-            + "\"idOfContainingCollection\": null, \"relatedResourceId\": null, \"providerId\": null, \"derivedFrom\": null, "
-            + "\"associatedSpecimenReference\": null, \"associatedObservationReference\": null, \"locationCreated\": null, "
-            + "\"digitizationDate\": null, \"captureDevice\": null, \"resourceCreationTechnique\": null, \"accessUri\": null, "
-            + "\"format\": null, \"formatUri\": null, \"variantLiteral\": null, \"variant\": null, \"variantDescription\": null, "
-            + "\"furtherInformationUrl\": null, \"licensingException\": null, \"serviceExpectation\": null, \"hashFunction\": null, "
-            + "\"hashValue\": null, \"PixelXDimension\": null, \"PixelYDimension\": null, \"taxonCoverage\": null, \"scientificName\": null, "
-            + "\"identificationQualifier\": null, \"vernacularName\": null, \"nameAccordingTo\": null, \"scientificNameId\": null, "
-            + "\"otherScientificName\": null, \"identifiedBy\": null, \"dateIdentified\": null, \"taxonCount\": null, \"subjectPart\": null, "
-            + "\"sex\": null, \"lifeStage\": null, \"subjectOrientation\": null, \"preparations\": null, \"temporal\": null, "
-            + "\"createDate\": null, \"timeOfDay\": null}], \"issues\": {\"issueList\": [\"MULTIMEDIA_DATE_INVALID\"]}}";
+        "{\"id\":\"id\",\"created\":null,\"audubonItems\":[{\"creator\":null,\"creatorUri\":null,\"providerLiteral\":null,\"provider\":null,\"metadataCreatorLiteral\":null,\"metadataCreator\":null,\"metadataProviderLiteral\":null,\"metadataProvider\":null,\"rights\":null,\"rightsUri\":null,\"owner\":null,\"usageTerms\":null,\"webStatement\":null,\"licenseLogoUrl\":null,\"credit\":null,\"attributionLogoUrl\":null,\"attributionLinkUrl\":null,\"fundingAttribution\":null,\"source\":null,\"sourceUri\":null,\"description\":null,\"caption\":null,\"language\":null,\"languageUri\":null,\"physicalSetting\":null,\"cvTerm\":null,\"subjectCategoryVocabulary\":null,\"tag\":null,\"locationShown\":null,\"worldRegion\":null,\"countryCode\":null,\"countryName\":null,\"provinceState\":null,\"city\":null,\"sublocation\":null,\"identifier\":null,\"type\":\"StillImage\",\"typeUri\":null,\"subtypeLiteral\":null,\"subtype\":null,\"title\":null,\"modified\":null,\"metadataDate\":null,\"metadataLanguageLiteral\":null,\"metadataLanguage\":null,\"providerManagedId\":null,\"rating\":null,\"commenterLiteral\":null,\"commenter\":null,\"comments\":null,\"reviewerLiteral\":null,\"reviewer\":null,\"reviewerComments\":null,\"available\":null,\"hasServiceAccessPoint\":null,\"idOfContainingCollection\":null,\"relatedResourceId\":null,\"providerId\":null,\"derivedFrom\":null,\"associatedSpecimenReference\":null,\"associatedObservationReference\":null,\"locationCreated\":null,\"digitizationDate\":null,\"captureDevice\":null,\"resourceCreationTechnique\":null,\"accessUri\":null,\"format\":null,\"formatUri\":null,\"variantLiteral\":null,\"variant\":null,\"variantDescription\":null,\"furtherInformationUrl\":null,\"licensingException\":null,\"serviceExpectation\":null,\"hashFunction\":null,\"hashValue\":null,\"taxonCoverage\":null,\"scientificName\":null,\"identificationQualifier\":null,\"vernacularName\":null,\"nameAccordingTo\":null,\"scientificNameId\":null,\"otherScientificName\":null,\"identifiedBy\":null,\"dateIdentified\":null,\"taxonCount\":null,\"subjectPart\":null,\"sex\":null,\"lifeStage\":null,\"subjectOrientation\":null,\"preparations\":null,\"temporal\":null,\"createDate\":null,\"timeOfDay\":null,\"pixelXDimension\":null,\"pixelYDimension\":null}],\"issues\":{\"issueList\":[\"MULTIMEDIA_DATE_INVALID\"]}}";
 
     // State
     Map<String, List<Map<String, String>>> ext = new HashMap<>(1);
@@ -188,58 +119,14 @@ public class AudubonInterpreterTest {
     AudubonInterpreter.builder().create().interpret(er, ar);
 
     // Should
-    Assert.assertEquals(expected, ar.toString());
+    Assert.assertEquals(expected, new ObjectMapper().writeValueAsString(ar));
   }
 
   @Test
-  public void swappedValuesTest() {
+  public void swappedValuesTest() throws Exception {
 
     String expected =
-        "{\"id\": \"id\", \"created\": null, \"audubonItems\": [{\"creator\": null, \"creatorUri\": \"Jerome Fischer\", "
-            + "\"providerLiteral\": null, \"provider\": null, \"metadataCreatorLiteral\": null, \"metadataCreator\": null,"
-            + " \"metadataProviderLiteral\": null, \"metadataProvider\": null, \"rights\": \"http://creativecommons.org/licenses/by-nc-sa/4.0/\", "
-            + "\"rightsUri\": \"http://creativecommons.org/licenses/by-nc-sa/4.0/\", \"owner\": \"Jerome Fischer\", \"usageTerms\": null, "
-            + "\"webStatement\": null, \"licenseLogoUrl\": null, \"credit\": null, \"attributionLogoUrl\": null, \"attributionLinkUrl\": null,"
-            + " \"fundingAttribution\": null, \"source\": null, \"sourceUri\": null, \"description\": \"27 s\", \"caption\": null, \"language\": null, "
-            + "\"languageUri\": null, \"physicalSetting\": null, \"cvTerm\": null, \"subjectCategoryVocabulary\": null, \"tag\": null, "
-            + "\"locationShown\": null, \"worldRegion\": null, \"countryCode\": null, \"countryName\": null, \"provinceState\": null, "
-            + "\"city\": null, \"sublocation\": null, \"identifier\": \"https://data.biodiversitydata.nl/xeno-canto/observation/XC449504\", "
-            + "\"type\": \"Sound\", \"typeUri\": null, \"subtypeLiteral\": null, \"subtype\": null, \"title\": null, \"modified\": null, "
-            + "\"metadataDate\": null, \"metadataLanguageLiteral\": null, \"metadataLanguage\": null, \"providerManagedId\": null, "
-            + "\"rating\": null, \"commenterLiteral\": null, \"commenter\": null, \"comments\": null, \"reviewerLiteral\": null,"
-            + " \"reviewer\": null, \"reviewerComments\": null, \"available\": null, \"hasServiceAccessPoint\": null, \"idOfContainingCollection\": null, "
-            + "\"relatedResourceId\": null, \"providerId\": null, \"derivedFrom\": null, \"associatedSpecimenReference\": null, "
-            + "\"associatedObservationReference\": null, \"locationCreated\": null, \"digitizationDate\": null, \"captureDevice\": null, "
-            + "\"resourceCreationTechnique\": \"bitrate: 320000 bps; bitrate mode: cbr; audio sampling rate: 44100 Hz; number of channels: 2; lossy\", "
-            + "\"accessUri\": \"https://www.xeno-canto.org/sounds/uploaded/JPBSNBUUEF/XC449504-Rufous-winged%20Antwren%2C%20song%2C%203.1..mp3\", "
-            + "\"format\": \"audio/mpeg\", \"formatUri\": null, \"variantLiteral\": \"ac:BestQuality\", \"variant\": null, \"variantDescription\": null, "
-            + "\"furtherInformationUrl\": null, \"licensingException\": null, \"serviceExpectation\": null, \"hashFunction\": null, \"hashValue\": null, "
-            + "\"PixelXDimension\": null, \"PixelYDimension\": null, \"taxonCoverage\": null, \"scientificName\": null, \"identificationQualifier\": null, "
-            + "\"vernacularName\": null, \"nameAccordingTo\": null, \"scientificNameId\": null, \"otherScientificName\": null, \"identifiedBy\": null, "
-            + "\"dateIdentified\": null, \"taxonCount\": null, \"subjectPart\": null, \"sex\": null, \"lifeStage\": null, \"subjectOrientation\": null, "
-            + "\"preparations\": null, \"temporal\": null, \"createDate\": null, \"timeOfDay\": null}, {\"creator\": null, \"creatorUri\": "
-            + "\"Stichting Xeno-canto voor Natuurgeluiden\", \"providerLiteral\": null, \"provider\": null, \"metadataCreatorLiteral\": null, "
-            + "\"metadataCreator\": null, \"metadataProviderLiteral\": null, \"metadataProvider\": null, \"rights\": \"http://creativecommons.org/licenses/by-nc-sa/4.0/\", "
-            + "\"rightsUri\": \"http://creativecommons.org/licenses/by-nc-sa/4.0/\", \"owner\": \"Stichting Xeno-canto voor Natuurgeluiden\", "
-            + "\"usageTerms\": null, \"webStatement\": null, \"licenseLogoUrl\": null, \"credit\": null, \"attributionLogoUrl\": null, "
-            + "\"attributionLinkUrl\": null, \"fundingAttribution\": null, \"source\": null, \"sourceUri\": null, \"description\": null, "
-            + "\"caption\": \"Sonogram of the first ten seconds of the sound recording\", \"language\": null, \"languageUri\": null, "
-            + "\"physicalSetting\": null, \"cvTerm\": null, \"subjectCategoryVocabulary\": null, \"tag\": null, \"locationShown\": null, "
-            + "\"worldRegion\": null, \"countryCode\": null, \"countryName\": null, \"provinceState\": null, \"city\": null, \"sublocation\": null, "
-            + "\"identifier\": \"https://data.biodiversitydata.nl/xeno-canto/observation/XC449504\", \"type\": \"StillImage\", \"typeUri\": null, "
-            + "\"subtypeLiteral\": null, \"subtype\": null, \"title\": null, \"modified\": null, \"metadataDate\": null, "
-            + "\"metadataLanguageLiteral\": null, \"metadataLanguage\": null, \"providerManagedId\": null, \"rating\": null, \"commenterLiteral\": null, "
-            + "\"commenter\": null, \"comments\": null, \"reviewerLiteral\": null, \"reviewer\": null, \"reviewerComments\": null, \"available\": null, "
-            + "\"hasServiceAccessPoint\": null, \"idOfContainingCollection\": null, \"relatedResourceId\": null, \"providerId\": null,"
-            + " \"derivedFrom\": null, \"associatedSpecimenReference\": null, \"associatedObservationReference\": null, \"locationCreated\": null, "
-            + "\"digitizationDate\": null, \"captureDevice\": null, \"resourceCreationTechnique\": null, \"accessUri\": "
-            + "\"https://www.xeno-canto.org/sounds/uploaded/JPBSNBUUEF/ffts/XC449504-large.png\", \"format\": \"image/png\", \"formatUri\": null, "
-            + "\"variantLiteral\": \"ac:MediumQuality\", \"variant\": null, \"variantDescription\": null, \"furtherInformationUrl\": null, "
-            + "\"licensingException\": null, \"serviceExpectation\": null, \"hashFunction\": null, \"hashValue\": null, \"PixelXDimension\": null, "
-            + "\"PixelYDimension\": null, \"taxonCoverage\": null, \"scientificName\": null, \"identificationQualifier\": null, \"vernacularName\": null, "
-            + "\"nameAccordingTo\": null, \"scientificNameId\": null, \"otherScientificName\": null, \"identifiedBy\": null, \"dateIdentified\": null, "
-            + "\"taxonCount\": null, \"subjectPart\": null, \"sex\": null, \"lifeStage\": null, \"subjectOrientation\": null, \"preparations\": null,"
-            + " \"temporal\": null, \"createDate\": null, \"timeOfDay\": null}], \"issues\": {\"issueList\": []}}";
+        "{\"id\":\"id\",\"created\":null,\"audubonItems\":[{\"creator\":null,\"creatorUri\":\"Jerome Fischer\",\"providerLiteral\":null,\"provider\":null,\"metadataCreatorLiteral\":null,\"metadataCreator\":null,\"metadataProviderLiteral\":null,\"metadataProvider\":null,\"rights\":\"http://creativecommons.org/licenses/by-nc-sa/4.0/\",\"rightsUri\":\"http://creativecommons.org/licenses/by-nc-sa/4.0/\",\"owner\":\"Jerome Fischer\",\"usageTerms\":null,\"webStatement\":null,\"licenseLogoUrl\":null,\"credit\":null,\"attributionLogoUrl\":null,\"attributionLinkUrl\":null,\"fundingAttribution\":null,\"source\":null,\"sourceUri\":null,\"description\":\"27 s\",\"caption\":null,\"language\":null,\"languageUri\":null,\"physicalSetting\":null,\"cvTerm\":null,\"subjectCategoryVocabulary\":null,\"tag\":null,\"locationShown\":null,\"worldRegion\":null,\"countryCode\":null,\"countryName\":null,\"provinceState\":null,\"city\":null,\"sublocation\":null,\"identifier\":\"https://data.biodiversitydata.nl/xeno-canto/observation/XC449504\",\"type\":\"Sound\",\"typeUri\":null,\"subtypeLiteral\":null,\"subtype\":null,\"title\":null,\"modified\":null,\"metadataDate\":null,\"metadataLanguageLiteral\":null,\"metadataLanguage\":null,\"providerManagedId\":null,\"rating\":null,\"commenterLiteral\":null,\"commenter\":null,\"comments\":null,\"reviewerLiteral\":null,\"reviewer\":null,\"reviewerComments\":null,\"available\":null,\"hasServiceAccessPoint\":null,\"idOfContainingCollection\":null,\"relatedResourceId\":null,\"providerId\":null,\"derivedFrom\":null,\"associatedSpecimenReference\":null,\"associatedObservationReference\":null,\"locationCreated\":null,\"digitizationDate\":null,\"captureDevice\":null,\"resourceCreationTechnique\":\"bitrate: 320000 bps; bitrate mode: cbr; audio sampling rate: 44100 Hz; number of channels: 2; lossy\",\"accessUri\":\"https://www.xeno-canto.org/sounds/uploaded/JPBSNBUUEF/XC449504-Rufous-winged%20Antwren%2C%20song%2C%203.1..mp3\",\"format\":\"audio/mpeg\",\"formatUri\":null,\"variantLiteral\":\"ac:BestQuality\",\"variant\":null,\"variantDescription\":null,\"furtherInformationUrl\":null,\"licensingException\":null,\"serviceExpectation\":null,\"hashFunction\":null,\"hashValue\":null,\"taxonCoverage\":null,\"scientificName\":null,\"identificationQualifier\":null,\"vernacularName\":null,\"nameAccordingTo\":null,\"scientificNameId\":null,\"otherScientificName\":null,\"identifiedBy\":null,\"dateIdentified\":null,\"taxonCount\":null,\"subjectPart\":null,\"sex\":null,\"lifeStage\":null,\"subjectOrientation\":null,\"preparations\":null,\"temporal\":null,\"createDate\":null,\"timeOfDay\":null,\"pixelXDimension\":null,\"pixelYDimension\":null},{\"creator\":null,\"creatorUri\":\"Stichting Xeno-canto voor Natuurgeluiden\",\"providerLiteral\":null,\"provider\":null,\"metadataCreatorLiteral\":null,\"metadataCreator\":null,\"metadataProviderLiteral\":null,\"metadataProvider\":null,\"rights\":\"http://creativecommons.org/licenses/by-nc-sa/4.0/\",\"rightsUri\":\"http://creativecommons.org/licenses/by-nc-sa/4.0/\",\"owner\":\"Stichting Xeno-canto voor Natuurgeluiden\",\"usageTerms\":null,\"webStatement\":null,\"licenseLogoUrl\":null,\"credit\":null,\"attributionLogoUrl\":null,\"attributionLinkUrl\":null,\"fundingAttribution\":null,\"source\":null,\"sourceUri\":null,\"description\":null,\"caption\":\"Sonogram of the first ten seconds of the sound recording\",\"language\":null,\"languageUri\":null,\"physicalSetting\":null,\"cvTerm\":null,\"subjectCategoryVocabulary\":null,\"tag\":null,\"locationShown\":null,\"worldRegion\":null,\"countryCode\":null,\"countryName\":null,\"provinceState\":null,\"city\":null,\"sublocation\":null,\"identifier\":\"https://data.biodiversitydata.nl/xeno-canto/observation/XC449504\",\"type\":\"StillImage\",\"typeUri\":null,\"subtypeLiteral\":null,\"subtype\":null,\"title\":null,\"modified\":null,\"metadataDate\":null,\"metadataLanguageLiteral\":null,\"metadataLanguage\":null,\"providerManagedId\":null,\"rating\":null,\"commenterLiteral\":null,\"commenter\":null,\"comments\":null,\"reviewerLiteral\":null,\"reviewer\":null,\"reviewerComments\":null,\"available\":null,\"hasServiceAccessPoint\":null,\"idOfContainingCollection\":null,\"relatedResourceId\":null,\"providerId\":null,\"derivedFrom\":null,\"associatedSpecimenReference\":null,\"associatedObservationReference\":null,\"locationCreated\":null,\"digitizationDate\":null,\"captureDevice\":null,\"resourceCreationTechnique\":null,\"accessUri\":\"https://www.xeno-canto.org/sounds/uploaded/JPBSNBUUEF/ffts/XC449504-large.png\",\"format\":\"image/png\",\"formatUri\":null,\"variantLiteral\":\"ac:MediumQuality\",\"variant\":null,\"variantDescription\":null,\"furtherInformationUrl\":null,\"licensingException\":null,\"serviceExpectation\":null,\"hashFunction\":null,\"hashValue\":null,\"taxonCoverage\":null,\"scientificName\":null,\"identificationQualifier\":null,\"vernacularName\":null,\"nameAccordingTo\":null,\"scientificNameId\":null,\"otherScientificName\":null,\"identifiedBy\":null,\"dateIdentified\":null,\"taxonCount\":null,\"subjectPart\":null,\"sex\":null,\"lifeStage\":null,\"subjectOrientation\":null,\"preparations\":null,\"temporal\":null,\"createDate\":null,\"timeOfDay\":null,\"pixelXDimension\":null,\"pixelYDimension\":null}],\"issues\":{\"issueList\":[]}}";
 
     // State
     Map<String, List<Map<String, String>>> ext = new HashMap<>(2);
@@ -289,11 +176,11 @@ public class AudubonInterpreterTest {
     AudubonInterpreter.builder().create().interpret(er, ar);
 
     // Should
-    Assert.assertEquals(expected, ar.toString());
+    Assert.assertEquals(expected, new ObjectMapper().writeValueAsString(ar));
   }
 
   @Test
-  public void licensePriorityTest() {
+  public void licensePriorityTest() throws Exception {
 
     // State
     Map<String, List<Map<String, String>>> ext = new HashMap<>(1);
@@ -330,7 +217,7 @@ public class AudubonInterpreterTest {
   }
 
   @Test
-  public void licenseTest() {
+  public void licenseTest() throws Exception {
 
     // State
     Map<String, List<Map<String, String>>> ext = new HashMap<>(1);

@@ -49,7 +49,7 @@ public class ValidateIdentifiersTest {
 
     ValidateIdentifiers.validateIdentifiers(dataset, metrics);
 
-    assert metrics.get(UNIQUE_IDS_COUNT) == 3;
+    assert metrics.get(UNIQUE_IDS_COUNT + "Attempted") == 3;
   }
 
   @Test
@@ -72,7 +72,7 @@ public class ValidateIdentifiersTest {
 
     ValidateIdentifiers.validateIdentifiers(dataset, metrics);
 
-    assert metrics.get(UNIQUE_IDS_COUNT) == 3;
-    assert metrics.get(DUPLICATE_IDS_COUNT) == 3;
+    assert metrics.get(UNIQUE_IDS_COUNT + "Attempted") == 3;
+    assert metrics.get(DUPLICATE_IDS_COUNT + "Attempted") == 3;
   }
 }
