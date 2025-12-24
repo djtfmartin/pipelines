@@ -13,7 +13,7 @@ ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-extensions-3
 
 # Download JMX exporter
 ADD https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/${JMX_EXPORTER_VERSION}/jmx_prometheus_javaagent-${JMX_EXPORTER_VERSION}.jar \
-    /opt/jmx/jmx_prometheus_javaagent-${JMX_EXPORTER_VERSION}.jar
+    /opt/jmx/jmx_prometheus_javaagent.jar
 
 RUN chmod 777 /opt/spark/jars/iceberg-spark-extensions-3.5_2.12-1.6.1.jar
 RUN chmod 777 /opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.6.1.jar
