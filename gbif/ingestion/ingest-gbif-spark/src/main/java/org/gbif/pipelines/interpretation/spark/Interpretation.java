@@ -199,9 +199,9 @@ public class Interpretation {
     try {
       MDC.put("datasetKey", datasetId);
       log.info(
-              "Starting interpretation with tripleValid: {}, occurrenceIdValid: {}",
-              tripletValid,
-              occurrenceIdValid);
+          "Starting interpretation with tripleValid: {}, occurrenceIdValid: {}",
+          tripletValid,
+          occurrenceIdValid);
 
       String inputPath = String.format("%s/%s/%d", config.getInputPath(), datasetId, attempt);
       String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
@@ -209,7 +209,7 @@ public class Interpretation {
       // Load the extended records
       sparkLog(spark, "loadExtendedRecords", "Loading extended records", useCheckpoints);
       Dataset<ExtendedRecord> extendedRecords =
-              loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards, useCheckpoints);
+          loadExtendedRecords(spark, config, inputPath, outputPath, numberOfShards, useCheckpoints);
 
       // Process identifiers - persisting new identifiers
       sparkLog(spark, "processIdentifiers", "Processing identifiers", useCheckpoints);
@@ -225,9 +225,11 @@ public class Interpretation {
       checkIdentifiers(identifiers);
 
       // join extended records and identifiers
-      sparkLog(spark, "joinRecordsAndIdentifiers", "Joining records and identifiers", useCheckpoints);
+      sparkLog(
+          spark, "joinRecordsAndIdentifiers", "Joining records and identifiers", useCheckpoints);
       Dataset<Occurrence> simpleRecords =
-              joinRecordsAndIdentifiers(spark, extendedRecords, identifiers, outputPath, useCheckpoints);
+          joinRecordsAndIdentifiers(
+              spark, extendedRecords, identifiers, outputPath, useCheckpoints);
 
       // a single call to the registry to get the dataset metadata
       final MetadataRecord metadata = getMetadataRecord(config, datasetId);
@@ -235,35 +237,35 @@ public class Interpretation {
       // run all transforms
       sparkLog(spark, "runTransforms", "Running transforms", useCheckpoints);
       Dataset<Occurrence> interpreted =
-              runTransforms(spark, config, simpleRecords, metadata, outputPath, useCheckpoints);
+          runTransforms(spark, config, simpleRecords, metadata, outputPath, useCheckpoints);
 
       // write parquet for elastic
       sparkLog(spark, "toJson", "Writing JSON output", useCheckpoints);
       toJson(interpreted, metadata)
-              .write()
-              .mode(SaveMode.Overwrite)
-              .parquet(outputPath + "/" + OCCURRENCE_JSON);
+          .write()
+          .mode(SaveMode.Overwrite)
+          .parquet(outputPath + "/" + OCCURRENCE_JSON);
 
       // write parquet for hdfs view
       sparkLog(spark, "toHdfs", "Writing HDFS output", useCheckpoints);
       toHdfs(interpreted, metadata)
-              .write()
-              .mode(SaveMode.Overwrite)
-              .parquet(outputPath + "/" + OCCURRENCE_HDFS);
+          .write()
+          .mode(SaveMode.Overwrite)
+          .parquet(outputPath + "/" + OCCURRENCE_HDFS);
 
       // cleanup intermediate parquet outputs
       HdfsConfigs hdfsConfigs =
-              HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
+          HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
       FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/" + EXTENDED_IDENTIFIERS);
       FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/" + VERBATIM_EXT_FILTERED);
 
       // write metrics to yaml
       writeMetricsYaml(
-              fs,
-              Map.of(
-                      PipelinesVariables.Metrics.BASIC_RECORDS_COUNT, identifiersCount,
-                      PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
-              outputPath + "/" + METRICS_FILENAME);
+          fs,
+          Map.of(
+              PipelinesVariables.Metrics.BASIC_RECORDS_COUNT, identifiersCount,
+              PipelinesVariables.Metrics.UNIQUE_GBIF_IDS_COUNT, identifiersCount),
+          outputPath + "/" + METRICS_FILENAME);
 
       MDC.put("datasetKey", datasetId);
       log.info(timeAndRecPerSecond("interpretation", start, identifiersCount));

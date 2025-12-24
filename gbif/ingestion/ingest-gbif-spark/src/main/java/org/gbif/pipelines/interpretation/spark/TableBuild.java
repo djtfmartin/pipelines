@@ -1,6 +1,7 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.Metrics.tableBuildCount;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
@@ -136,98 +137,105 @@ public class TableBuild {
       String sourceDirectory)
       throws Exception {
 
-    spark.udf().register("base64_decode", new Base64DecodeUDF(), DataTypes.StringType);
+    tableBuildCount.inc();
 
-    long start = System.currentTimeMillis();
-    MDC.put("datasetKey", datasetId);
-    log.info("Starting tablebuild");
+    try {
+      spark.udf().register("base64_decode", new Base64DecodeUDF(), DataTypes.StringType);
 
-    String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
+      long start = System.currentTimeMillis();
+      MDC.put("datasetKey", datasetId);
+      log.info("Starting tablebuild");
 
-    // load hdfs view
-    Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
+      String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
-    // Generate a unique temporary table name
-    String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
+      // load hdfs view
+      Dataset<Row> hdfs = spark.read().parquet(outputPath + "/" + sourceDirectory);
 
-    // Switch to the configured Hive database
-    spark.sql("USE " + config.getHiveDB());
+      // Generate a unique temporary table name
+      String table = String.format("%s_%s_%d", tableName, datasetId.replace("-", "_"), attempt);
 
-    // Drop the table if it already exists
-    spark.sql("DROP TABLE IF EXISTS " + table);
+      // Switch to the configured Hive database
+      spark.sql("USE " + config.getHiveDB());
 
-    // Check HDFS for remnant DB files from failed attempts
-    cleanHdfsPath(fileSystem, config, table);
-    hdfs.writeTo(table).create();
+      // Drop the table if it already exists
+      spark.sql("DROP TABLE IF EXISTS " + table);
 
-    log.debug("Created Iceberg table: {}", table);
+      // Check HDFS for remnant DB files from failed attempts
+      cleanHdfsPath(fileSystem, config, table);
+      hdfs.writeTo(table).create();
 
-    // Display table schema and initial record count
-    Dataset<Row> result = spark.sql("SELECT COUNT(*) FROM " + table);
-    long avroToHdfsCountAttempted = result.collectAsList().get(0).getLong(0);
+      log.debug("Created Iceberg table: {}", table);
 
-    if (log.isDebugEnabled()) {
-      spark.sql("DESCRIBE TABLE " + table).show(false);
-      spark.sql("SELECT COUNT(*) FROM " + table).show(false);
-    }
+      // Display table schema and initial record count
+      Dataset<Row> result = spark.sql("SELECT COUNT(*) FROM " + table);
+      long avroToHdfsCountAttempted = result.collectAsList().get(0).getLong(0);
 
-    Dataset<Row> df =
-        spark.sql(
-            "SELECT COUNT(*) AS cnt FROM "
-                + table
-                + " WHERE datasetKey IS NULL"
-                + " OR datasetKey = ''"
-                + " OR gbifId IS NULL"
-                + " OR gbifId = ''");
-    long count = df.collectAsList().get(0).getLong(0);
-    if (count > 0) {
-      log.warn(
-          "There are {} records with NULL or empty datasetKey or gbifId in the temporary table {}",
-          count,
-          table);
-      throw new IllegalStateException("There are " + count + " records with NULL datasetKey");
-    }
+      if (log.isDebugEnabled()) {
+        spark.sql("DESCRIBE TABLE " + table).show(false);
+        spark.sql("SELECT COUNT(*) FROM " + table).show(false);
+      }
 
-    // Create or populate the occurrence table SQL
-    spark.sql(getCreateTableSQL(tableName));
-
-    // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
-    StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
-
-    // get the hdfs columns from the parquet with mappings to iceberg columns
-    Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
-
-    // Build the insert query
-    String insertQuery =
-        String.format(
-            "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
-            config.getHiveDB(),
-            tableName,
-            Arrays.stream(tblSchema.fields())
-                .map(StructField::name)
-                .collect(Collectors.joining(", ")),
-            generateSelectColumns(tblSchema, hdfsColumnList),
-            config.getHiveDB(),
+      Dataset<Row> df =
+          spark.sql(
+              "SELECT COUNT(*) AS cnt FROM "
+                  + table
+                  + " WHERE datasetKey IS NULL"
+                  + " OR datasetKey = ''"
+                  + " OR gbifId IS NULL"
+                  + " OR gbifId = ''");
+      long count = df.collectAsList().get(0).getLong(0);
+      if (count > 0) {
+        log.warn(
+            "There are {} records with NULL or empty datasetKey or gbifId in the temporary table {}",
+            count,
             table);
+        throw new IllegalStateException("There are " + count + " records with NULL datasetKey");
+      }
 
-    log.debug("Inserting data into {}} table: {}", tableName, insertQuery);
+      // Create or populate the occurrence table SQL
+      spark.sql(getCreateTableSQL(tableName));
 
-    // Execute the insert
-    spark.sql(insertQuery);
+      // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
+      StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
 
-    // Drop the temporary table
-    spark.sql("DROP TABLE " + table);
+      // get the hdfs columns from the parquet with mappings to iceberg columns
+      Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
 
-    log.debug("Dropped Iceberg table: {}", table);
-    cleanHdfsPath(fileSystem, config, table);
+      // Build the insert query
+      String insertQuery =
+          String.format(
+              "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
+              config.getHiveDB(),
+              tableName,
+              Arrays.stream(tblSchema.fields())
+                  .map(StructField::name)
+                  .collect(Collectors.joining(", ")),
+              generateSelectColumns(tblSchema, hdfsColumnList),
+              config.getHiveDB(),
+              table);
 
-    // 4. write metrics to yaml
-    writeMetricsYaml(
-        fileSystem,
-        Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted),
-        outputPath + "/" + getMetricsFileName(tableName));
+      log.debug("Inserting data into {}} table: {}", tableName, insertQuery);
 
-    log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
+      // Execute the insert
+      spark.sql(insertQuery);
+
+      // Drop the temporary table
+      spark.sql("DROP TABLE " + table);
+
+      log.debug("Dropped Iceberg table: {}", table);
+      cleanHdfsPath(fileSystem, config, table);
+
+      // 4. write metrics to yaml
+      writeMetricsYaml(
+          fileSystem,
+          Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted),
+          outputPath + "/" + getMetricsFileName(tableName));
+
+      log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
+    } finally {
+      MDC.remove("datasetKey");
+      tableBuildCount.dec();
+    }
   }
 
   private static String generateSelectColumns(

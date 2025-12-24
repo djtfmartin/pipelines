@@ -6,12 +6,8 @@ import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.exporter.HTTPServer;
 import io.prometheus.client.hotspot.DefaultExports;
-
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.function.Function;
 import java.util.stream.Collectors;

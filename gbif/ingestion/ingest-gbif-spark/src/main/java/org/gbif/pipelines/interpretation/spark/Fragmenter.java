@@ -2,6 +2,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.Metrics.fragmenterCount;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
@@ -154,120 +155,131 @@ public class Fragmenter {
       boolean useOccurrenceId)
       throws Exception {
 
-    MDC.put("datasetKey", datasetId);
-    long start = System.currentTimeMillis();
-    log.info("Starting to run fragmenter for dataset {}, attempt {}", datasetId, attempt);
+    fragmenterCount.inc();
 
-    String outputPath = config.getOutputPath() + "/" + datasetId + "/" + attempt;
+    try {
+      MDC.put("datasetKey", datasetId);
+      long start = System.currentTimeMillis();
+      log.info("Starting to run fragmenter for dataset {}, attempt {}", datasetId, attempt);
 
-    // read verbatim records
-    Dataset<ExtendedRecord> verbatim =
-        spark
-            .read()
-            .format("parquet")
-            .load(outputPath + "/" + Directories.OCCURRENCE_VERBATIM)
-            .as(Encoders.bean(ExtendedRecord.class));
+      String outputPath = config.getOutputPath() + "/" + datasetId + "/" + attempt;
 
-    // convert to dwca
-    SerializableSupplier<HBaseLockingKey> supplier =
-        new SerializableSupplier<HBaseLockingKey>() {
-          @Override
-          public HBaseLockingKey get() {
-            return KeygenServiceFactory.create(config, datasetId);
-          }
-        };
+      // read verbatim records
+      Dataset<ExtendedRecord> verbatim =
+          spark
+              .read()
+              .format("parquet")
+              .load(outputPath + "/" + Directories.OCCURRENCE_VERBATIM)
+              .as(Encoders.bean(ExtendedRecord.class));
 
-    Dataset<org.apache.spark.sql.Row> rawRecords =
-        convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId).toDF().orderBy("key");
+      // convert to dwca
+      SerializableSupplier<HBaseLockingKey> supplier =
+          new SerializableSupplier<HBaseLockingKey>() {
+            @Override
+            public HBaseLockingKey get() {
+              return KeygenServiceFactory.create(config, datasetId);
+            }
+          };
 
-    long recordCount = rawRecords.count();
-    log.debug("Count: {}", rawRecords.count());
+      Dataset<org.apache.spark.sql.Row> rawRecords =
+          convertToRawRecords(verbatim, supplier, useTriplet, useOccurrenceId)
+              .toDF()
+              .orderBy("key");
 
-    // write hfiles
-    JavaPairRDD<Tuple2<String, String>, String> hbaseKvs =
-        rawRecords
-            .javaRDD()
-            .flatMapToPair(
-                record -> {
-                  List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getAs("key"), "attempt"), String.valueOf(attempt)));
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getAs("key"), "dateCreated"),
-                          ((Long) record.getAs("createdDate")).toString()));
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getAs("key"), "protocol"),
-                          EndpointType.DWC_ARCHIVE.name()));
-                  cells.add(
-                      new Tuple2<>(
-                          new Tuple2<>(record.getAs("key"), "record"), record.getAs("recordBody")));
-                  return cells.iterator();
-                });
-    //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
+      long recordCount = rawRecords.count();
+      log.debug("Count: {}", rawRecords.count());
 
-    cleanHdfsPath(fileSystem, config, outputPath);
-    String hfilePath = outputPath + "/fragment";
+      // write hfiles
+      JavaPairRDD<Tuple2<String, String>, String> hbaseKvs =
+          rawRecords
+              .javaRDD()
+              .flatMapToPair(
+                  record -> {
+                    List<Tuple2<Tuple2<String, String>, String>> cells = new ArrayList<>();
+                    cells.add(
+                        new Tuple2<>(
+                            new Tuple2<>(record.getAs("key"), "attempt"), String.valueOf(attempt)));
+                    cells.add(
+                        new Tuple2<>(
+                            new Tuple2<>(record.getAs("key"), "dateCreated"),
+                            ((Long) record.getAs("createdDate")).toString()));
+                    cells.add(
+                        new Tuple2<>(
+                            new Tuple2<>(record.getAs("key"), "protocol"),
+                            EndpointType.DWC_ARCHIVE.name()));
+                    cells.add(
+                        new Tuple2<>(
+                            new Tuple2<>(record.getAs("key"), "record"),
+                            record.getAs("recordBody")));
+                    return cells.iterator();
+                  });
+      //            .repartitionAndSortWithinPartitions(new SaltPrefixPartitioner(10));
 
-    // Configure HFile output
-    Configuration hbaseConf = HBaseConfiguration.create();
-    hbaseConf.set(FileOutputFormat.COMPRESS, "true");
-    hbaseConf.setClass(FileOutputFormat.COMPRESS_CODEC, SnappyCodec.class, CompressionCodec.class);
-    hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
-    hbaseConf.set("hbase.fs.tmp.dir", outputPath + "/hfile-staging");
-    hbaseConf.set("hbase.mapreduce.hfileoutputformat.table.name", config.getFragmentsTable());
+      cleanHdfsPath(fileSystem, config, outputPath);
+      String hfilePath = outputPath + "/fragment";
 
-    if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
-      hbaseConf.addResource(new Path(config.getHdfsSiteConfig()));
-      hbaseConf.addResource(new Path(config.getCoreSiteConfig()));
+      // Configure HFile output
+      Configuration hbaseConf = HBaseConfiguration.create();
+      hbaseConf.set(FileOutputFormat.COMPRESS, "true");
+      hbaseConf.setClass(
+          FileOutputFormat.COMPRESS_CODEC, SnappyCodec.class, CompressionCodec.class);
+      hbaseConf.addResource(new Path("/etc/hadoop/conf/hbase-site.xml"));
+      hbaseConf.set("hbase.fs.tmp.dir", outputPath + "/hfile-staging");
+      hbaseConf.set("hbase.mapreduce.hfileoutputformat.table.name", config.getFragmentsTable());
+
+      if (config.getHdfsSiteConfig() != null && config.getCoreSiteConfig() != null) {
+        hbaseConf.addResource(new Path(config.getHdfsSiteConfig()));
+        hbaseConf.addResource(new Path(config.getCoreSiteConfig()));
+      }
+
+      try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
+          Admin admin = connection.getAdmin();
+          Table table = connection.getTable(TableName.valueOf(config.getFragmentsTable()));
+          RegionLocator regionLocator =
+              connection.getRegionLocator(TableName.valueOf(config.getFragmentsTable()))) {
+
+        Job job = Job.getInstance(hbaseConf);
+        job.setMapOutputKeyClass(ImmutableBytesWritable.class);
+        job.setMapOutputValueClass(org.apache.hadoop.hbase.KeyValue.class);
+        HFileOutputFormat2.configureIncrementalLoad(job, table, regionLocator);
+
+        hbaseKvs
+            .mapToPair(
+                cell -> {
+                  ImmutableBytesWritable k = new ImmutableBytesWritable(Bytes.toBytes(cell._1._1));
+                  Cell row =
+                      new KeyValue(
+                          Bytes.toBytes(cell._1._1), // key
+                          Bytes.toBytes("fragment"), // column family
+                          Bytes.toBytes(cell._1._2), // cell
+                          Bytes.toBytes(cell._2) // cell value
+                          );
+                  return new Tuple2<>(k, row);
+                })
+            .saveAsNewAPIHadoopFile(
+                hfilePath,
+                ImmutableBytesWritable.class,
+                KeyValue.class,
+                HFileOutputFormat2.class,
+                hbaseConf);
+
+        LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
+        loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
+
+      } catch (Exception ex) {
+        log.error("Error while loading HFiles from {}", config.getFragmentsTable(), ex);
+      }
+
+      writeMetricsYaml(
+          fileSystem,
+          Map.of("fragmenterRecordsCountAttempted", recordCount),
+          outputPath + "/" + METRICS_FILENAME);
+
+      log.info(timeAndRecPerSecond("fragmenter", start, recordCount));
+    } finally {
+      MDC.clear();
+      fragmenterCount.dec();
     }
-
-    try (Connection connection = ConnectionFactory.createConnection(hbaseConf);
-        Admin admin = connection.getAdmin();
-        Table table = connection.getTable(TableName.valueOf(config.getFragmentsTable()));
-        RegionLocator regionLocator =
-            connection.getRegionLocator(TableName.valueOf(config.getFragmentsTable()))) {
-
-      Job job = Job.getInstance(hbaseConf);
-      job.setMapOutputKeyClass(ImmutableBytesWritable.class);
-      job.setMapOutputValueClass(org.apache.hadoop.hbase.KeyValue.class);
-      HFileOutputFormat2.configureIncrementalLoad(job, table, regionLocator);
-
-      hbaseKvs
-          .mapToPair(
-              cell -> {
-                ImmutableBytesWritable k = new ImmutableBytesWritable(Bytes.toBytes(cell._1._1));
-                Cell row =
-                    new KeyValue(
-                        Bytes.toBytes(cell._1._1), // key
-                        Bytes.toBytes("fragment"), // column family
-                        Bytes.toBytes(cell._1._2), // cell
-                        Bytes.toBytes(cell._2) // cell value
-                        );
-                return new Tuple2<>(k, row);
-              })
-          .saveAsNewAPIHadoopFile(
-              hfilePath,
-              ImmutableBytesWritable.class,
-              KeyValue.class,
-              HFileOutputFormat2.class,
-              hbaseConf);
-
-      LoadIncrementalHFiles loader = new LoadIncrementalHFiles(hbaseConf);
-      loader.doBulkLoad(new Path(hfilePath), admin, table, regionLocator);
-
-    } catch (Exception ex) {
-      log.error("Error while loading HFiles from {}", config.getFragmentsTable(), ex);
-    }
-
-    writeMetricsYaml(
-        fileSystem,
-        Map.of("fragmenterRecordsCountAttempted", recordCount),
-        outputPath + "/" + METRICS_FILENAME);
-
-    log.info(timeAndRecPerSecond("fragmenter", start, recordCount));
   }
 
   @NotNull
