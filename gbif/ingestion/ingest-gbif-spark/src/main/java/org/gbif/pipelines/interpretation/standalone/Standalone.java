@@ -6,8 +6,12 @@ import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.exporter.HTTPServer;
 import io.prometheus.client.hotspot.DefaultExports;
+
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -25,9 +29,9 @@ import org.jetbrains.annotations.NotNull;
 @Slf4j
 public class Standalone {
 
-//  static {
-//    DefaultExports.initialize();
-//  }
+  static {
+    DefaultExports.initialize();
+  }
 
   private volatile boolean running = true;
 
@@ -75,16 +79,33 @@ public class Standalone {
     PipelinesConfig config = loadConfig(args.config);
 
     // start Prometheus HTTP server
-    new Standalone()
-        .start(
-            mode,
-            config,
-            args.queueName,
-            args.routingKey,
-            args.exchange,
-            args.master,
-            args.threads,
-            args.listenerThreadSleepMillis);
+    if (args.prometheusPort > 0) {
+      log.info("Starting Prometheus HTTP server on port {}", args.prometheusPort);
+      try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)) {
+        new Standalone()
+            .start(
+                mode,
+                config,
+                args.queueName,
+                args.routingKey,
+                args.exchange,
+                args.master,
+                args.threads,
+                args.listenerThreadSleepMillis);
+      }
+    } else {
+      log.info("Prometheus HTTP server disabled");
+      new Standalone()
+          .start(
+              mode,
+              config,
+              args.queueName,
+              args.routingKey,
+              args.exchange,
+              args.master,
+              args.threads,
+              args.listenerThreadSleepMillis);
+    }
   }
 
   public void start(
