@@ -25,9 +25,9 @@ import org.jetbrains.annotations.NotNull;
 @Slf4j
 public class Standalone {
 
-  static {
-    DefaultExports.initialize();
-  }
+//  static {
+//    DefaultExports.initialize();
+//  }
 
   private volatile boolean running = true;
 
@@ -75,33 +75,16 @@ public class Standalone {
     PipelinesConfig config = loadConfig(args.config);
 
     // start Prometheus HTTP server
-    if (args.prometheusPort > 0) {
-      log.info("Starting Prometheus HTTP server on port {}", args.prometheusPort);
-      try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)) {
-        new Standalone()
-            .start(
-                mode,
-                config,
-                args.queueName,
-                args.routingKey,
-                args.exchange,
-                args.master,
-                args.threads,
-                args.listenerThreadSleepMillis);
-      }
-    } else {
-      log.info("Prometheus HTTP server disabled");
-      new Standalone()
-          .start(
-              mode,
-              config,
-              args.queueName,
-              args.routingKey,
-              args.exchange,
-              args.master,
-              args.threads,
-              args.listenerThreadSleepMillis);
-    }
+    new Standalone()
+        .start(
+            mode,
+            config,
+            args.queueName,
+            args.routingKey,
+            args.exchange,
+            args.master,
+            args.threads,
+            args.listenerThreadSleepMillis);
   }
 
   public void start(
