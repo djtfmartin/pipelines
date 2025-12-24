@@ -14,7 +14,8 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.Metrics.interpretationCount;
+import static org.gbif.pipelines.interpretation.Metrics.COMPLETED_INTERPRETATION_DATASETS;
+import static org.gbif.pipelines.interpretation.Metrics.CONCURRENT_INTERPRETATION_DATASETS;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -194,7 +195,7 @@ public class Interpretation {
       throws IOException {
 
     long start = System.currentTimeMillis();
-    interpretationCount.inc();
+    CONCURRENT_INTERPRETATION_DATASETS.inc();
 
     try {
       MDC.put("datasetKey", datasetId);
@@ -269,9 +270,11 @@ public class Interpretation {
 
       MDC.put("datasetKey", datasetId);
       log.info(timeAndRecPerSecond("interpretation", start, identifiersCount));
+      COMPLETED_INTERPRETATION_DATASETS.inc();
+
     } finally {
       MDC.remove("datasetKey");
-      interpretationCount.dec();
+      CONCURRENT_INTERPRETATION_DATASETS.dec();
     }
   }
 

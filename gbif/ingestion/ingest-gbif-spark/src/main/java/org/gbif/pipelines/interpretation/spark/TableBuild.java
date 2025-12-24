@@ -1,7 +1,7 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.Metrics.tableBuildCount;
+import static org.gbif.pipelines.interpretation.Metrics.*;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
@@ -137,7 +137,7 @@ public class TableBuild {
       String sourceDirectory)
       throws Exception {
 
-    tableBuildCount.inc();
+    CONCURRENT_TABLEBUILD_DATASETS.inc();
 
     try {
       spark.udf().register("base64_decode", new Base64DecodeUDF(), DataTypes.StringType);
@@ -232,9 +232,11 @@ public class TableBuild {
           outputPath + "/" + getMetricsFileName(tableName));
 
       log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
+
+      COMPLETED_TABLEBUILD_DATASETS.inc();
     } finally {
       MDC.remove("datasetKey");
-      tableBuildCount.dec();
+      CONCURRENT_TABLEBUILD_DATASETS.dec();
     }
   }
 

@@ -643,18 +643,18 @@
         <!-- Prometheus monitoring -->
         <dependency>
             <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient</artifactId>
-            <version>${prometheus.version}</version>
+            <artifactId>prometheus-metrics-core</artifactId>
+            <version>1.4.3</version>
         </dependency>
         <dependency>
             <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_httpserver</artifactId>
-            <version>${prometheus.version}</version>
+            <artifactId>prometheus-metrics-instrumentation-jvm</artifactId>
+            <version>1.4.3</version>
         </dependency>
         <dependency>
             <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_hotspot</artifactId>
-            <version>${prometheus.version}</version>
+            <artifactId>prometheus-metrics-exporter-httpserver</artifactId>
+            <version>1.4.3</version>
         </dependency>
     </dependencies>
     <build>

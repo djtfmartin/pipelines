@@ -6,8 +6,8 @@ import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import io.prometheus.client.exporter.HTTPServer;
-import io.prometheus.client.hotspot.DefaultExports;
+import io.prometheus.metrics.exporter.httpserver.HTTPServer;
+import io.prometheus.metrics.instrumentation.jvm.JvmMetrics;
 import java.io.IOException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -25,9 +25,9 @@ import org.jetbrains.annotations.NotNull;
 @Slf4j
 public class Standalone {
 
-  static {
-    DefaultExports.initialize();
-  }
+  //  static {
+  //    DefaultExports.initialize();
+  //  }
 
   private volatile boolean running = true;
 
@@ -74,10 +74,12 @@ public class Standalone {
     Mode mode = Mode.valueOf(args.mode);
     PipelinesConfig config = loadConfig(args.config);
 
+    JvmMetrics.builder().register();
+
     // start Prometheus HTTP server
     if (args.prometheusPort > 0) {
       log.info("Starting Prometheus HTTP server on port {}", args.prometheusPort);
-      try (HTTPServer httpServer = new HTTPServer(args.prometheusPort)) {
+      try (HTTPServer httpServer = HTTPServer.builder().port(args.prometheusPort).buildAndStart()) {
         new Standalone()
             .start(
                 mode,

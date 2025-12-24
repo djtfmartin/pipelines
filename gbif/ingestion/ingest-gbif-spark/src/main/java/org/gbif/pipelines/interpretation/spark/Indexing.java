@@ -1,7 +1,7 @@
 package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.Metrics.indexingCount;
+import static org.gbif.pipelines.interpretation.Metrics.*;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.Directories.EVENT_JSON;
 import static org.gbif.pipelines.interpretation.spark.Directories.OCCURRENCE_JSON;
@@ -169,7 +169,7 @@ public class Indexing {
       Class<T> recordClass,
       String parquetDirectoryToLoad) {
 
-    indexingCount.inc();
+    CONCURRENT_INDEXING_DATASETS.inc();
     try {
       long start = System.currentTimeMillis();
       MDC.put("datasetKey", datasetId);
@@ -230,8 +230,9 @@ public class Indexing {
           outputPath + "/" + METRICS_FILENAME);
 
       log.info(timeAndRecPerSecond("indexing", start, indexCount));
+      COMPLETED_INDEXING_DATASETS.inc();
     } finally {
-      indexingCount.dec();
+      CONCURRENT_INDEXING_DATASETS.dec();
       MDC.clear();
     }
   }

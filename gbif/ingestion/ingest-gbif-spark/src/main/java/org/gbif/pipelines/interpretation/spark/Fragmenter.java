@@ -2,7 +2,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.gbif.pipelines.core.utils.ModelUtils.extractNullAwareValue;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.Metrics.fragmenterCount;
+import static org.gbif.pipelines.interpretation.Metrics.*;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
@@ -155,7 +155,7 @@ public class Fragmenter {
       boolean useOccurrenceId)
       throws Exception {
 
-    fragmenterCount.inc();
+    CONCURRENT_FRAGMENTER_DATASETS.inc();
 
     try {
       MDC.put("datasetKey", datasetId);
@@ -276,9 +276,10 @@ public class Fragmenter {
           outputPath + "/" + METRICS_FILENAME);
 
       log.info(timeAndRecPerSecond("fragmenter", start, recordCount));
+      COMPLETED_FRAGMENTER_DATASETS.inc();
     } finally {
       MDC.clear();
-      fragmenterCount.dec();
+      CONCURRENT_FRAGMENTER_DATASETS.dec();
     }
   }
 
