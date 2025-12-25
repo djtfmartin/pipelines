@@ -17,6 +17,7 @@ import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
@@ -54,6 +55,7 @@ public abstract class PipelinesCallback<
     implements MessageCallback<I>, AutoCloseable {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  public static final String PAUSE_FILE_PATH = "/tmp/pause_message_processing";
   protected final PipelinesConfig pipelinesConfig;
   protected final PipelinesHistoryClient historyClient;
   protected final MessagePublisher publisher;
@@ -214,6 +216,8 @@ public abstract class PipelinesCallback<
 
   public void handleMessage(I message) {
 
+    checkIfPaused();
+
     LAST_CONSUMED_MESSAGE_FROM_QUEUE.set(System.currentTimeMillis());
     MDC.put(
         "datasetKey",
@@ -302,6 +306,20 @@ public abstract class PipelinesCallback<
               historyClient.markPipelineExecutionIfFinished(message.getExecutionId());
             };
         Retry.decorateRunnable(RETRY, r).run();
+      }
+    }
+  }
+
+  private static void checkIfPaused() {
+    while (new File(PAUSE_FILE_PATH).exists()) {
+      log.warn(
+          "Found "
+              + PAUSE_FILE_PATH
+              + " file, pausing processing new messages for 10s. Delete to resume.");
+      try {
+        Thread.sleep(10_000);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
       }
     }
   }
