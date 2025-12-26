@@ -42,17 +42,18 @@ public final class HealthCheck {
           .getOrDefault("PROMETHEUS_TIMESTAMP_TO_CHECK", "last_consumed_dataset_timestamp_seconds");
 
   private static volatile boolean healthy = true;
+  private static volatile String debug = "NOT_SET";
 
   private static final HttpClient httpClient =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
   public static void main(String[] args) throws Exception {
+    System.out.println("Starting health checker");
     startHealthCheckLoop();
     startHttpServer();
   }
 
   private static void startHealthCheckLoop() {
-    System.out.println("Starting health check loop");
     ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     scheduler.scheduleAtFixedRate(
         () -> {
@@ -73,12 +74,21 @@ public final class HealthCheck {
    * @throws Exception
    */
   private static void doHeathCheck() throws Exception {
-    int messagesReady = fetchRabbitMqMessagesReady();
-    long lastConsumedTimestamp = fetchPrometheusTimestamp();
-    long ageSeconds = Instant.now().getEpochSecond() - lastConsumedTimestamp;
-    System.out.printf(
-        "Queued messages_ready=%d, last consumed age=%d seconds%n", messagesReady, ageSeconds);
-    healthy = !(messagesReady > 0 && ageSeconds > STALE_THRESHOLD_SECONDS);
+    try {
+      int messagesReady = fetchRabbitMqMessagesReady();
+      long lastConsumedTimestamp = fetchPrometheusTimestamp();
+      long ageSeconds = Instant.now().getEpochSecond() - lastConsumedTimestamp;
+      System.out.printf(
+          "Queued messages_ready=%d, last consumed age=%d seconds%n", messagesReady, ageSeconds);
+      healthy = !(messagesReady > 0 && ageSeconds > STALE_THRESHOLD_SECONDS);
+      debug =
+          String.format(
+              "Queued messages_ready=%d, last consumed age=%d seconds%n",
+              messagesReady, ageSeconds);
+    } catch (Exception e) {
+      debug = "Exception during health check: " + e.getMessage();
+      throw e;
+    }
   }
 
   /* =======================
@@ -175,11 +185,30 @@ public final class HealthCheck {
   private static void startHttpServer() throws IOException {
     HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", PORT), 0);
     server.createContext("/", new HealthHandler());
+    server.createContext("/debug", new DebugHealthHandler());
     server.setExecutor(Executors.newSingleThreadExecutor());
     server.start();
   }
 
   private static final class HealthHandler implements HttpHandler {
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+      if (!"GET".equals(exchange.getRequestMethod())) {
+        exchange.sendResponseHeaders(405, -1);
+        return;
+      }
+
+      int status = healthy ? 200 : 500;
+      byte[] body = healthy ? "OK\n".getBytes() : "UNHEALTHY\n".getBytes();
+
+      exchange.sendResponseHeaders(status, body.length);
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(body);
+      }
+    }
+  }
+
+  private static final class DebugHealthHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
       if (!"GET".equals(exchange.getRequestMethod())) {
