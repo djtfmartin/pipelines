@@ -78,7 +78,7 @@ public final class HealthCheck {
     try {
       int messagesReady = fetchRabbitMqMessagesReady();
       long lastConsumedTimestamp = fetchPrometheusTimestamp();
-      long ageSeconds = Instant.now().getEpochSecond() - lastConsumedTimestamp;
+      long ageSeconds = Instant.now().getEpochSecond() - (lastConsumedTimestamp / 1000);
       System.out.printf(
           "Queued messages_ready=%d, last consumed age=%d seconds%n", messagesReady, ageSeconds);
       healthy = !(messagesReady > 0 && ageSeconds > STALE_THRESHOLD_SECONDS);
