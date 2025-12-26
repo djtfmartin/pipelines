@@ -5,8 +5,7 @@ import static org.gbif.pipelines.common.PipelinesVariables.Metrics.*;
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_ABSENT;
 import static org.gbif.pipelines.common.PipelinesVariables.Pipeline.Identifier.GBIF_ID_INVALID;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
-import static org.gbif.pipelines.interpretation.Metrics.COMPLETED_IDENTIFIERS_DATASETS;
-import static org.gbif.pipelines.interpretation.Metrics.CONCURRENT_IDENTIFIERS_DATASETS;
+import static org.gbif.pipelines.interpretation.Metrics.*;
 import static org.gbif.pipelines.interpretation.MetricsUtil.writeMetricsYaml;
 import static org.gbif.pipelines.interpretation.spark.Directories.*;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
@@ -261,6 +260,11 @@ public class ValidateIdentifiers {
               "identifiers", start, metrics.get(VALID_GBIF_ID_COUNT + "Attempted")));
 
       COMPLETED_IDENTIFIERS_DATASETS.inc();
+    } catch (Exception e) {
+      DATASETS_ERRORED_COUNT.inc();
+      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
+      log.error("Error during identifiers: {}", e.getMessage(), e);
+      throw e;
     } finally {
       MDC.clear();
       CONCURRENT_IDENTIFIERS_DATASETS.dec();

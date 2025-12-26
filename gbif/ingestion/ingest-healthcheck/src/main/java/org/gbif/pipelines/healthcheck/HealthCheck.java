@@ -92,10 +92,6 @@ public final class HealthCheck {
     }
   }
 
-  /* =======================
-  RabbitMQ
-  ======================= */
-
   private static int fetchRabbitMqMessagesReady() throws Exception {
     String auth =
         Base64.getEncoder()
@@ -123,10 +119,6 @@ public final class HealthCheck {
     return parseJsonInt(body, "messages_ready");
   }
 
-  /* =======================
-  Prometheus
-  ======================= */
-
   private static long fetchPrometheusTimestamp() throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
@@ -146,10 +138,6 @@ public final class HealthCheck {
     String body = new String(response.body().readAllBytes());
     return parsePrometheusLong(body, LAST_CONSUMED_DATASET_TIMESTAMP_SECONDS);
   }
-
-  /* =======================
-  Parsing helpers
-  ======================= */
 
   private static int parseJsonInt(String json, String field) {
     String key = "\"" + field + "\"";
@@ -178,10 +166,6 @@ public final class HealthCheck {
     }
     throw new IllegalArgumentException("Missing Prometheus metric: " + metricName);
   }
-
-  /* =======================
-  HTTP server
-  ======================= */
 
   private static void startHttpServer() throws IOException {
     HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", PORT), 0);

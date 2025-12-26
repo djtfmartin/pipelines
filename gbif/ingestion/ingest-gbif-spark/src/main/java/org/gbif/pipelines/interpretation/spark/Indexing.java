@@ -231,6 +231,11 @@ public class Indexing {
 
       log.info(timeAndRecPerSecond("indexing", start, indexCount));
       COMPLETED_INDEXING_DATASETS.inc();
+    } catch (Exception e) {
+      DATASETS_ERRORED_COUNT.inc();
+      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
+      log.error("Error during indexing: {}", e.getMessage(), e);
+      throw e;
     } finally {
       CONCURRENT_INDEXING_DATASETS.dec();
       MDC.clear();

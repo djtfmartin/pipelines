@@ -277,6 +277,11 @@ public class Fragmenter {
 
       log.info(timeAndRecPerSecond("fragmenter", start, recordCount));
       COMPLETED_FRAGMENTER_DATASETS.inc();
+    } catch (Exception e) {
+      DATASETS_ERRORED_COUNT.inc();
+      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
+      log.error("Error during fragmenter: {}", e.getMessage(), e);
+      throw e;
     } finally {
       MDC.clear();
       CONCURRENT_FRAGMENTER_DATASETS.dec();

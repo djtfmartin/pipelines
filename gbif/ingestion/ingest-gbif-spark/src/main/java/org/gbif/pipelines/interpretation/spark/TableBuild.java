@@ -234,6 +234,11 @@ public class TableBuild {
       log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
 
       COMPLETED_TABLEBUILD_DATASETS.inc();
+    } catch (Exception e) {
+      DATASETS_ERRORED_COUNT.inc();
+      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
+      log.error("Error during tablebuild: {}", e.getMessage(), e);
+      throw e;
     } finally {
       MDC.remove("datasetKey");
       CONCURRENT_TABLEBUILD_DATASETS.dec();

@@ -78,4 +78,16 @@ public class Metrics {
           .name("completed_fragmenter_datasets")
           .help("Number of completed datasets being loaded into hbase tables concurrently")
           .register();
+
+  public static final Counter DATASETS_ERRORED_COUNT =
+      Counter.builder()
+          .name("datasets_errored_count")
+          .help("Number of errors thrown during processing")
+          .register();
+
+  public static final Gauge LAST_DATASETS_ERROR =
+      Gauge.builder()
+          .name("last_dataset_error_timestamp_milliseconds")
+          .help("Timestamp of the last error thrown during dataset processing in milliseconds")
+          .register();
 }
