@@ -215,11 +215,8 @@ public final class HealthCheck {
         exchange.sendResponseHeaders(405, -1);
         return;
       }
-
-      int status = healthy ? 200 : 500;
-      byte[] body = healthy ? "OK\n".getBytes() : "UNHEALTHY\n".getBytes();
-
-      exchange.sendResponseHeaders(status, body.length);
+      byte[] body = debug.getBytes();
+      exchange.sendResponseHeaders(200, body.length);
       try (OutputStream os = exchange.getResponseBody()) {
         os.write(body);
       }
