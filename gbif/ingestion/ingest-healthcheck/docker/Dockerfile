@@ -7,4 +7,4 @@ COPY --chown=1000:1000 "./target/${JAR_FILE}" "/jobs/healthcheck.jar"
 
 EXPOSE 8080
 
-CMD ["java", "/jobs/healthcheck.jar"]
+CMD ["java", "-jar", "/jobs/healthcheck.jar"]
