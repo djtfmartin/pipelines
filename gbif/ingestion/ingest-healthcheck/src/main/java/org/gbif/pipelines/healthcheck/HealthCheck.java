@@ -33,9 +33,9 @@ public final class HealthCheck {
   private static final String PROMETHEUS_URL =
       System.getenv().getOrDefault("PROMETHEUS_URL", "http://localhost:9404");
   private static final int STALE_THRESHOLD_SECONDS =
-      Integer.parseInt(System.getenv().getOrDefault("STALE_THRESHOLD_SECONDS", "1800"));
+      Integer.parseInt(System.getenv().getOrDefault("STALE_THRESHOLD_SECONDS", "3600"));
   private static final int CHECK_INTERVAL_SECONDS =
-      Integer.parseInt(System.getenv().getOrDefault("CHECK_INTERVAL_SECONDS", "5"));
+      Integer.parseInt(System.getenv().getOrDefault("CHECK_INTERVAL_SECONDS", "30"));
   private static final int PORT = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
   public static final String LAST_CONSUMED_DATASET_TIMESTAMP_SECONDS =
       System.getenv()
@@ -78,14 +78,16 @@ public final class HealthCheck {
     try {
       int messagesReady = fetchRabbitMqMessagesReady();
       long lastConsumedTimestamp = fetchPrometheusTimestamp();
-      long ageSeconds = Instant.now().getEpochSecond() - (lastConsumedTimestamp / 1000);
+      long timeSinceLastMessageDequeued =
+          Instant.now().getEpochSecond() - (lastConsumedTimestamp / 1000);
       System.out.printf(
-          "Queued messages_ready=%d, last consumed age=%d seconds%n", messagesReady, ageSeconds);
-      healthy = !(messagesReady > 0 && ageSeconds > STALE_THRESHOLD_SECONDS);
+          "Queued messages_ready=%d, last consumed age=%d seconds%n",
+          messagesReady, timeSinceLastMessageDequeued);
+      healthy = !(messagesReady > 0 && timeSinceLastMessageDequeued > STALE_THRESHOLD_SECONDS);
       debug =
           String.format(
               "Queued messages_ready=%d, last consumed age=%d seconds%n",
-              messagesReady, ageSeconds);
+              messagesReady, timeSinceLastMessageDequeued);
     } catch (Exception e) {
       debug = "Exception during health check: " + e.getMessage();
       throw e;
@@ -131,8 +133,8 @@ public final class HealthCheck {
         httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
-      System.err.println("Prometheus URL status code" + response.statusCode());
-      throw new IOException("Prometheus non-2xx response");
+      System.err.println("Prometheus metrics URL status code" + response.statusCode());
+      throw new IOException("Prometheus metrics non-2xx response");
     }
 
     String body = new String(response.body().readAllBytes());
