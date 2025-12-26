@@ -37,6 +37,21 @@ pipeline {
         }
       }
     }
+
+
+    stage('Build healthcheck') {
+      tools {
+        jdk 'OpenJDK17'
+      }
+      steps {
+        dir('gbif/ingestion/ingest-healthcheck') {
+          withMaven() {
+            sh 'mvn clean install'
+          }
+        }
+      }
+    }
+
     stage('Build Spark Docker image') {
       steps {
         sh 'build/spark-docker-build.sh false ${VERSION}'
@@ -45,6 +60,11 @@ pipeline {
     stage('Build Standalone Spark Docker image') {
       steps {
         sh 'build/spark-docker-standalone-build.sh false ${VERSION}'
+      }
+    }
+    stage('Build Healthcheck Docker image') {
+      steps {
+        sh 'build/healthcheck-docker-build.sh false ${VERSION}'
       }
     }
   }
