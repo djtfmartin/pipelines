@@ -30,7 +30,7 @@ public final class HealthCheck {
   private static final String RABBITMQ_URL = requireEnv("RABBITMQ_URL");
   private static final String RABBITMQ_USER = requireEnv("RABBITMQ_USER");
   private static final String RABBITMQ_PASSWORD = requireEnv("RABBITMQ_PASSWORD");
-  private static final String PROMETHEUS_URL = requireEnv("PROMETHEUS_URL");
+  private static final String PROMETHEUS_URL = System.getenv().getOrDefault("PROMETHEUS_URL", "http://localhost:9404");
   private static final int STALE_THRESHOLD_SECONDS =
       Integer.parseInt(System.getenv().getOrDefault("STALE_THRESHOLD_SECONDS", "1800"));
   private static final int CHECK_INTERVAL_SECONDS =
