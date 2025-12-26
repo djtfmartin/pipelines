@@ -39,7 +39,8 @@ public final class HealthCheck {
   private static final int PORT = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
   public static final String LAST_CONSUMED_DATASET_TIMESTAMP_SECONDS =
       System.getenv()
-          .getOrDefault("PROMETHEUS_TIMESTAMP_TO_CHECK", "last_consumed_dataset_timestamp_seconds");
+          .getOrDefault(
+              "PROMETHEUS_TIMESTAMP_TO_CHECK", "last_consumed_dataset_timestamp_milliseconds");
 
   private static volatile boolean healthy = true;
   private static volatile String debug = "NOT_SET";
