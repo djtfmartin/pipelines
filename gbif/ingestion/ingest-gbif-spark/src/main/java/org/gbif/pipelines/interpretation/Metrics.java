@@ -8,13 +8,13 @@ public class Metrics {
   public static final Gauge LAST_CONSUMED_MESSAGE_FROM_QUEUE =
       Gauge.builder()
           .name("last_consumed_dataset_timestamp_seconds")
-          .help("Number of datasets being interpreted concurrently in a pod")
+          .help("Timestamp of the last consumed dataset message from the queue in seconds")
           .register();
 
   public static final Gauge LAST_COMPLETED_MESSAGE =
       Gauge.builder()
           .name("last_completed_dataset_timestamp_seconds")
-          .help("Number of datasets being interpreted concurrently in a pod")
+          .help("Timestamp of the last completed dataset message in seconds")
           .register();
 
   // Create a gauge metric

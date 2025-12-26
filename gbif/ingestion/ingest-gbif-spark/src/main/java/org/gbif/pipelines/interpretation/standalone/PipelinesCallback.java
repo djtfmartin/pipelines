@@ -218,7 +218,7 @@ public abstract class PipelinesCallback<
 
     checkIfPaused();
 
-    LAST_CONSUMED_MESSAGE_FROM_QUEUE.set(System.currentTimeMillis());
+    LAST_CONSUMED_MESSAGE_FROM_QUEUE.set((double) System.currentTimeMillis() / 1000);
     MDC.put(
         "datasetKey",
         message.getDatasetUuid() != null ? message.getDatasetUuid().toString() : "NO_DATASET");
@@ -426,7 +426,7 @@ public abstract class PipelinesCallback<
 
     if (FINISHED_STATE_SET.contains(status)) {
       pipelineStep.setFinished(LocalDateTime.now());
-      LAST_COMPLETED_MESSAGE.set(System.currentTimeMillis());
+      LAST_COMPLETED_MESSAGE.set(System.currentTimeMillis() / 1000.0);
     }
 
     try {
