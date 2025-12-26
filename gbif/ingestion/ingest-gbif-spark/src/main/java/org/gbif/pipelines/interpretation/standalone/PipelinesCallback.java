@@ -2,8 +2,8 @@ package org.gbif.pipelines.interpretation.standalone;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.gbif.api.model.pipelines.PipelineStep.Status.RUNNING;
-import static org.gbif.pipelines.interpretation.Metrics.LAST_COMPLETED_MESSAGE;
-import static org.gbif.pipelines.interpretation.Metrics.LAST_CONSUMED_MESSAGE_FROM_QUEUE;
+import static org.gbif.pipelines.interpretation.Metrics.LAST_COMPLETED_MESSAGE_MS;
+import static org.gbif.pipelines.interpretation.Metrics.LAST_CONSUMED_MESSAGE_FROM_QUEUE_MS;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.google.common.base.Strings;
@@ -218,7 +218,7 @@ public abstract class PipelinesCallback<
 
     checkIfPaused();
 
-    LAST_CONSUMED_MESSAGE_FROM_QUEUE.set((double) System.currentTimeMillis() / 1000);
+    LAST_CONSUMED_MESSAGE_FROM_QUEUE_MS.set(System.currentTimeMillis());
     MDC.put(
         "datasetKey",
         message.getDatasetUuid() != null ? message.getDatasetUuid().toString() : "NO_DATASET");
@@ -426,7 +426,7 @@ public abstract class PipelinesCallback<
 
     if (FINISHED_STATE_SET.contains(status)) {
       pipelineStep.setFinished(LocalDateTime.now());
-      LAST_COMPLETED_MESSAGE.set(System.currentTimeMillis() / 1000.0);
+      LAST_COMPLETED_MESSAGE_MS.set(System.currentTimeMillis());
     }
 
     try {

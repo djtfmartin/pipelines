@@ -5,16 +5,16 @@ import io.prometheus.metrics.core.metrics.Gauge;
 
 public class Metrics {
 
-  public static final Gauge LAST_CONSUMED_MESSAGE_FROM_QUEUE =
+  public static final Gauge LAST_CONSUMED_MESSAGE_FROM_QUEUE_MS =
       Gauge.builder()
-          .name("last_consumed_dataset_timestamp_seconds")
-          .help("Timestamp of the last consumed dataset message from the queue in seconds")
+          .name("last_consumed_dataset_timestamp_milliseconds")
+          .help("Timestamp of the last consumed dataset message from the queue in milliseconds")
           .register();
 
-  public static final Gauge LAST_COMPLETED_MESSAGE =
+  public static final Gauge LAST_COMPLETED_MESSAGE_MS =
       Gauge.builder()
-          .name("last_completed_dataset_timestamp_seconds")
-          .help("Timestamp of the last completed dataset message in seconds")
+          .name("last_completed_dataset_timestamp_milliseconds")
+          .help("Timestamp of the last completed dataset message in milliseconds")
           .register();
 
   // Create a gauge metric
