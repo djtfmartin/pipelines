@@ -47,13 +47,12 @@ public final class HealthCheck {
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
   public static void main(String[] args) throws Exception {
-    //    doHeathCheck();
-    //    System.out.println("Healthy: " + healthy);
     startHealthCheckLoop();
     startHttpServer();
   }
 
   private static void startHealthCheckLoop() {
+    System.out.println("Starting health check loop");
     ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     scheduler.scheduleAtFixedRate(
         () -> {
@@ -105,6 +104,7 @@ public final class HealthCheck {
         httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
+      System.err.println("RabbitMQ status code" + response.statusCode());
       throw new IOException("RabbitMQ non-2xx response");
     }
 
@@ -128,6 +128,7 @@ public final class HealthCheck {
         httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
+      System.err.println("Prometheus URL status code" + response.statusCode());
       throw new IOException("Prometheus non-2xx response");
     }
 
