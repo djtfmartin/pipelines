@@ -19,7 +19,7 @@
   </properties>
 
   <modules>
-    <module>diagnostics</module>
+<!--    <module>diagnostics</module>-->
     <module>identifiers-integration-tests</module>
     <module>keygen</module>
   </modules>
