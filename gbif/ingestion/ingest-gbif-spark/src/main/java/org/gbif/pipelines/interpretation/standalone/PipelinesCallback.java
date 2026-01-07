@@ -249,7 +249,6 @@ public abstract class PipelinesCallback<
       // Run pipeline for this callback
       runPipeline(message);
 
-      CONCURRENT_DATASETS.dec();
       COMPLETED_DATASETS.inc();
 
       // Acknowledge message processing
