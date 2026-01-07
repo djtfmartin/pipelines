@@ -2,8 +2,7 @@ package org.gbif.pipelines.interpretation.standalone;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.gbif.api.model.pipelines.PipelineStep.Status.RUNNING;
-import static org.gbif.pipelines.interpretation.Metrics.LAST_COMPLETED_MESSAGE_MS;
-import static org.gbif.pipelines.interpretation.Metrics.LAST_CONSUMED_MESSAGE_FROM_QUEUE_MS;
+import static org.gbif.pipelines.interpretation.Metrics.*;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.google.common.base.Strings;
@@ -219,6 +218,8 @@ public abstract class PipelinesCallback<
     checkIfPaused();
 
     LAST_CONSUMED_MESSAGE_FROM_QUEUE_MS.set(System.currentTimeMillis());
+    MESSAGES_READ_FROM_QUEUE.inc();
+
     MDC.put(
         "datasetKey",
         message.getDatasetUuid() != null ? message.getDatasetUuid().toString() : "NO_DATASET");
@@ -243,8 +244,13 @@ public abstract class PipelinesCallback<
 
       trackingInfo = trackPipelineStep(message);
 
+      CONCURRENT_DATASETS.inc();
+
       // Run pipeline for this callback
       runPipeline(message);
+
+      CONCURRENT_DATASETS.dec();
+      COMPLETED_DATASETS.inc();
 
       // Acknowledge message processing
       updateTrackingStatus(trackingInfo, message, PipelineStep.Status.COMPLETED);
@@ -271,6 +277,10 @@ public abstract class PipelinesCallback<
     } catch (Exception ex) {
 
       try {
+
+        DATASETS_ERRORED_COUNT.inc();
+        LAST_DATASETS_ERROR.set(System.currentTimeMillis());
+
         // FIXMETrackingInfo trackingInfo = trackPipelineStep(message);
         MDC.put("datasetKey", message.getDatasetUuid().toString());
         String error =
@@ -295,6 +305,9 @@ public abstract class PipelinesCallback<
       //                }
       //                updateValidatorInfoStatus(Status.FAILED, errorMessage);
     } finally {
+
+      CONCURRENT_DATASETS.dec();
+
       if (message.getExecutionId() != null) {
         MDC.put("datasetKey", message.getDatasetUuid().toString());
         log.debug("Mark execution as FINISHED if all steps are FINISHED");

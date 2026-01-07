@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -37,10 +38,13 @@ public final class HealthCheck {
   private static final int CHECK_INTERVAL_SECONDS =
       Integer.parseInt(System.getenv().getOrDefault("CHECK_INTERVAL_SECONDS", "30"));
   private static final int PORT = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
-  public static final String LAST_CONSUMED_DATASET_TIMESTAMP_SECONDS =
+  public static final String LAST_CONSUMED_MESSAGE_TIMESTAMP_SECONDS =
       System.getenv()
           .getOrDefault(
-              "PROMETHEUS_TIMESTAMP_TO_CHECK", "last_consumed_dataset_timestamp_milliseconds");
+              "PROMETHEUS_TIMESTAMP_TO_CHECK", "last_consumed_message_timestamp_milliseconds");
+
+  public static final String READ_FROM_QUEUE_COUNTER =
+      System.getenv().getOrDefault("PROMETHEUS_MESSAGE_COUNTER", "messages_read_from_queue");
 
   private static volatile boolean healthy = true;
   private static volatile String debug = "NOT_SET";
@@ -77,9 +81,25 @@ public final class HealthCheck {
   private static void doHeathCheck() throws Exception {
     try {
       int messagesReady = fetchRabbitMqMessagesReady();
-      long lastConsumedTimestamp = fetchPrometheusTimestamp();
+      String body = fetchPrometheusMetrics();
+
+      Optional<Long> messagesReadFromQueue = parsePrometheusLong(body, READ_FROM_QUEUE_COUNTER);
+      Optional<Long> lastConsumedTimestamp =
+          parsePrometheusLong(body, LAST_CONSUMED_MESSAGE_TIMESTAMP_SECONDS);
+
+      // if the app has just started up and there is no metric yet, consider it healthy
+      if (messagesReadFromQueue.isEmpty()) {
+        healthy = true;
+      }
+
+      if (lastConsumedTimestamp.isEmpty()) {
+        debug = "Missing last consumed message timestamp metric";
+        healthy = false;
+        return;
+      }
+
       long timeSinceLastMessageDequeued =
-          Instant.now().getEpochSecond() - (lastConsumedTimestamp / 1000);
+          Instant.now().getEpochSecond() - (lastConsumedTimestamp.get() / 1000);
       System.out.printf(
           "Queued messages_ready=%d, last consumed age=%d seconds%n",
           messagesReady, timeSinceLastMessageDequeued);
@@ -121,7 +141,7 @@ public final class HealthCheck {
     return parseJsonInt(body, "messages_ready");
   }
 
-  private static long fetchPrometheusTimestamp() throws Exception {
+  private static String fetchPrometheusMetrics() throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(PROMETHEUS_URL))
@@ -137,8 +157,7 @@ public final class HealthCheck {
       throw new IOException("Prometheus metrics non-2xx response");
     }
 
-    String body = new String(response.body().readAllBytes());
-    return parsePrometheusLong(body, LAST_CONSUMED_DATASET_TIMESTAMP_SECONDS);
+    return new String(response.body().readAllBytes());
   }
 
   private static int parseJsonInt(String json, String field) {
@@ -158,15 +177,15 @@ public final class HealthCheck {
     return Integer.parseInt(json.substring(start, i));
   }
 
-  private static long parsePrometheusLong(String metrics, String metricName) {
+  private static Optional<Long> parsePrometheusLong(String metrics, String metricName) {
     for (String line : metrics.split("\n")) {
       if (line.startsWith(metricName + " ")) {
         String[] parts = line.split("\\s+");
         double timeDouble = Double.parseDouble(parts[1]);
-        return (long) timeDouble;
+        return Optional.of((long) timeDouble);
       }
     }
-    throw new IllegalArgumentException("Missing Prometheus metric: " + metricName);
+    return Optional.empty();
   }
 
   private static void startHttpServer() throws IOException {

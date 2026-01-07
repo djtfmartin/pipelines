@@ -194,7 +194,6 @@ public class Interpretation {
       throws IOException {
 
     long start = System.currentTimeMillis();
-    CONCURRENT_INTERPRETATION_DATASETS.inc();
 
     try {
       MDC.put("datasetKey", datasetId);
@@ -269,15 +268,8 @@ public class Interpretation {
 
       MDC.put("datasetKey", datasetId);
       log.info(timeAndRecPerSecond("interpretation", start, identifiersCount));
-      COMPLETED_INTERPRETATION_DATASETS.inc();
-    } catch (Exception e) {
-      DATASETS_ERRORED_COUNT.inc();
-      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
-      log.error("Error during interpretation: {}", e.getMessage(), e);
-      throw e;
     } finally {
       MDC.remove("datasetKey");
-      CONCURRENT_INTERPRETATION_DATASETS.dec();
     }
   }
 

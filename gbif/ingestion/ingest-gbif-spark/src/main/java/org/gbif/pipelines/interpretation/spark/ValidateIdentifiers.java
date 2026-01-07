@@ -167,8 +167,6 @@ public class ValidateIdentifiers {
       boolean useExtendedRecordId)
       throws Exception {
 
-    CONCURRENT_IDENTIFIERS_DATASETS.inc();
-
     try {
 
       long start = System.currentTimeMillis();
@@ -259,15 +257,8 @@ public class ValidateIdentifiers {
           timeAndRecPerSecond(
               "identifiers", start, metrics.get(VALID_GBIF_ID_COUNT + "Attempted")));
 
-      COMPLETED_IDENTIFIERS_DATASETS.inc();
-    } catch (Exception e) {
-      DATASETS_ERRORED_COUNT.inc();
-      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
-      log.error("Error during identifiers: {}", e.getMessage(), e);
-      throw e;
     } finally {
       MDC.clear();
-      CONCURRENT_IDENTIFIERS_DATASETS.dec();
     }
   }
 

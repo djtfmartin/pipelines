@@ -155,8 +155,6 @@ public class Fragmenter {
       boolean useOccurrenceId)
       throws Exception {
 
-    CONCURRENT_FRAGMENTER_DATASETS.inc();
-
     try {
       MDC.put("datasetKey", datasetId);
       long start = System.currentTimeMillis();
@@ -276,15 +274,11 @@ public class Fragmenter {
           outputPath + "/" + METRICS_FILENAME);
 
       log.info(timeAndRecPerSecond("fragmenter", start, recordCount));
-      COMPLETED_FRAGMENTER_DATASETS.inc();
     } catch (Exception e) {
-      DATASETS_ERRORED_COUNT.inc();
-      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
       log.error("Error during fragmenter: {}", e.getMessage(), e);
       throw e;
     } finally {
       MDC.clear();
-      CONCURRENT_FRAGMENTER_DATASETS.dec();
     }
   }
 

@@ -137,8 +137,6 @@ public class TableBuild {
       String sourceDirectory)
       throws Exception {
 
-    CONCURRENT_TABLEBUILD_DATASETS.inc();
-
     try {
       spark.udf().register("base64_decode", new Base64DecodeUDF(), DataTypes.StringType);
 
@@ -233,15 +231,8 @@ public class TableBuild {
 
       log.info(timeAndRecPerSecond("tablebuild", start, avroToHdfsCountAttempted));
 
-      COMPLETED_TABLEBUILD_DATASETS.inc();
-    } catch (Exception e) {
-      DATASETS_ERRORED_COUNT.inc();
-      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
-      log.error("Error during tablebuild: {}", e.getMessage(), e);
-      throw e;
     } finally {
       MDC.remove("datasetKey");
-      CONCURRENT_TABLEBUILD_DATASETS.dec();
     }
   }
 

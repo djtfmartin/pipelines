@@ -169,7 +169,6 @@ public class Indexing {
       Class<T> recordClass,
       String parquetDirectoryToLoad) {
 
-    CONCURRENT_INDEXING_DATASETS.inc();
     try {
       long start = System.currentTimeMillis();
       MDC.put("datasetKey", datasetId);
@@ -230,14 +229,7 @@ public class Indexing {
           outputPath + "/" + METRICS_FILENAME);
 
       log.info(timeAndRecPerSecond("indexing", start, indexCount));
-      COMPLETED_INDEXING_DATASETS.inc();
-    } catch (Exception e) {
-      DATASETS_ERRORED_COUNT.inc();
-      LAST_DATASETS_ERROR.set(System.currentTimeMillis());
-      log.error("Error during indexing: {}", e.getMessage(), e);
-      throw e;
     } finally {
-      CONCURRENT_INDEXING_DATASETS.dec();
       MDC.clear();
     }
   }
