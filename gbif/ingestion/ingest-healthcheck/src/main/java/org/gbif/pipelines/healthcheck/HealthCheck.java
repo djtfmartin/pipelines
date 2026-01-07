@@ -90,6 +90,7 @@ public final class HealthCheck {
       // if the app has just started up and there is no metric yet, consider it healthy
       if (messagesReadFromQueue.isEmpty()) {
         healthy = true;
+        return;
       }
 
       if (lastConsumedTimestamp.isEmpty()) {
