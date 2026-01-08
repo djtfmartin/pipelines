@@ -3,9 +3,7 @@ package org.gbif.pipelines.healthcheck;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -101,16 +99,22 @@ public final class HealthCheck {
 
       long timeSinceLastMessageDequeued =
           Instant.now().getEpochSecond() - (lastConsumedTimestamp.get() / 1000);
+
       System.out.printf(
           "Queued messages_ready=%d, last consumed age=%d seconds%n",
           messagesReady, timeSinceLastMessageDequeued);
+
       healthy = !(messagesReady > 0 && timeSinceLastMessageDequeued > STALE_THRESHOLD_SECONDS);
       debug =
           String.format(
               "Queued messages_ready=%d, last consumed age=%d seconds%n",
               messagesReady, timeSinceLastMessageDequeued);
+
     } catch (Exception e) {
-      debug = "Exception during health check: " + e.getMessage();
+      StringWriter s = new java.io.StringWriter();
+      PrintWriter w = new java.io.PrintWriter(new java.io.StringWriter());
+      e.printStackTrace(w);
+      debug = "Exception during health check: " + s;
       throw e;
     }
   }
