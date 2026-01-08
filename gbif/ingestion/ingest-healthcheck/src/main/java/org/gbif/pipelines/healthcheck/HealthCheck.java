@@ -36,7 +36,7 @@ public final class HealthCheck {
   private static final int CHECK_INTERVAL_SECONDS =
       Integer.parseInt(System.getenv().getOrDefault("CHECK_INTERVAL_SECONDS", "30"));
   private static final int PORT = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
-  public static final String LAST_CONSUMED_MESSAGE_TIMESTAMP_SECONDS =
+  public static final String LAST_CONSUMED_MESSAGE_TIMESTAMP_MILLISECONDS =
       System.getenv()
           .getOrDefault(
               "PROMETHEUS_TIMESTAMP_TO_CHECK", "last_consumed_message_timestamp_milliseconds");
@@ -83,7 +83,7 @@ public final class HealthCheck {
 
       Optional<Long> messagesReadFromQueue = parsePrometheusLong(body, READ_FROM_QUEUE_COUNTER);
       Optional<Long> lastConsumedTimestamp =
-          parsePrometheusLong(body, LAST_CONSUMED_MESSAGE_TIMESTAMP_SECONDS);
+          parsePrometheusLong(body, LAST_CONSUMED_MESSAGE_TIMESTAMP_MILLISECONDS);
 
       // if the app has just started up and there is no metric yet, consider it healthy
       if (messagesReadFromQueue.isEmpty()) {
@@ -112,7 +112,7 @@ public final class HealthCheck {
 
     } catch (Exception e) {
       StringWriter s = new java.io.StringWriter();
-      PrintWriter w = new java.io.PrintWriter(new java.io.StringWriter());
+      PrintWriter w = new java.io.PrintWriter(s);
       e.printStackTrace(w);
       debug = "Exception during health check: " + s;
       throw e;
