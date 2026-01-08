@@ -34,6 +34,8 @@ import org.slf4j.MDC;
 @Slf4j
 public class TableBuild {
 
+  private static final Object LOCK = new Object();
+
   @Parameters(separators = "=")
   private static class Args {
 
@@ -113,6 +115,10 @@ public class TableBuild {
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
         .config("spark.sql.warehouse.dir", "hdfs://gbif-hdfs/stackable/warehouse")
+        // FIXME move to config
+        .config("spark.sql.catalog.local.commit.retry.num-retries", "10")
+        .config("spark.sql.catalog.local.commit.retry.min-wait-ms", "100")
+        .config("spark.sql.catalog.local.commit.retry.max-wait-ms", "1000")
         .config("spark.hadoop.hive.metastore.uris", config.getHiveMetastoreUris());
   }
 
@@ -142,7 +148,7 @@ public class TableBuild {
 
       long start = System.currentTimeMillis();
       MDC.put("datasetKey", datasetId);
-      log.info("Starting tablebuild");
+      log.info("Starting table build");
 
       String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 
@@ -193,29 +199,33 @@ public class TableBuild {
       // Create or populate the occurrence table SQL
       spark.sql(getCreateTableSQL(tableName));
 
-      // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
-      StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
-
       // get the hdfs columns from the parquet with mappings to iceberg columns
       Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
 
-      // Build the insert query
-      String insertQuery =
-          String.format(
-              "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
-              config.getHiveDB(),
-              tableName,
-              Arrays.stream(tblSchema.fields())
-                  .map(StructField::name)
-                  .collect(Collectors.joining(", ")),
-              generateSelectColumns(tblSchema, hdfsColumnList),
-              config.getHiveDB(),
-              table);
+      // limit concurrent writes to the iceberg table
+      synchronized (LOCK) {
 
-      log.debug("Inserting data into {}} table: {}", tableName, insertQuery);
+        // Read the target table i.e. 'occurrence' or 'event' schema to ensure it exists
+        StructType tblSchema = spark.read().format("iceberg").load(tableName).schema();
 
-      // Execute the insert
-      spark.sql(insertQuery);
+        // Build the insert query
+        String insertQuery =
+            String.format(
+                "INSERT OVERWRITE TABLE %s.%s (%s) SELECT %s FROM %s.%s",
+                config.getHiveDB(),
+                tableName,
+                Arrays.stream(tblSchema.fields())
+                    .map(StructField::name)
+                    .collect(Collectors.joining(", ")),
+                generateSelectColumns(tblSchema, hdfsColumnList),
+                config.getHiveDB(),
+                table);
+
+        log.debug("Inserting data into {} table: {}", tableName, insertQuery);
+
+        // Execute the insert
+        spark.sql(insertQuery);
+      }
 
       // Drop the temporary table
       spark.sql("DROP TABLE " + table);
@@ -223,7 +233,7 @@ public class TableBuild {
       log.debug("Dropped Iceberg table: {}", table);
       cleanHdfsPath(fileSystem, config, table);
 
-      // 4. write metrics to yaml
+      // Write metrics to yaml
       writeMetricsYaml(
           fileSystem,
           Map.of("avroToHdfsCountAttempted", avroToHdfsCountAttempted),
