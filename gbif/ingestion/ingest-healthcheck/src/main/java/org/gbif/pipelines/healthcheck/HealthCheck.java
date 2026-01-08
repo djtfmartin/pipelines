@@ -51,7 +51,7 @@ public final class HealthCheck {
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
   public static void main(String[] args) throws Exception {
-    System.out.println("Starting health checker");
+    System.out.println("Starting health checker - stale threshold seconds: " + STALE_THRESHOLD_SECONDS);
     startHealthCheckLoop();
     startHttpServer();
   }
@@ -88,6 +88,7 @@ public final class HealthCheck {
       // if the app has just started up and there is no metric yet, consider it healthy
       if (messagesReadFromQueue.isEmpty()) {
         healthy = true;
+        debug = "No last consumed message timestamp metric - assume still starting up or no messages to queue";
         return;
       }
 
@@ -114,7 +115,7 @@ public final class HealthCheck {
       StringWriter s = new java.io.StringWriter();
       PrintWriter w = new java.io.PrintWriter(s);
       e.printStackTrace(w);
-      debug = "Exception during health check: " + s;
+      debug = System.currentTimeMillis() + " Exception during health check: " + s;
       throw e;
     }
   }
