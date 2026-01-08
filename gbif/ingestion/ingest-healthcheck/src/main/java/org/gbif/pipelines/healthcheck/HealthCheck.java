@@ -42,7 +42,7 @@ public final class HealthCheck {
               "PROMETHEUS_TIMESTAMP_TO_CHECK", "last_consumed_message_timestamp_milliseconds");
 
   public static final String READ_FROM_QUEUE_COUNTER =
-      System.getenv().getOrDefault("PROMETHEUS_MESSAGE_COUNTER", "messages_read_from_queue");
+      System.getenv().getOrDefault("PROMETHEUS_MESSAGE_COUNTER", "messages_read_from_queue_total");
 
   private static volatile boolean healthy = true;
   private static volatile String debug = "NOT_SET";
@@ -88,12 +88,12 @@ public final class HealthCheck {
       // if the app has just started up and there is no metric yet, consider it healthy
       if (messagesReadFromQueue.isEmpty()) {
         healthy = true;
-        debug = "No last consumed message timestamp metric - assume still starting up or no messages to queue";
+        debug = "No messages_read_from_queue_total metric - assume still starting up or no messages to queue";
         return;
       }
 
       if (lastConsumedTimestamp.isEmpty()) {
-        debug = "Missing last consumed message timestamp metric";
+        debug = "Missing last_consumed_message_timestamp_milliseconds metric";
         healthy = false;
         return;
       }
