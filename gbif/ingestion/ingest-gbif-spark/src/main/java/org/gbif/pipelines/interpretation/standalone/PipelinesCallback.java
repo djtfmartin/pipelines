@@ -106,19 +106,12 @@ public abstract class PipelinesCallback<
 
     com.fasterxml.jackson.databind.ObjectMapper mapper =
         new com.fasterxml.jackson.databind.ObjectMapper();
-    //    mapper.setAnnotationIntrospector(new JacksonAnnotationIntrospector() {
-    //      public JsonPOJOBuilder.Value findPOJOBuilderConfig(AnnotatedClass ac) {
-    //        return ac.hasAnnotation(JsonPOJOBuilder.class) ? super.findPOJOBuilderConfig(ac) : new
-    // JsonPOJOBuilder.Value("build", "");
-    //      }
-    //    });
 
     this.pipelinesConfig = pipelinesConfig;
     this.publisher = publisher;
     this.historyClient =
         Feign.builder()
             .client(new ApacheHttpClient())
-            //        . queryMapEncoder(new CollectionsSearchClient.SearchRequestEncoder())
             .decoder(new JacksonDecoder(mapper))
             .encoder(new JacksonEncoder(mapper))
             .contract(new Contract.Default())
@@ -329,7 +322,7 @@ public abstract class PipelinesCallback<
               + PAUSE_FILE_PATH
               + " file, pausing processing new messages for 10s. Delete to resume.");
       try {
-        Thread.sleep(10_000);
+        Thread.sleep(30_000);
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       }

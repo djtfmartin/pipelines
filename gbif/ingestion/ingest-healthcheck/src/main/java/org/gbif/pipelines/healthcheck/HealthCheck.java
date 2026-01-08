@@ -51,7 +51,8 @@ public final class HealthCheck {
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
   public static void main(String[] args) throws Exception {
-    System.out.println("Starting health checker - stale threshold seconds: " + STALE_THRESHOLD_SECONDS);
+    System.out.println(
+        "Starting health checker - stale threshold seconds: " + STALE_THRESHOLD_SECONDS);
     startHealthCheckLoop();
     startHttpServer();
   }
@@ -88,7 +89,8 @@ public final class HealthCheck {
       // if the app has just started up and there is no metric yet, consider it healthy
       if (messagesReadFromQueue.isEmpty()) {
         healthy = true;
-        debug = "No messages_read_from_queue_total metric - assume still starting up or no messages to queue";
+        debug =
+            "No messages_read_from_queue_total metric - assume still starting up or no messages to queue";
         return;
       }
 
@@ -100,10 +102,6 @@ public final class HealthCheck {
 
       long timeSinceLastMessageDequeued =
           Instant.now().getEpochSecond() - (lastConsumedTimestamp.get() / 1000);
-
-      System.out.printf(
-          "Queued messages_ready=%d, last consumed age=%d seconds%n",
-          messagesReady, timeSinceLastMessageDequeued);
 
       healthy = !(messagesReady > 0 && timeSinceLastMessageDequeued > STALE_THRESHOLD_SECONDS);
       debug =
