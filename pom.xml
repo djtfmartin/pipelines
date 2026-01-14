@@ -409,34 +409,34 @@
       </dependency>
 
       <!-- GBIF -->
-      <dependency>
-        <groupId>org.gbif.occurrence</groupId>
-        <artifactId>occurrence-hdfs-table</artifactId>
-        <version>${gbif-occurrence.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.gbif</groupId>
-            <artifactId>gbif-common-service</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.gbif.occurrence</groupId>
-            <artifactId>occurrence-persistence</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.gbif.occurrence</groupId>
-        <artifactId>occurrence-common</artifactId>
-        <version>${gbif-occurrence.version}</version>
-      </dependency>
+<!--      <dependency>-->
+<!--        <groupId>org.gbif.occurrence</groupId>-->
+<!--        <artifactId>occurrence-hdfs-table</artifactId>-->
+<!--        <version>${gbif-occurrence.version}</version>-->
+<!--        <exclusions>-->
+<!--          <exclusion>-->
+<!--            <groupId>org.springframework.boot</groupId>-->
+<!--            <artifactId>spring-boot-starter</artifactId>-->
+<!--          </exclusion>-->
+<!--          <exclusion>-->
+<!--            <groupId>org.gbif</groupId>-->
+<!--            <artifactId>gbif-common-service</artifactId>-->
+<!--          </exclusion>-->
+<!--          <exclusion>-->
+<!--            <groupId>com.beust</groupId>-->
+<!--            <artifactId>jcommander</artifactId>-->
+<!--          </exclusion>-->
+<!--          <exclusion>-->
+<!--            <groupId>org.gbif.occurrence</groupId>-->
+<!--            <artifactId>occurrence-persistence</artifactId>-->
+<!--          </exclusion>-->
+<!--        </exclusions>-->
+<!--      </dependency>-->
+<!--      <dependency>-->
+<!--        <groupId>org.gbif.occurrence</groupId>-->
+<!--        <artifactId>occurrence-common</artifactId>-->
+<!--        <version>${gbif-occurrence.version}</version>-->
+<!--      </dependency>-->
       <dependency>
         <groupId>org.gbif</groupId>
         <artifactId>dwca-io</artifactId>
