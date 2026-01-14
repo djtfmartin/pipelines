@@ -256,7 +256,6 @@ public class Interpretation {
       HdfsConfigs hdfsConfigs =
           HdfsConfigs.create(config.getHdfsSiteConfig(), config.getCoreSiteConfig());
       FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/" + EXTENDED_IDENTIFIERS);
-      FsUtils.deleteIfExist(hdfsConfigs, outputPath + "/" + VERBATIM_EXT_FILTERED);
 
       // write metrics to yaml
       writeMetricsYaml(
