@@ -38,7 +38,6 @@ pipeline {
       }
     }
 
-
     stage('Build healthcheck') {
       tools {
         jdk 'OpenJDK17'
