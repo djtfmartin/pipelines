@@ -504,17 +504,13 @@ public class Interpretation {
                 Encoders.bean(ExtendedRecord.class))
             .repartition(numberOfShards);
 
-    if (useCheckpoints) {
-      // write to parquet for downstream steps
-      extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + VERBATIM_EXT_FILTERED);
-      // reload
-      return spark
-          .read()
-          .parquet(outputPath + "/" + VERBATIM_EXT_FILTERED)
-          .as(Encoders.bean(ExtendedRecord.class));
-    } else {
-      return extended;
-    }
+    // write to parquet for downstream steps
+    extended.write().mode(SaveMode.Overwrite).parquet(outputPath + "/" + VERBATIM_EXT_FILTERED);
+    // reload
+    return spark
+        .read()
+        .parquet(outputPath + "/" + VERBATIM_EXT_FILTERED)
+        .as(Encoders.bean(ExtendedRecord.class));
   }
 
   private static void sparkLog(

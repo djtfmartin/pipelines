@@ -2,6 +2,7 @@ package org.gbif.pipelines.interpretation.spark;
 
 import static org.apache.spark.sql.functions.*;
 import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
+import static org.gbif.pipelines.interpretation.spark.Directories.VERBATIM_EXT_FILTERED;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
 
@@ -13,8 +14,6 @@ import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.spark.api.java.function.FilterFunction;
-import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
@@ -79,14 +78,14 @@ public class VerbatimExtensionsInterpretation {
 
   /** Read extended records and explode extensions into separate rows. */
   private static Dataset<Row> readExtendedRecords(
-      SparkSession spark,
-      String inputPath,
-      PipelinesConfig config,
-      Integer numberOfShards,
-      String datasetId) {
-    // Load extended records
+      SparkSession spark, String inputPath, String datasetId) {
+
+    // Load extended records that have been filtered to only allowed extensions
     Dataset<ExtendedRecord> extendedRecords =
-        loadExtendedRecords(spark, config, inputPath, numberOfShards);
+        spark
+            .read()
+            .parquet(inputPath + "/" + VERBATIM_EXT_FILTERED)
+            .as(Encoders.bean(ExtendedRecord.class));
 
     spark.sparkContext().setJobGroup("explode-extensions", "Exploding extensions", true);
     // Convert to DataFrame and rename id to gbifid
@@ -133,7 +132,6 @@ public class VerbatimExtensionsInterpretation {
       PipelinesConfig config,
       String datasetId,
       int attempt,
-      int numberOfShards,
       String icebergCatalog,
       String dwcCoreTerm) {
 
@@ -142,8 +140,7 @@ public class VerbatimExtensionsInterpretation {
     registerUdfs(spark);
 
     // Normalize the directory name
-    Dataset<Row> normalizedKeys =
-        readExtendedRecords(spark, inputPath, config, numberOfShards, datasetId);
+    Dataset<Row> normalizedKeys = readExtendedRecords(spark, inputPath, datasetId);
 
     // Dynamically create flattened columns
     Dataset<Row> flattened = selectColumnsForExtension(spark, normalizedKeys);
@@ -237,42 +234,44 @@ public class VerbatimExtensionsInterpretation {
     return Extension.fromRowType(rowType);
   }
 
-  /** Load extended records from Avro, filter and retain only allowed extensions. */
-  private static Dataset<ExtendedRecord> loadExtendedRecords(
-      SparkSession spark, PipelinesConfig config, String inputPath, int numberOfShards) {
-
-    spark
-        .sparkContext()
-        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath), true);
-
-    final Set<String> allowExtensions =
-        Optional.ofNullable(config.getExtensionsAllowedForVerbatimSet())
-            .orElse(Collections.emptySet());
-
-    // load and filter extended records
-    return spark
-        .read()
-        .format("avro")
-        .load(inputPath + "/verbatim.avro")
-        .as(Encoders.bean(ExtendedRecord.class))
-        .filter((FilterFunction<ExtendedRecord>) er -> er != null && !er.getCoreTerms().isEmpty())
-        .map(
-            (MapFunction<ExtendedRecord, ExtendedRecord>)
-                er -> {
-                  Map<String, List<Map<String, String>>> extensions = new HashMap<>();
-                  er.getExtensions().entrySet().stream()
-                      .filter(es -> allowExtensions.contains(es.getKey()))
-                      .filter(es -> !es.getValue().isEmpty())
-                      .forEach(es -> extensions.put(es.getKey(), es.getValue()));
-                  return ExtendedRecord.newBuilder()
-                      .setId(er.getId())
-                      .setCoreTerms(er.getCoreTerms())
-                      .setExtensions(extensions)
-                      .build();
-                },
-            Encoders.bean(ExtendedRecord.class))
-        .repartition(numberOfShards);
-  }
+  //  /** Load extended records from Avro, filter and retain only allowed extensions. */
+  //  private static Dataset<ExtendedRecord> loadExtendedRecords(
+  //      SparkSession spark, PipelinesConfig config, String inputPath, int numberOfShards) {
+  //
+  //    spark
+  //        .sparkContext()
+  //        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath),
+  // true);
+  //
+  //    final Set<String> allowExtensions =
+  //        Optional.ofNullable(config.getExtensionsAllowedForVerbatimSet())
+  //            .orElse(Collections.emptySet());
+  //
+  //    // load and filter extended records
+  //    return spark
+  //        .read()
+  //        .format("avro")
+  //        .load(inputPath + "/verbatim.avro")
+  //        .as(Encoders.bean(ExtendedRecord.class))
+  //        .filter((FilterFunction<ExtendedRecord>) er -> er != null &&
+  // !er.getCoreTerms().isEmpty())
+  //        .map(
+  //            (MapFunction<ExtendedRecord, ExtendedRecord>)
+  //                er -> {
+  //                  Map<String, List<Map<String, String>>> extensions = new HashMap<>();
+  //                  er.getExtensions().entrySet().stream()
+  //                      .filter(es -> allowExtensions.contains(es.getKey()))
+  //                      .filter(es -> !es.getValue().isEmpty())
+  //                      .forEach(es -> extensions.put(es.getKey(), es.getValue()));
+  //                  return ExtendedRecord.newBuilder()
+  //                      .setId(er.getId())
+  //                      .setCoreTerms(er.getCoreTerms())
+  //                      .setExtensions(extensions)
+  //                      .build();
+  //                },
+  //            Encoders.bean(ExtendedRecord.class))
+  //        .repartition(numberOfShards);
+  //  }
 
   public static void main(String[] argsv) throws Exception {
     VerbatimExtensionsInterpretation.Args args = new VerbatimExtensionsInterpretation.Args();
@@ -295,14 +294,7 @@ public class VerbatimExtensionsInterpretation {
     FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
-    processExtensions(
-        spark,
-        config,
-        datasetId,
-        attempt,
-        args.numberOfShards,
-        args.icebergCatalog,
-        args.dwcCoreTerm);
+    processExtensions(spark, config, datasetId, attempt, args.icebergCatalog, args.dwcCoreTerm);
 
     fileSystem.close();
     spark.stop();
