@@ -170,7 +170,7 @@ public class VerbatimExtensionsInterpretation {
       String table = icebergCatalog + "." + tableName; // e.g. iceberg_catalog.default.ac_extension
 
       if (!spark.catalog().tableExists(table)) {
-        log.info("Table {} does not exist, skipping extension {}", table, dir);
+        log.info("Table {} does not exist, checking if we should create {}", table, dir);
 
         // Check if we can create the table schema
         Map<String, ExtensionTable> extensionTableMap =
@@ -178,7 +178,7 @@ public class VerbatimExtensionsInterpretation {
                 .collect(Collectors.toMap(ExtensionTable::getHiveTableName, et -> et));
 
         if (!extensionTableMap.containsKey(dir)) {
-          log.warn("No ExtensionTable found for directory '{}', cannot create table schema", dir);
+          log.warn("No ExtensionTable found for directory '{}', will not create table schema", dir);
           continue;
         } else {
           ExtensionTable extTable = extensionTableMap.get(dir);
