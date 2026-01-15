@@ -208,17 +208,15 @@ public class TableBuild {
         log.info("Table {} created. Creating extension tables", coreDwcTerm);
 
         // create extension tables dynamically if they do not exist
-        List<ExtensionTable> extensionTables = ExtensionTable.tableExtensions();
-        extensionTables.forEach(
-            extTable -> {
-              String extTableName = extTable.getHiveTableName();
-              if (spark.catalog().tableExists(extTableName)) {
-                log.info("Extension table {} exists", extTableName);
-              } else {
-                log.info("Extension table {} does not exist and will be created", extTableName);
-                createExtensionTable(spark, extTable, coreDwcTerm);
-              }
-            });
+        for (ExtensionTable extTable : ExtensionTable.tableExtensions()) {
+          String extTableName = extTable.getHiveTableName();
+          if (spark.catalog().tableExists(extTableName)) {
+            log.info("Extension table {} exists", extTableName);
+          } else {
+            log.info("Extension table {} does not exist and will be created", extTableName);
+            createExtensionTable(spark, extTable, coreDwcTerm);
+          }
+        }
       }
 
       // get the hdfs columns from the parquet with mappings to iceberg columns
