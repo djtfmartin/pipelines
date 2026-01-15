@@ -171,6 +171,7 @@ public class VerbatimExtensionsInterpretation {
         log.info("Table {} does not exist, skipping extension {}", table, dir);
         continue;
       }
+
       log.info("Processing extension directory '{}' into table '{}'", dir, table);
       spark
           .sparkContext()

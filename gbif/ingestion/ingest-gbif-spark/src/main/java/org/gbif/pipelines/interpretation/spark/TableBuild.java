@@ -22,6 +22,7 @@ import org.apache.spark.sql.api.java.UDF1;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.gbif.occurrence.download.hive.ExtensionTable;
 import org.gbif.occurrence.download.hive.OccurrenceHDFSTableDefinition;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.jetbrains.annotations.NotNull;
@@ -196,8 +197,26 @@ public class TableBuild {
         throw new IllegalStateException("There are " + count + " records with NULL datasetKey");
       }
 
-      // Create or populate the occurrence table SQL
-      spark.sql(getCreateTableSQL(tableName));
+      if (spark.catalog().tableExists(tableName)) {
+        log.info("Table {} exists", tableName);
+      } else {
+        log.info("Table {} does not exist and will be created", tableName);
+        // Create or populate the occurrence table SQL
+        spark.sql(getCreateTableSQL(tableName));
+        // create extension tables dynamically if they do not exist
+        List<ExtensionTable> extensionTables = ExtensionTable.tableExtensions();
+
+        extensionTables.forEach(
+            extTable -> {
+              String extTableName = extTable.getHiveTableName();
+              if (spark.catalog().tableExists(extTableName)) {
+                log.info("Extension table {} exists", extTableName);
+              } else {
+                log.info("Extension table {} does not exist and will be created", extTableName);
+                createExtensionTable(spark, extTable, tableName);
+              }
+            });
+      }
 
       // get the hdfs columns from the parquet with mappings to iceberg columns
       Map<String, HdfsColumn> hdfsColumnList = getHdfsColumns(hdfs);
@@ -249,6 +268,48 @@ public class TableBuild {
     } finally {
       MDC.remove("datasetKey");
     }
+  }
+
+  private static void createExtensionTable(
+      SparkSession spark,
+      ExtensionTable extensionTable,
+      String coreDwcTerm) {
+    log.info("Create extension table: {}", extensionTable.getHiveTableName());
+    spark.sparkContext().setJobDescription("Create " + extensionTable.getHiveTableName());
+
+    String extensionTableSql = createExtensionTableSQL(extensionTable, coreDwcTerm);
+    log.info("Creating extension table SQL {}", extensionTableSql);
+    spark.sql(extensionTableSql);
+  }
+
+  public static String createExtensionTableSQL(
+      ExtensionTable extensionTable, String coreDwcTerm) {
+
+    // generate field list
+    String fieldList = extensionTable.getSchema().getFields().stream()
+            .filter(f -> !f.name().equalsIgnoreCase("datasetkey"))
+            .map(f -> f.name() + " STRING")
+            .collect(Collectors.joining(",\n "));
+
+    return String.format(
+            """
+            CREATE TABLE IF NOT EXISTS %s
+            (%s)
+            USING iceberg
+            PARTITIONED BY (datasetkey)
+            TBLPROPERTIES (
+              'write.format.default'='parquet',
+              'parquet.compression'='SNAPPY',
+              'auto.purge'='true'
+            )
+            """,
+          extensionTableName(extensionTable, coreDwcTerm),
+          fieldList
+     );
+  }
+
+  private static String extensionTableName(ExtensionTable extensionTable, String coreDwcTerm) {
+    return String.format("%s_ext_%s", coreDwcTerm, extensionTable.getHiveTableName());
   }
 
   private static String generateSelectColumns(
@@ -347,14 +408,16 @@ public class TableBuild {
   public static String getCreateTableSQL(String tableName) {
     return String.format(
         """
-        CREATE TABLE IF NOT EXISTS %s (%s)
+        CREATE TABLE IF NOT EXISTS %s
+        (%s)
         USING iceberg
         PARTITIONED BY (datasetkey)
         TBLPROPERTIES (
           'write.format.default'='parquet',
           'parquet.compression'='SNAPPY',
           'auto.purge'='true'
-        )""",
+        )
+        """,
         tableName, getFieldDefns());
   }
 
