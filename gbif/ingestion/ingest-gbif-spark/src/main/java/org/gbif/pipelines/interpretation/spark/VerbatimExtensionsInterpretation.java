@@ -163,8 +163,7 @@ public class VerbatimExtensionsInterpretation {
 
     // Write partitioned Parquet output (flat schema)
     for (String dir : directories) {
-      String tableName =
-          dwcCoreTerm.toLowerCase() + "_ext_" + dir.toLowerCase(); // e.g. ac_extension -> extension
+      String tableName = dwcCoreTerm.toLowerCase() + "_ext_" + dir.toLowerCase(); // e.g. ac_extension -> extension
       String table = icebergCatalog + "." + tableName; // e.g. iceberg_catalog.default.ac_extension
 
       if (!spark.catalog().tableExists(table)) {
@@ -234,45 +233,6 @@ public class VerbatimExtensionsInterpretation {
   private static Extension lookupExtension(String rowType) {
     return Extension.fromRowType(rowType);
   }
-
-  //  /** Load extended records from Avro, filter and retain only allowed extensions. */
-  //  private static Dataset<ExtendedRecord> loadExtendedRecords(
-  //      SparkSession spark, PipelinesConfig config, String inputPath, int numberOfShards) {
-  //
-  //    spark
-  //        .sparkContext()
-  //        .setJobGroup("load-avro", String.format("Load extended records from %s", inputPath),
-  // true);
-  //
-  //    final Set<String> allowExtensions =
-  //        Optional.ofNullable(config.getExtensionsAllowedForVerbatimSet())
-  //            .orElse(Collections.emptySet());
-  //
-  //    // load and filter extended records
-  //    return spark
-  //        .read()
-  //        .format("avro")
-  //        .load(inputPath + "/verbatim.avro")
-  //        .as(Encoders.bean(ExtendedRecord.class))
-  //        .filter((FilterFunction<ExtendedRecord>) er -> er != null &&
-  // !er.getCoreTerms().isEmpty())
-  //        .map(
-  //            (MapFunction<ExtendedRecord, ExtendedRecord>)
-  //                er -> {
-  //                  Map<String, List<Map<String, String>>> extensions = new HashMap<>();
-  //                  er.getExtensions().entrySet().stream()
-  //                      .filter(es -> allowExtensions.contains(es.getKey()))
-  //                      .filter(es -> !es.getValue().isEmpty())
-  //                      .forEach(es -> extensions.put(es.getKey(), es.getValue()));
-  //                  return ExtendedRecord.newBuilder()
-  //                      .setId(er.getId())
-  //                      .setCoreTerms(er.getCoreTerms())
-  //                      .setExtensions(extensions)
-  //                      .build();
-  //                },
-  //            Encoders.bean(ExtendedRecord.class))
-  //        .repartition(numberOfShards);
-  //  }
 
   public static void main(String[] argsv) throws Exception {
     VerbatimExtensionsInterpretation.Args args = new VerbatimExtensionsInterpretation.Args();
