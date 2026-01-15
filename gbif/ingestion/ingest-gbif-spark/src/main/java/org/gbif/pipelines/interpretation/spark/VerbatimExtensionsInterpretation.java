@@ -5,6 +5,7 @@ import static org.gbif.pipelines.interpretation.ConfigUtil.loadConfig;
 import static org.gbif.pipelines.interpretation.spark.Directories.VERBATIM_EXT_FILTERED;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getFileSystem;
 import static org.gbif.pipelines.interpretation.spark.SparkUtil.getSparkSession;
+import static org.gbif.pipelines.interpretation.spark.TableBuild.createExtensionTable;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -19,6 +20,7 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.gbif.api.vocabulary.Extension;
+import org.gbif.occurrence.download.hive.ExtensionTable;
 import org.gbif.pipelines.core.config.model.PipelinesConfig;
 import org.gbif.pipelines.io.avro.ExtendedRecord;
 import org.jetbrains.annotations.NotNull;
@@ -163,12 +165,30 @@ public class VerbatimExtensionsInterpretation {
 
     // Write partitioned Parquet output (flat schema)
     for (String dir : directories) {
-      String tableName = dwcCoreTerm.toLowerCase() + "_ext_" + dir.toLowerCase(); // e.g. ac_extension -> extension
+      String tableName =
+          dwcCoreTerm.toLowerCase() + "_ext_" + dir.toLowerCase(); // e.g. ac_extension -> extension
       String table = icebergCatalog + "." + tableName; // e.g. iceberg_catalog.default.ac_extension
 
       if (!spark.catalog().tableExists(table)) {
         log.info("Table {} does not exist, skipping extension {}", table, dir);
-        continue;
+
+        // Check if we can create the table schema
+        Map<String, ExtensionTable> extensionTableMap =
+            ExtensionTable.tableExtensions().stream()
+                .collect(Collectors.toMap(ExtensionTable::getHiveTableName, et -> et));
+
+        if (!extensionTableMap.containsKey(dir)) {
+          log.warn("No ExtensionTable found for directory '{}', cannot create table schema", dir);
+          continue;
+        } else {
+          ExtensionTable extTable = extensionTableMap.get(dir);
+          log.info(
+              "ExtensionTable found for directory '{}', table schema can be created: {}",
+              dir,
+              extTable.getSchema());
+          // creating table
+          createExtensionTable(spark, extTable, dwcCoreTerm);
+        }
       }
 
       log.info("Processing extension directory '{}' into table '{}'", dir, table);
