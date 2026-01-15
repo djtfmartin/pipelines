@@ -286,7 +286,7 @@ public class TableBuild {
     // generate field list
     String fieldList =
         extensionTable.getSchema().getFields().stream()
-            .filter(f -> !f.name().equalsIgnoreCase("datasetkey"))
+//            .filter(f -> !f.name().equalsIgnoreCase("datasetkey"))
             .map(f -> f.name() + " STRING")
             .collect(Collectors.joining(",\n "));
 
