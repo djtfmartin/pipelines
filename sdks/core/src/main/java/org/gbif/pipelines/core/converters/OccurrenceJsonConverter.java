@@ -389,13 +389,6 @@ public class OccurrenceJsonConverter {
     extractLengthAwareOptValue(verbatim, DwcTerm.islandGroup).ifPresent(builder::setIslandGroup);
     extractLengthAwareOptValue(verbatim, DwcTerm.previousIdentifications)
         .ifPresent(builder::setPreviousIdentifications);
-
-    //    OccurrenceJsonRecord partial = builder.build(); // partial content needed, to continue
-    // build
-    //    if (partial.getGbifClassification() != null) {
-    //      extractLengthAwareOptValue(verbatim, DwcTerm.taxonConceptID)
-    //          .ifPresent(partial.getGbifClassification()::setTaxonConceptID);
-    //    }
   }
 
   private void mapIssues(OccurrenceJsonRecord.Builder builder) {

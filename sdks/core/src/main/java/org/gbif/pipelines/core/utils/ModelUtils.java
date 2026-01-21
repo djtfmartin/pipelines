@@ -129,7 +129,6 @@ public class ModelUtils {
   }
 
   public static void addIssue(Issues model, String issue) {
-    // TODO: Explore why these are not defaulting to empty values
     if (model.getIssues() == null) {
       model.setIssues(org.gbif.pipelines.io.avro.IssueRecord.newBuilder().build());
     }

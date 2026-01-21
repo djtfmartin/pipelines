@@ -412,8 +412,7 @@ public class JsonConverter {
     return classificationBuilder.build();
   }
 
-  public static Classification convertToClassificationFromMultiTaxon(
-      ExtendedRecord verbatim, MultiTaxonRecord multiTaxon) {
+  public static Classification convertToClassificationFromMultiTaxon(MultiTaxonRecord multiTaxon) {
     if (multiTaxon != null
         && multiTaxon.getTaxonRecords() != null
         && !multiTaxon.getTaxonRecords().isEmpty()) {
@@ -426,6 +425,54 @@ public class JsonConverter {
       return gbifRecord.map(JsonConverter::convertToClassification).orElse(null);
     }
     return null;
+  }
+
+  public static DerivedClassification convertTaxonRecordToDerivedClassification(TaxonRecord tr) {
+
+    DerivedClassification.Builder derivedTaxon = DerivedClassification.newBuilder();
+
+    DerivedTaxonUsage usage = null;
+
+    if (tr.getUsage() != null) {
+
+      usage =
+          DerivedTaxonUsage.newBuilder()
+              .setKey(tr.getUsage().getKey())
+              .setRank(tr.getUsage().getRank())
+              .setName(tr.getUsage().getName())
+              .build();
+      derivedTaxon.setUsage(usage).setStatus(tr.getUsage().getStatus());
+    }
+
+    if (tr.getAcceptedUsage() != null) {
+      derivedTaxon.setAcceptedUsage(
+          DerivedTaxonUsage.newBuilder()
+              .setKey(tr.getAcceptedUsage().getKey())
+              .setRank(tr.getAcceptedUsage().getRank())
+              .setName(tr.getAcceptedUsage().getName())
+              .build());
+    } else {
+      // Usage is set as the accepted usage if the accepted usage is null
+      derivedTaxon.setAcceptedUsage(usage);
+    }
+
+    derivedTaxon.setIucnRedListCategoryCode(tr.getIucnRedListCategoryCode());
+
+    if (tr.getClassification() != null) {
+      List<String> taxonKeys = new ArrayList<>();
+      tr.getClassification()
+          .forEach(
+              cl -> {
+                taxonKeys.add(cl.getKey());
+              });
+
+      derivedTaxon.setTaxonKeys(taxonKeys);
+    }
+
+    if (tr.getIssues() != null) {
+      derivedTaxon.setIssues(tr.getIssues().getIssueList());
+    }
+    return derivedTaxon.build();
   }
 
   /**

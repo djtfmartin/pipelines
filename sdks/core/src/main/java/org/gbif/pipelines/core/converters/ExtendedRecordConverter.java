@@ -60,7 +60,6 @@ public class ExtendedRecordConverter {
     }
 
     ExtendedRecord partial = builder.build(); // build the partial record to access core terms
-
     String institutionCode = partial.getCoreTerms().get(DwcTerm.institutionCode.qualifiedName());
     String collectionCode = partial.getCoreTerms().get(DwcTerm.collectionCode.qualifiedName());
     String catalogNumber = partial.getCoreTerms().get(DwcTerm.catalogNumber.qualifiedName());

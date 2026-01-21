@@ -927,7 +927,6 @@ public class OccurrenceHdfsRecordConverter {
           .ifPresent(
               field -> {
                 try {
-
                   String verbatimField =
                       "V" + StringUtils.capitalize(term.simpleName().toLowerCase());
 
@@ -1066,15 +1065,33 @@ public class OccurrenceHdfsRecordConverter {
                               valuesAsList.computeIfAbsent(
                                   t.getChecklistKey(), k -> new HashMap<>());
 
+                          if (t.getUsage() != null) {
+                            values
+                                .computeIfAbsent("usagekey", k -> new ArrayList<>())
+                                .add(t.getUsage().getKey());
+                            values
+                                .computeIfAbsent("usagename", k -> new ArrayList<>())
+                                .add(t.getUsage().getName());
+                            values
+                                .computeIfAbsent("usagerank", k -> new ArrayList<>())
+                                .add(t.getUsage().getRank());
+                          }
+                          if (t.getAcceptedUsage() != null) {
+                            values
+                                .computeIfAbsent("acceptedusagekey", k -> new ArrayList<>())
+                                .add(t.getAcceptedUsage().getKey());
+                            values
+                                .computeIfAbsent("acceptedusagename", k -> new ArrayList<>())
+                                .add(t.getAcceptedUsage().getName());
+                            values
+                                .computeIfAbsent("acceptedusagerank", k -> new ArrayList<>())
+                                .add(t.getAcceptedUsage().getRank());
+                          }
+
                           values
-                              .computeIfAbsent("usagekey", k -> new ArrayList<>())
-                              .add(t.getUsageKey());
-                          values
-                              .computeIfAbsent("usagename", k -> new ArrayList<>())
-                              .add(t.getUsageName());
-                          values
-                              .computeIfAbsent("usagerank", k -> new ArrayList<>())
-                              .add(t.getUsageRank());
+                              .computeIfAbsent("iucnRedListCategoryCode", k -> new ArrayList<>())
+                              .add(t.getIucnRedListCategoryCode());
+
                           values
                               .computeIfAbsent("taxonkeys", k -> new ArrayList<>())
                               .addAll(

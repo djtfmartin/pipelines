@@ -15,16 +15,9 @@ import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.pipelines.core.factory.SerDeFactory;
 import org.gbif.pipelines.core.utils.SortUtils;
 import org.gbif.pipelines.io.avro.*;
-import org.gbif.pipelines.io.avro.json.DerivedMetadataRecord;
-import org.gbif.pipelines.io.avro.json.EventInheritedRecord;
-import org.gbif.pipelines.io.avro.json.EventJsonRecord;
+import org.gbif.pipelines.io.avro.json.*;
 import org.gbif.pipelines.io.avro.json.Humboldt;
-import org.gbif.pipelines.io.avro.json.HumboldtTaxonClassification;
-import org.gbif.pipelines.io.avro.json.LocationInheritedRecord;
-import org.gbif.pipelines.io.avro.json.MetadataJsonRecord;
 import org.gbif.pipelines.io.avro.json.Parent;
-import org.gbif.pipelines.io.avro.json.ParentJsonRecord;
-import org.gbif.pipelines.io.avro.json.TemporalInheritedRecord;
 import org.gbif.pipelines.io.avro.json.VocabularyConcept;
 
 @Slf4j
@@ -233,8 +226,12 @@ public class ParentJsonConverter {
         .setStateProvince(location.getStateProvince())
         .setMinimumElevationInMeters(location.getMinimumElevationInMeters())
         .setMaximumElevationInMeters(location.getMaximumElevationInMeters())
+        .setElevation(location.getElevation())
+        .setElevationAccuracy(location.getElevationAccuracy())
         .setMinimumDepthInMeters(location.getMinimumDepthInMeters())
         .setMaximumDepthInMeters(location.getMaximumDepthInMeters())
+        .setDepth(location.getDepth())
+        .setDepthAccuracy(location.getDepthAccuracy())
         .setMaximumDistanceAboveSurfaceInMeters(location.getMaximumDistanceAboveSurfaceInMeters())
         .setMinimumDistanceAboveSurfaceInMeters(location.getMinimumDistanceAboveSurfaceInMeters())
         .setCoordinateUncertaintyInMeters(location.getCoordinateUncertaintyInMeters())
@@ -243,7 +240,11 @@ public class ParentJsonConverter {
         .setRepatriated(location.getRepatriated())
         .setHasGeospatialIssue(location.getHasGeospatialIssue())
         .setLocality(location.getLocality())
-        .setFootprintWKT(location.getFootprintWKT());
+        .setFootprintWKT(location.getFootprintWKT())
+        .setGeoreferencedBy(location.getGeoreferencedBy())
+        .setHigherGeography(location.getHigherGeography())
+        .setGbifRegion(location.getGbifRegion())
+        .setPublishedByGbifRegion(location.getPublishedByGbifRegion());
 
     // Coordinates
     Double decimalLongitude = location.getDecimalLongitude();
@@ -412,10 +413,26 @@ public class ParentJsonConverter {
                             taxonRecords.forEach(
                                 t -> {
                                   HumboldtTaxonClassification.Builder taxonBuilder =
-                                      HumboldtTaxonClassification.newBuilder()
-                                          .setUsageKey(t.getUsageKey())
-                                          .setUsageName(t.getUsageName())
-                                          .setUsageRank(t.getUsageRank());
+                                      HumboldtTaxonClassification.newBuilder();
+
+                                  if (t.getUsage() != null) {
+                                    taxonBuilder.setUsage(
+                                        TaxonUsage.newBuilder()
+                                            .setKey(t.getUsage().getKey())
+                                            .setName(t.getUsage().getName())
+                                            .setRank(t.getUsage().getRank())
+                                            .build());
+                                  }
+                                  if (t.getAcceptedUsage() != null) {
+                                    taxonBuilder.setAcceptedUsage(
+                                        TaxonUsage.newBuilder()
+                                            .setKey(t.getAcceptedUsage().getKey())
+                                            .setName(t.getAcceptedUsage().getName())
+                                            .setRank(t.getAcceptedUsage().getRank())
+                                            .build());
+                                  }
+                                  taxonBuilder.setIucnRedListCategoryCode(
+                                      t.getIucnRedListCategoryCode());
 
                                   Map<String, String> classification = new HashMap<>();
                                   Map<String, String> classificationKeys = new HashMap<>();
@@ -457,11 +474,12 @@ public class ParentJsonConverter {
     // Set raw as indexed
     extractOptValue(verbatim, DwcTerm.eventID).ifPresent(builder::setEventID);
     extractOptValue(verbatim, DwcTerm.institutionCode).ifPresent(builder::setInstitutionCode);
+    extractOptValue(verbatim, DwcTerm.collectionCode).ifPresent(builder::setCollectionCode);
     extractOptValue(verbatim, DwcTerm.verbatimDepth).ifPresent(builder::setVerbatimDepth);
     extractOptValue(verbatim, DwcTerm.verbatimElevation).ifPresent(builder::setVerbatimElevation);
     extractLengthAwareOptValue(verbatim, DwcTerm.fieldNumber).ifPresent(builder::setFieldNumber);
-
-    // Todo: replce with extractOptValue
+    extractLengthAwareOptValue(verbatim, DwcTerm.island).ifPresent(builder::setIsland);
+    extractLengthAwareOptValue(verbatim, DwcTerm.islandGroup).ifPresent(builder::setIslandGroup);
     String eventName = verbatim.getCoreTerms().get(ConverterConstants.EVENT_NAME);
     Optional.ofNullable(eventName).ifPresent(builder::setEventName);
   }

@@ -32,7 +32,6 @@
         <geotools.version>20.5</geotools.version>
         <java.version>17</java.version>
         <junit4.version>4.13.2</junit4.version>
-        <registry.version>4.1.0</registry.version>
         <guava.version>14.0.1</guava.version>
         <elasticsearch.version>7.9.2</elasticsearch.version>
         <elasticsearch-spark.version>7.17.29</elasticsearch-spark.version>
@@ -283,7 +282,7 @@
         <dependency>
             <groupId>org.gbif.kvs</groupId>
             <artifactId>kvs-gbif</artifactId>
-            <version>3.1-reducedeps-SNAPSHOT</version>
+            <version>3.1.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.logging.log4j</groupId>
