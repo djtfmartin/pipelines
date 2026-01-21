@@ -62,7 +62,7 @@ pipeline {
                 mavenSettingsConfig: 'org.jenkinsci.plugins.configfiles.maven.MavenSettingsConfig1396361652540',
                 traceability: true) {
                     sh '''
-                       mvn -B -U clean package dependency:analyze deploy
+                       mvn -B -U clean package dependency:analyze deploy  -Pgbif-artifacts
                       '''
                   }
         }
