@@ -166,12 +166,12 @@
       <version>${gbif-crawler.version}</version>
       <exclusions>
         <exclusion>
-          <artifactId>commons-logging</artifactId>
           <groupId>commons-logging</groupId>
+          <artifactId>commons-logging</artifactId>
         </exclusion>
         <exclusion>
-          <artifactId>org.slf4j</artifactId>
-          <groupId>jcl-over-slf4j</groupId>
+          <groupId>org.slf4j</groupId>
+          <artifactId>jcl-over-slf4j</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -184,17 +184,33 @@
           <groupId>org.elasticsearch.client</groupId>
           <artifactId>elasticsearch-rest-high-level-client</artifactId>
         </exclusion>
+        <exclusion>
+          <artifactId>org.slf4j</artifactId>
+          <groupId>jcl-over-slf4j</groupId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.crawler</groupId>
       <artifactId>crawler-ws-client</artifactId>
       <version>${gbif-crawler.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>jcl-over-slf4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.crawler</groupId>
       <artifactId>crawler-metasync</artifactId>
       <version>${gbif-crawler.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>jcl-over-slf4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.registry</groupId>
