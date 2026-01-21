@@ -51,6 +51,24 @@ pipeline {
       }
     }
 
+    stage('Build Tasks coordinator CLI') {
+      tools {
+        jdk 'OpenJDK17'
+      }
+      steps {
+        dir('gbif/coordinator/tasks') {
+            withMaven(
+                globalMavenSettingsConfig: 'org.jenkinsci.plugins.configfiles.maven.GlobalMavenSettingsConfig1387378707709',
+                mavenSettingsConfig: 'org.jenkinsci.plugins.configfiles.maven.MavenSettingsConfig1396361652540',
+                traceability: true) {
+                    sh '''
+                       mvn -B -U clean package dependency:analyze deploy
+                      '''
+                  }
+        }
+      }
+    }
+
     stage('Build Spark Docker image') {
       steps {
         sh 'build/spark-docker-build.sh false ${VERSION}'
