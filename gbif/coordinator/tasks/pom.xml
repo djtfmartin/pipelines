@@ -122,12 +122,6 @@
       <groupId>org.gbif</groupId>
       <artifactId>gbif-common-ws</artifactId>
       <version>${gbif-common-ws.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId> org.apache.logging.log4j</groupId>
-          <artifactId>*</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif</groupId>
@@ -166,12 +160,8 @@
       <version>${gbif-crawler.version}</version>
       <exclusions>
         <exclusion>
-          <groupId>commons-logging</groupId>
           <artifactId>commons-logging</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>jcl-over-slf4j</artifactId>
+          <groupId>commons-logging</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -184,33 +174,17 @@
           <groupId>org.elasticsearch.client</groupId>
           <artifactId>elasticsearch-rest-high-level-client</artifactId>
         </exclusion>
-        <exclusion>
-          <artifactId>org.slf4j</artifactId>
-          <groupId>jcl-over-slf4j</groupId>
-        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.crawler</groupId>
       <artifactId>crawler-ws-client</artifactId>
       <version>${gbif-crawler.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>jcl-over-slf4j</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.crawler</groupId>
       <artifactId>crawler-metasync</artifactId>
       <version>${gbif-crawler.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>jcl-over-slf4j</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.gbif.registry</groupId>
@@ -236,6 +210,153 @@
     </dependency>
 
     <!-- Beam -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-hadoop-file-system</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-spark-3</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-sdks-java-extensions-google-cloud-platform-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-runners-java-job-service</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-runners-java-fn-execution</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-runners-core-construction-java</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- Jackson -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-avro</artifactId>
+    </dependency>
+
+    <!-- Hadoop -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-hdfs</artifactId>
+      <scope>runtime</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.squareup.okhttp</groupId>
+          <artifactId>okhttp</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client-api</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.squareup.okhttp</groupId>
+          <artifactId>okhttp</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.woodstox</groupId>
+      <artifactId>woodstox-core</artifactId>
+      <version>${woodstox-core.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Main list -->
+    <dependency>
+      <groupId>org.apache.lucene</groupId>
+      <artifactId>lucene-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.elasticsearch.client</groupId>
+      <artifactId>elasticsearch-rest-high-level-client</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.lucene</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.elasticsearch</groupId>
+          <artifactId>elasticsearch-cli</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- metrics -->
     <dependency>
       <groupId>io.dropwizard.metrics</groupId>
       <artifactId>metrics-core</artifactId>
@@ -268,11 +389,13 @@
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+      <scope>runtime</scope>
       <version>${logback.version}</version>
     </dependency>
     <dependency>
       <groupId>net.logstash.logback</groupId>
       <artifactId>logstash-logback-encoder</artifactId>
+      <scope>runtime</scope>
       <version>${logstash-encoder.version}</version>
     </dependency>
     <!-- Log4j2 API (required by Elasticsearch) -->
@@ -416,6 +539,13 @@
                     <exclude>retrofit2/**</exclude>
                   </excludes>
                 </filter>
+                <filter>
+                  <artifact>org.gbif.vocabulary:vocabulary-lookup:shaded</artifact>
+                  <excludes>
+                    <exclude>org/slf4j/**</exclude>
+                    <exclude>ch/qos/logback/**</exclude>
+                  </excludes>
+                </filter>
               </filters>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
@@ -442,58 +572,6 @@
         </plugins>
       </build>
     </profile>
-      <profile>
-          <id>cli-artifact</id>
-          <build>
-              <plugins>
-                  <plugin>
-                      <groupId>org.apache.maven.plugins</groupId>
-                      <artifactId>maven-shade-plugin</artifactId>
-                      <configuration>
-                          <createDependencyReducedPom>true</createDependencyReducedPom>
-                          <shadedArtifactAttached>true</shadedArtifactAttached>
-                          <filters>
-                              <filter>
-                                  <artifact>*:*</artifact>
-                                  <excludes>
-                                      <exclude>META-INF/*.SF</exclude>
-                                      <exclude>META-INF/*.DSA</exclude>
-                                      <exclude>META-INF/*.RSA</exclude>
-                                  </excludes>
-                              </filter>
-                              <filter>
-                                  <artifact>org.gbif.datacite:datacite-rest-client</artifact>
-                                  <excludes>
-                                      <exclude>hidden/com/fasterxml/jackson/**</exclude>
-                                      <exclude>retrofit2/**</exclude>
-                                  </excludes>
-                              </filter>
-                          </filters>
-                          <transformers>
-                              <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
-                              <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                  <mainClass>org.gbif.cli.Application</mainClass>
-                              </transformer>
-                          </transformers>
-                          <relocations>
-                              <relocation>
-                                  <pattern>org.apache.lucene</pattern>
-                                  <shadedPattern>org.shadedcrawler.apache.lucene</shadedPattern>
-                              </relocation>
-                          </relocations>
-                      </configuration>
-                      <executions>
-                          <execution>
-                              <phase>package</phase>
-                              <goals>
-                                  <goal>shade</goal>
-                              </goals>
-                          </execution>
-                      </executions>
-                  </plugin>
-              </plugins>
-          </build>
-      </profile>
   </profiles>
 
 </project>
