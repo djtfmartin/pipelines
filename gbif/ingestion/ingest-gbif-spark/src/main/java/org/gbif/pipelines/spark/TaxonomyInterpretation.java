@@ -117,7 +117,6 @@ public class TaxonomyInterpretation {
     long start = System.currentTimeMillis();
 
     MDC.put("datasetKey", datasetId);
-    log.info("Starting clustering");
 
     String outputPath = String.format("%s/%s/%d", config.getOutputPath(), datasetId, attempt);
 

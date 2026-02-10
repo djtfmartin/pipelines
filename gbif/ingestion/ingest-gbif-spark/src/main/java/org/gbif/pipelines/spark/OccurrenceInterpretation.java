@@ -158,9 +158,16 @@ public class OccurrenceInterpretation {
 
     if (args.interpretTypes != null
         && args.interpretTypes.size() == 1
-        && args.interpretTypes.get(0) != InterpretationType.RecordType.MULTI_TAXONOMY) {
+        && args.interpretTypes.get(0) == InterpretationType.RecordType.MULTI_TAXONOMY) {
       log.info("Running only taxonomy interpretation");
       TaxonomyInterpretation.runTaxonomy(spark, fileSystem, config, datasetId, attempt);
+
+    } else if (args.interpretTypes != null
+        && args.interpretTypes.size() == 1
+        && args.interpretTypes.get(0) == InterpretationType.RecordType.CLUSTERING) {
+      log.info("Running only clustering interpretation");
+      ClusteringInterpretation.runClustering(spark, fileSystem, config, datasetId, attempt);
+
     } else {
       runInterpretation(
           spark,
