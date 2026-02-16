@@ -160,13 +160,15 @@ public class OccurrenceInterpretation {
         && args.interpretTypes.size() == 1
         && args.interpretTypes.get(0) == InterpretationType.RecordType.MULTI_TAXONOMY) {
       log.info("Running only taxonomy interpretation");
-      TaxonomyInterpretation.runTaxonomy(spark, fileSystem, config, datasetId, attempt);
+      TaxonomyInterpretation.runTaxonomy(
+          spark, fileSystem, config, datasetId, attempt, args.numberOfShards);
 
     } else if (args.interpretTypes != null
         && args.interpretTypes.size() == 1
         && args.interpretTypes.get(0) == InterpretationType.RecordType.CLUSTERING) {
       log.info("Running only clustering interpretation");
-      ClusteringInterpretation.runClustering(spark, fileSystem, config, datasetId, attempt);
+      ClusteringInterpretation.runClustering(
+          spark, fileSystem, config, datasetId, attempt, args.numberOfShards);
 
     } else {
       runInterpretation(
@@ -225,15 +227,15 @@ public class OccurrenceInterpretation {
         && interpretTypes.size() == 1
         && interpretTypes.get(0) == InterpretationType.RecordType.MULTI_TAXONOMY) {
       log.info("Running only taxonomy interpretation");
-      TaxonomyInterpretation.runTaxonomy(spark, fs, config, datasetId, attempt);
+      TaxonomyInterpretation.runTaxonomy(spark, fs, config, datasetId, attempt, numberOfShards);
       return;
     }
 
     if (interpretTypes != null
-            && interpretTypes.size() == 1
-            && interpretTypes.get(0) == InterpretationType.RecordType.CLUSTERING) {
+        && interpretTypes.size() == 1
+        && interpretTypes.get(0) == InterpretationType.RecordType.CLUSTERING) {
       log.info("Running only clustering interpretation");
-      ClusteringInterpretation.runClustering(spark, fs, config, datasetId, attempt);
+      ClusteringInterpretation.runClustering(spark, fs, config, datasetId, attempt, numberOfShards);
       return;
     }
 
@@ -284,14 +286,14 @@ public class OccurrenceInterpretation {
 
       // write parquet for elastic
       sparkLog(spark, "toJson", "Writing JSON output", useCheckpoints);
-      toJson(interpreted, metadata)
+      toJson(interpreted, metadata, numberOfShards)
           .write()
           .mode(SaveMode.Overwrite)
           .parquet(outputPath + "/" + OCCURRENCE_JSON);
 
       // write parquet for hdfs view
       sparkLog(spark, "toHdfs", "Writing HDFS output", useCheckpoints);
-      toHdfs(interpreted, metadata)
+      toHdfs(interpreted, metadata, numberOfShards)
           .write()
           .mode(SaveMode.Overwrite)
           .parquet(outputPath + "/" + OCCURRENCE_HDFS);
@@ -662,58 +664,84 @@ public class OccurrenceInterpretation {
   }
 
   public static Dataset<OccurrenceJsonRecord> toJson(
-      Dataset<Occurrence> records, MetadataRecord metadataRecord) {
-    return records.map(
-        (MapFunction<Occurrence, OccurrenceJsonRecord>)
-            record -> {
-              OccurrenceJsonConverter c =
-                  OccurrenceJsonConverter.builder()
-                      .metadata(metadataRecord)
-                      .verbatim(MAPPER.readValue(record.getVerbatim(), ExtendedRecord.class))
-                      .basic(MAPPER.readValue(record.getBasic(), BasicRecord.class))
-                      .location(MAPPER.readValue(record.getLocation(), LocationRecord.class))
-                      .temporal(MAPPER.readValue(record.getTemporal(), TemporalRecord.class))
-                      .multiTaxon(MAPPER.readValue(record.getTaxon(), MultiTaxonRecord.class))
-                      .grscicoll(MAPPER.readValue(record.getGrscicoll(), GrscicollRecord.class))
-                      .identifier(MAPPER.readValue(record.getIdentifier(), IdentifierRecord.class))
-                      .multimedia(MAPPER.readValue(record.getMultimedia(), MultimediaRecord.class))
-                      .dnaDerivedData(
-                          MAPPER.readValue(record.getDnaDerivedData(), DnaDerivedDataRecord.class))
-                      .clustering(MAPPER.readValue(record.getClustering(), ClusteringRecord.class))
-                      .build();
+      Dataset<Occurrence> records, MetadataRecord metadataRecord, int numOfShards) {
 
-              return c.convert();
-            },
-        Encoders.bean(OccurrenceJsonRecord.class));
+    Dataset<OccurrenceJsonRecord> dataset =
+        records.map(
+            (MapFunction<Occurrence, OccurrenceJsonRecord>)
+                record -> {
+                  OccurrenceJsonConverter c =
+                      OccurrenceJsonConverter.builder()
+                          .metadata(metadataRecord)
+                          .verbatim(MAPPER.readValue(record.getVerbatim(), ExtendedRecord.class))
+                          .basic(MAPPER.readValue(record.getBasic(), BasicRecord.class))
+                          .location(MAPPER.readValue(record.getLocation(), LocationRecord.class))
+                          .temporal(MAPPER.readValue(record.getTemporal(), TemporalRecord.class))
+                          .multiTaxon(MAPPER.readValue(record.getTaxon(), MultiTaxonRecord.class))
+                          .grscicoll(MAPPER.readValue(record.getGrscicoll(), GrscicollRecord.class))
+                          .identifier(
+                              MAPPER.readValue(record.getIdentifier(), IdentifierRecord.class))
+                          .multimedia(
+                              MAPPER.readValue(record.getMultimedia(), MultimediaRecord.class))
+                          .dnaDerivedData(
+                              MAPPER.readValue(
+                                  record.getDnaDerivedData(), DnaDerivedDataRecord.class))
+                          .clustering(
+                              MAPPER.readValue(record.getClustering(), ClusteringRecord.class))
+                          .build();
+
+                  return c.convert();
+                },
+            Encoders.bean(OccurrenceJsonRecord.class));
+
+    // for small datasets, to reduce the number of small files created, we coalesce to a single
+    // shard
+    if (numOfShards == 1) {
+      dataset = dataset.coalesce(1);
+    }
+    return dataset;
   }
 
   public static Dataset<OccurrenceHdfsRecord> toHdfs(
-      Dataset<Occurrence> records, MetadataRecord metadataRecord) {
-    return records.map(
-        (MapFunction<Occurrence, OccurrenceHdfsRecord>)
-            record -> {
-              OccurrenceHdfsRecordConverter c =
-                  OccurrenceHdfsRecordConverter.builder()
-                      .metadataRecord(metadataRecord)
-                      .extendedRecord(MAPPER.readValue(record.getVerbatim(), ExtendedRecord.class))
-                      .basicRecord(MAPPER.readValue(record.getBasic(), BasicRecord.class))
-                      .locationRecord(MAPPER.readValue(record.getLocation(), LocationRecord.class))
-                      .temporalRecord(MAPPER.readValue(record.getTemporal(), TemporalRecord.class))
-                      .multiTaxonRecord(MAPPER.readValue(record.getTaxon(), MultiTaxonRecord.class))
-                      .grscicollRecord(
-                          MAPPER.readValue(record.getGrscicoll(), GrscicollRecord.class))
-                      .identifierRecord(
-                          MAPPER.readValue(record.getIdentifier(), IdentifierRecord.class))
-                      .multimediaRecord(
-                          MAPPER.readValue(record.getMultimedia(), MultimediaRecord.class))
-                      .dnaDerivedDataRecord(
-                          MAPPER.readValue(record.getDnaDerivedData(), DnaDerivedDataRecord.class))
-                      .clusteringRecord(
-                          MAPPER.readValue(record.getClustering(), ClusteringRecord.class))
-                      .build();
+      Dataset<Occurrence> records, MetadataRecord metadataRecord, int numshards) {
+    Dataset<OccurrenceHdfsRecord> dataset =
+        records.map(
+            (MapFunction<Occurrence, OccurrenceHdfsRecord>)
+                record -> {
+                  OccurrenceHdfsRecordConverter c =
+                      OccurrenceHdfsRecordConverter.builder()
+                          .metadataRecord(metadataRecord)
+                          .extendedRecord(
+                              MAPPER.readValue(record.getVerbatim(), ExtendedRecord.class))
+                          .basicRecord(MAPPER.readValue(record.getBasic(), BasicRecord.class))
+                          .locationRecord(
+                              MAPPER.readValue(record.getLocation(), LocationRecord.class))
+                          .temporalRecord(
+                              MAPPER.readValue(record.getTemporal(), TemporalRecord.class))
+                          .multiTaxonRecord(
+                              MAPPER.readValue(record.getTaxon(), MultiTaxonRecord.class))
+                          .grscicollRecord(
+                              MAPPER.readValue(record.getGrscicoll(), GrscicollRecord.class))
+                          .identifierRecord(
+                              MAPPER.readValue(record.getIdentifier(), IdentifierRecord.class))
+                          .multimediaRecord(
+                              MAPPER.readValue(record.getMultimedia(), MultimediaRecord.class))
+                          .dnaDerivedDataRecord(
+                              MAPPER.readValue(
+                                  record.getDnaDerivedData(), DnaDerivedDataRecord.class))
+                          .clusteringRecord(
+                              MAPPER.readValue(record.getClustering(), ClusteringRecord.class))
+                          .build();
 
-              return c.convert();
-            },
-        Encoders.bean(OccurrenceHdfsRecord.class));
+                  return c.convert();
+                },
+            Encoders.bean(OccurrenceHdfsRecord.class));
+
+    // for small datasets, to reduce the number of small files created, we coalesce to a single
+    // shard
+    if (numshards == 1) {
+      dataset = dataset.coalesce(1);
+    }
+    return dataset;
   }
 }

@@ -99,7 +99,7 @@ public class ClusteringInterpretation {
     FileSystem fileSystem = getFileSystem(spark, config);
     /* ############ standard init block - end ########## */
 
-    runClustering(spark, fileSystem, config, datasetId, attempt);
+    runClustering(spark, fileSystem, config, datasetId, attempt, 1);
 
     fileSystem.close();
     spark.stop();
@@ -112,7 +112,12 @@ public class ClusteringInterpretation {
   }
 
   public static void runClustering(
-      SparkSession spark, FileSystem fs, PipelinesConfig config, String datasetId, int attempt) {
+      SparkSession spark,
+      FileSystem fs,
+      PipelinesConfig config,
+      String datasetId,
+      int attempt,
+      int numOfShards) {
 
     long start = System.currentTimeMillis();
 
@@ -130,13 +135,13 @@ public class ClusteringInterpretation {
         runClusteringTransform(spark, config, simpleRecords, outputPath);
 
     // write parquet for elastic
-    toJson(interpreted, metadata)
+    toJson(interpreted, metadata, numOfShards)
         .write()
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/" + OCCURRENCE_JSON);
 
     // write parquet for hdfs view
-    toHdfs(interpreted, metadata)
+    toHdfs(interpreted, metadata, numOfShards)
         .write()
         .mode(SaveMode.Overwrite)
         .parquet(outputPath + "/" + OCCURRENCE_HDFS);
