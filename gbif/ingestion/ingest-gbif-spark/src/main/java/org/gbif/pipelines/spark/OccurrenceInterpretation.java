@@ -110,7 +110,7 @@ public class OccurrenceInterpretation {
     private String master;
 
     @Parameter(names = "--numberOfShards", description = "Number of shards")
-    private int numberOfShards = 10;
+    private int numberOfShards = 1;
 
     @Parameter(
         names = "--useCheckpoints",
