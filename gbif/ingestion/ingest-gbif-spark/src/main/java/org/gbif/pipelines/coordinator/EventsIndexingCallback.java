@@ -44,7 +44,7 @@ public class EventsIndexingCallback
         pipelinesConfig.getStandalone().getEventIndexAlias(),
         pipelinesConfig.getStandalone().getEventIndexName(),
         pipelinesConfig.getStandalone().getEventIndexSchema(),
-        pipelinesConfig.getStandalone().getNumberOfShards(),
+        pipelinesConfig.getStandalone().getEventIndexNumberOfShards(),
         ParentJsonRecord.class,
         EVENT_JSON);
   }

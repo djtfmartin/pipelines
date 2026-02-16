@@ -43,7 +43,7 @@ public class IndexingCallback
         pipelinesConfig.getStandalone().getOccurrenceIndexAlias(),
         pipelinesConfig.getStandalone().getOccurrenceIndexName(),
         pipelinesConfig.getStandalone().getOccurrenceIndexSchema(),
-        pipelinesConfig.getStandalone().getNumberOfShards(),
+        pipelinesConfig.getStandalone().getOccurrenceIndexNumberOfShards(),
         OccurrenceJsonRecord.class,
         Directories.OCCURRENCE_JSON);
   }
