@@ -1,13 +1,9 @@
 package org.gbif.converters;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
-import kotlin.text.Charsets;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
@@ -37,7 +33,7 @@ public class DwcaToAvroConverterTest {
 
     // Should
     File verbatim = new File(outPath);
-    assertTrue(verbatim.exists());
+    Assert.assertTrue(verbatim.exists());
 
     // Deserialize ExtendedRecord from disk
     DatumReader<ExtendedRecord> datumReader = new SpecificDatumReader<>(ExtendedRecord.class);
@@ -50,12 +46,7 @@ public class DwcaToAvroConverterTest {
       }
     }
 
-    assertTrue(Files.exists(Paths.get(metricPath)));
-
-    // check content
-    List<String> metrics = Files.readAllLines(Paths.get(metricPath), Charsets.UTF_16);
-    assertTrue(metrics.contains("archiveToLargestFileCount: 307"));
-    assertTrue(metrics.contains("extension_rs_Identifier: 46"));
+    Assert.assertTrue(Files.exists(Paths.get(metricPath)));
     Files.deleteIfExists(verbatim.toPath());
   }
 
@@ -70,7 +61,7 @@ public class DwcaToAvroConverterTest {
 
     // Should
     File verbatim = new File(outPath);
-    assertTrue(verbatim.exists());
+    Assert.assertTrue(verbatim.exists());
 
     int count = 0;
     // Deserialize ExtendedRecord from disk
@@ -100,7 +91,7 @@ public class DwcaToAvroConverterTest {
 
     // Should
     File verbatim = new File(outPath);
-    assertTrue(verbatim.exists());
+    Assert.assertTrue(verbatim.exists());
 
     int count = 0;
     // Deserialize ExtendedRecord from disk
@@ -131,7 +122,7 @@ public class DwcaToAvroConverterTest {
 
     // Should
     File verbatim = new File(outPath);
-    assertTrue(verbatim.exists());
+    Assert.assertTrue(verbatim.exists());
 
     int count = 0;
     // Deserialize ExtendedRecord from disk

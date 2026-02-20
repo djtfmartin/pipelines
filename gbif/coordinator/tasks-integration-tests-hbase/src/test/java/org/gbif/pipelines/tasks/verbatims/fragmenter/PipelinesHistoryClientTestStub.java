@@ -132,37 +132,19 @@ public class PipelinesHistoryClientTestStub implements PipelinesHistoryClient {
 
   @Override
   public RunPipelineResponse runAll(
-      String s,
-      String s1,
-      boolean b,
-      boolean b1,
-      RunAllParams runAllParams,
-      Set<String> set,
-      boolean excludeEventSteps) {
+      String s, String s1, boolean b, boolean b1, RunAllParams runAllParams, Set<String> set) {
     throw new UnsupportedOperationException("The method is not implemented!");
   }
 
   @Override
   public RunPipelineResponse runPipelineAttempt(
-      UUID uuid,
-      String s,
-      String s1,
-      boolean b,
-      boolean b1,
-      Set<String> set,
-      boolean excludeEventSteps) {
+      UUID uuid, String s, String s1, boolean b, boolean b1, Set<String> set) {
     throw new UnsupportedOperationException("The method is not implemented!");
   }
 
   @Override
   public RunPipelineResponse runPipelineAttempt(
-      UUID uuid,
-      int i,
-      String s,
-      String s1,
-      boolean b,
-      Set<String> set,
-      boolean excludeEventSteps) {
+      UUID uuid, int i, String s, String s1, boolean b, Set<String> set) {
     throw new UnsupportedOperationException("The method is not implemented!");
   }
 
