@@ -113,7 +113,6 @@ public class PipelinesVariables {
     public static final String EVENTS_AVRO_TO_JSON_COUNT = "eventsAvroToJsonCount";
     public static final String ARCHIVE_TO_ER_COUNT = "archiveToErCount";
     public static final String ARCHIVE_TO_OCC_COUNT = "archiveToOccurrenceCount";
-    public static final String ARCHIVE_TO_LARGEST_FILE_COUNT = "archiveToLargestFileCount";
     public static final String AVRO_TO_HDFS_COUNT = "avroToHdfsCount";
     // GBIF ID
     public static final String FILTERED_GBIF_IDS_COUNT = "filteredGbifIdsCount";
@@ -122,6 +121,7 @@ public class PipelinesVariables {
     public static final String IDENTICAL_GBIF_OBJECTS_COUNT = "identicalGbifObjectsCount";
     public static final String INVALID_GBIF_ID_COUNT = "invalidGbifIdCount";
     public static final String ABSENT_GBIF_ID_COUNT = "absentGbifIdCount";
+    public static final String VALID_GBIF_ID_COUNT = "validAndPersistedGbifIdCount";
     // Occurrence
     public static final String UNIQUE_IDS_COUNT = "uniqueIdsCount";
     public static final String DUPLICATE_IDS_COUNT = "duplicatedIdsCount";
@@ -198,7 +198,6 @@ public class PipelinesVariables {
     public static final String LOCATION_FEATURE_RECORDS_COUNT = "locationFeatureRecordsCount";
 
     public static final String ATTEMPTED = "Attempted";
-    public static final String EXTENSION_PREFIX = "extension_";
   }
 
   @NoArgsConstructor(access = AccessLevel.PRIVATE)

@@ -3,14 +3,7 @@ package org.gbif.pipelines.core.converters;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import org.gbif.api.model.Constants;
 import org.gbif.api.model.collections.lookup.Match.MatchType;
 import org.gbif.api.vocabulary.AgentIdentifierType;
@@ -276,8 +269,8 @@ public class OccurrenceHdfsRecordConverterTest {
     Assert.assertEquals(Arrays.asList(multiValue1, multiValue2), hdfsRecord.getProjectid());
 
     // Test fields names with reserved words
-    Assert.assertEquals("CLASS", hdfsRecord.getClass$());
-    Assert.assertEquals("classs", hdfsRecord.getVClass());
+    Assert.assertEquals("CLASS", hdfsRecord.getClass_());
+    Assert.assertEquals("classs", hdfsRecord.getVClass_());
 
     Assert.assertEquals("ORDER", hdfsRecord.getOrder());
     Assert.assertEquals("order", hdfsRecord.getVOrder());
@@ -353,8 +346,7 @@ public class OccurrenceHdfsRecordConverterTest {
 
     // Humboldt
     Assert.assertTrue(
-        hdfsRecord
-            .getExtHumboldt()
+        new String(Base64.getDecoder().decode(hdfsRecord.getExtHumboldt()))
             .contains(
                 "\"targetLifeStageScope\" : {\n"
                     + "    \"concepts\" : [ \"c1\", \"c11\" ],\n"
@@ -386,7 +378,9 @@ public class OccurrenceHdfsRecordConverterTest {
 
     // Should
     // Testing de-serialization
-    List<Multimedia> media = MediaSerDeser.multimediaFromJson(hdfsRecord.getExtMultimedia());
+    List<Multimedia> media =
+        MediaSerDeser.multimediaFromJson(
+            new String(Base64.getDecoder().decode(hdfsRecord.getExtMultimedia())));
     Assert.assertEquals(media.get(0), multimedia);
     Assert.assertTrue(hdfsRecord.getMediatype().contains(MediaType.StillImage.name()));
     Assert.assertTrue(
@@ -592,7 +586,6 @@ public class OccurrenceHdfsRecordConverterTest {
 
     taxonRecord.setDatasetKey(Constants.NUB_DATASET_KEY.toString());
     taxonRecord.setUsage(rankedName);
-    taxonRecord.setUsage(rankedName);
     taxonRecord.setAcceptedUsage(rankedName);
     taxonRecord.setSynonym(Boolean.FALSE);
     taxonRecord.setClassification(classification);
@@ -617,7 +610,7 @@ public class OccurrenceHdfsRecordConverterTest {
     Assert.assertEquals("Acidilobales", hdfsRecord.getOrder());
     Assert.assertEquals(String.valueOf(8016360), hdfsRecord.getOrderkey());
 
-    Assert.assertEquals("Thermoprotei", hdfsRecord.getClass$());
+    Assert.assertEquals("Thermoprotei", hdfsRecord.getClass_());
     Assert.assertEquals(String.valueOf(292), hdfsRecord.getClasskey());
 
     Assert.assertEquals("Caldisphaeraceae", hdfsRecord.getFamily());
