@@ -100,47 +100,49 @@
     <!-- GBIF libraries -->
     <gbif-parsers.version>0.68</gbif-parsers.version>
     <dwca-io.version>3.0.1</dwca-io.version>
-    <gbif-api.version>2.2.4</gbif-api.version>
+    <gbif-api.version>2.3.1</gbif-api.version>
     <gbif-common.version>0.60</gbif-common.version>
-    <dwc-api.version>2.1.9</dwc-api.version>
+    <dwc-api.version>2.1.10-issue-18-SNAPSHOT</dwc-api.version>
     <kvs.version>3.0</kvs.version>
+    <gbif-kvs.version>3.1.0</gbif-kvs.version>
     <hbase-utils.version>1.0.0</hbase-utils.version>
     <gbif-wrangler.version>1.0.0</gbif-wrangler.version>
-    <vocabulary-lookup.version>2.0.3</vocabulary-lookup.version>
+    <vocabulary-lookup.version>2.0.4</vocabulary-lookup.version>
     <registry.version>4.2.3</registry.version>
     <gbif-common-ws.version>2.1.1</gbif-common-ws.version>
-    <gbif-postal-service.version>2.1.5-SNAPSHOT</gbif-postal-service.version>
+    <gbif-postal-service.version>2.1.3</gbif-postal-service.version>
     <gbif-common-spreadsheet.version>0.2</gbif-common-spreadsheet.version>
 
     <!-- Main distributed libraries -->
-    <avro.version>1.11.3</avro.version>
+    <avro.version>1.12.1</avro.version>
 
-    <hadoop.version>3.3.5</hadoop.version>
-    <hbase.version>2.6.0-hadoop3</hbase.version>
+    <hadoop.version>3.3.6</hadoop.version>
+    <hbase.version>2.5.13-hadoop3</hbase.version>
     <curator.version>5.6.0</curator.version>
-    <spark.version>3.5.1</spark.version>
+    <spark.version>3.5.6</spark.version>
     <iceberg.version>1.6.1</iceberg.version>
 
     <scala.version>2.12.18</scala.version>
+    <scala.binary.version>2.12</scala.binary.version>
 
-    <commons-io.version>2.21.0</commons-io.version>
-    <commons-text.version>1.12.0</commons-text.version>
+    <commons-io.version>2.13.0</commons-io.version>
+    <commons-text.version>1.10.0</commons-text.version>
 
     <!-- Match the version from name-parser -->
-    <fastutil.version>8.5.9</fastutil.version>
+    <fastutil.version>8.5.15</fastutil.version>
 
-    <geotools.version>34.0</geotools.version>
+    <geotools.version>20.5</geotools.version>
     <jts.version>1.19.0</jts.version>
-    <commons-lang3.version>3.20.0</commons-lang3.version>
+    <commons-lang3.version>3.12.0</commons-lang3.version>
     <!-- Be carful when change the guava version, it can break XML parsing and etc at runtime -->
     <guava.version>33.5.0-jre</guava.version>
-    <amqp-client.version>5.28.0</amqp-client.version>
+    <amqp-client.version>5.25.0</amqp-client.version>
 
     <!-- Fault tolerance -->
     <resilience4j.version>1.7.0</resilience4j.version>
 
     <!-- Logging -->
-    <slf4j.version>2.0.17</slf4j.version>
+    <slf4j.version>2.0.7</slf4j.version>
     <logback.version>1.5.21</logback.version>
     <logstash-logback-encoder.version>9.0</logstash-logback-encoder.version>
     <log4j.version>1.2.17</log4j.version>
@@ -161,7 +163,7 @@
     <jakarta-validation.version>3.1.1</jakarta-validation.version>
     <jakarta-annotation.version>3.0.0</jakarta-annotation.version>
 
-    <commons-compress.version>1.28.0</commons-compress.version>
+    <commons-compress.version>1.23.0</commons-compress.version>
     <commons-digester.version>2.1</commons-digester.version>
     <mapdb.version>3.1.0</mapdb.version>
     <!-- Matches checklist project version -->
@@ -193,7 +195,7 @@
     <build-helper-maven.version>3.6.0</build-helper-maven.version>
 
     <!-- Plugins -->
-    <googleJavaFormat.version>1.17.0</googleJavaFormat.version>
+    <googleJavaFormat.version>1.10.0</googleJavaFormat.version>
 
     <!-- Sonar -->
     <sonar.projectName>GBIF Pipelines</sonar.projectName>
@@ -221,6 +223,32 @@
     <namespace>org.gbif.pipelines.io.avro</namespace>
 
     <keygen.version>1.0.0-SNAPSHOT</keygen.version>
+    <gbif-keygen.version>1.0.0-SNAPSHOT</gbif-keygen.version>
+    <gbif-hdfs-tables.version>1.0-SNAPSHOT</gbif-hdfs-tables.version>
+
+    <!-- Spark/Elasticsearch/Netty -->
+    <elasticsearch-spark.version>7.17.29</elasticsearch-spark.version>
+    <netty.version>4.1.96.Final</netty.version>
+
+    <!-- Logging -->
+    <log4j-api.version>2.20.0</log4j-api.version>
+
+    <!-- Scala -->
+    <scala-collection-compat.version>2.7.0</scala-collection-compat.version>
+
+    <!-- Test -->
+    <jcommander.version>1.82</jcommander.version>
+    <parquet.version>1.17.0</parquet.version>
+    <wiremock.version>3.13.2</wiremock.version>
+    <assertj.version>3.26.3</assertj.version>
+    <mockito.version>4.11.0</mockito.version>
+    <prometheus-client-java.version>1.4.3</prometheus-client-java.version>
+
+    <!-- HTTP -->
+    <commons-csv.version>1.10.0</commons-csv.version>
+    <commons-httpclient.version>3.1</commons-httpclient.version>
+    <jackson-codehaus.version>1.9.13</jackson-codehaus.version>
+    <annotations.version>17.0.0</annotations.version>
   </properties>
 
   <build>
@@ -299,11 +327,16 @@
       <dependency>
         <groupId>org.gbif.download</groupId>
         <artifactId>hdfs-tables</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>${gbif-hdfs-tables.version}</version>
       </dependency>
       <dependency>
         <groupId>org.gbif.pipelines</groupId>
         <artifactId>models</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.gbif.pipelines</groupId>
+        <artifactId>models-pojo</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -324,7 +357,7 @@
       <dependency>
         <groupId>org.gbif.identifiers</groupId>
         <artifactId>keygen</artifactId>
-        <version>${keygen.version}</version>
+        <version>${gbif-keygen.version}</version>
       </dependency>
       <dependency>
         <groupId>org.gbif.pipelines</groupId>
@@ -427,7 +460,7 @@
       <dependency>
         <groupId>org.gbif.kvs</groupId>
         <artifactId>kvs-gbif</artifactId>
-        <version>${kvs.version}</version>
+        <version>${gbif-kvs.version}</version>
         <exclusions>
           <exclusion>
             <groupId>ch.qos.logback</groupId>
@@ -1075,6 +1108,240 @@
         <artifactId>validation-api</artifactId>
         <version>${validation.api.version}</version>
         <scope>test</scope>
+      </dependency>
+
+      <!-- Additional Spark dependencies -->
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-sql_${scala.binary.version}</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-sql-api_${scala.binary.version}</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-catalyst_${scala.binary.version}</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-graphx_${scala.binary.version}</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-avro_${scala.binary.version}</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-common-utils_${scala.binary.version}</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.spark</groupId>
+        <artifactId>spark-tags_${scala.binary.version}</artifactId>
+        <version>${spark.version}</version>
+      </dependency>
+
+      <!-- Elasticsearch-Spark connector -->
+      <dependency>
+        <groupId>org.elasticsearch</groupId>
+        <artifactId>elasticsearch-spark-30_${scala.binary.version}</artifactId>
+        <version>${elasticsearch-spark.version}</version>
+      </dependency>
+
+      <!-- Hadoop -->
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-mapreduce-client-core</artifactId>
+        <version>${hadoop.version}</version>
+      </dependency>
+
+      <!-- HBase additional -->
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-mapreduce</artifactId>
+        <version>${hbase.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-server</artifactId>
+        <version>${hbase.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-shaded-testing-util</artifactId>
+        <version>${hbase.version}</version>
+        <scope>test</scope>
+      </dependency>
+
+      <!-- Scala -->
+      <dependency>
+        <groupId>org.scala-lang</groupId>
+        <artifactId>scala-compiler</artifactId>
+        <version>${scala.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.scala-lang</groupId>
+        <artifactId>scala-library</artifactId>
+        <version>${scala.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.scala-lang</groupId>
+        <artifactId>scala-reflect</artifactId>
+        <version>${scala.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.scala-lang.modules</groupId>
+        <artifactId>scala-collection-compat_${scala.binary.version}</artifactId>
+        <version>${scala-collection-compat.version}</version>
+      </dependency>
+
+      <!-- Netty -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-buffer</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-codec</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-common</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-transport-native-unix-common</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-transport</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+
+      <!-- Logging -->
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-api</artifactId>
+        <version>${log4j-api.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jetbrains</groupId>
+        <artifactId>annotations</artifactId>
+        <version>${annotations.version}</version>
+      </dependency>
+
+      <!-- Commons -->
+      <dependency>
+        <groupId>it.unimi.dsi</groupId>
+        <artifactId>fastutil</artifactId>
+        <version>${fastutil.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-csv</artifactId>
+        <version>${commons-csv.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-httpclient</groupId>
+        <artifactId>commons-httpclient</artifactId>
+        <version>${commons-httpclient.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.beust</groupId>
+        <artifactId>jcommander</artifactId>
+        <version>${jcommander.version}</version>
+      </dependency>
+
+      <!-- Messaging -->
+      <dependency>
+        <groupId>com.rabbitmq</groupId>
+        <artifactId>amqp-client</artifactId>
+        <version>${amqp-client.version}</version>
+      </dependency>
+
+      <!-- Old Jackson 1.x (needed by ES-Hadoop 7.x) -->
+      <dependency>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-mapper-asl</artifactId>
+        <version>${jackson-codehaus.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-core-asl</artifactId>
+        <version>${jackson-codehaus.version}</version>
+      </dependency>
+
+      <!-- Parquet (test) -->
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-avro</artifactId>
+        <version>${parquet.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-hadoop</artifactId>
+        <version>${parquet.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-common</artifactId>
+        <version>${parquet.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-column</artifactId>
+        <version>${parquet.version}</version>
+        <scope>test</scope>
+      </dependency>
+
+      <!-- Test utilities -->
+      <dependency>
+        <groupId>org.wiremock</groupId>
+        <artifactId>wiremock-standalone</artifactId>
+        <version>${wiremock.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>${assertj.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-core</artifactId>
+        <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+
+      <!-- Prometheus client (v1.x) -->
+      <dependency>
+        <groupId>io.prometheus</groupId>
+        <artifactId>prometheus-metrics-core</artifactId>
+        <version>${prometheus-client-java.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.prometheus</groupId>
+        <artifactId>prometheus-metrics-instrumentation-jvm</artifactId>
+        <version>${prometheus-client-java.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.prometheus</groupId>
+        <artifactId>prometheus-metrics-exporter-httpserver</artifactId>
+        <version>${prometheus-client-java.version}</version>
       </dependency>
 
     </dependencies>
