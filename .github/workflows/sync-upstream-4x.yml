@@ -1,0 +1,35 @@
+name: Sync upstream 4.x branch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday at midnight UTC
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Use a PAT with write access if GITHUB_TOKEN lacks push permission
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/gbif/pipelines.git
+
+      - name: Fetch upstream 4.x branch
+        run: git fetch upstream 4.x
+
+      - name: Push 4.x branch to fork
+        # This overwrites the fork's 4.x branch with the upstream version.
+        # Any commits unique to the fork's 4.x branch will be lost.
+        run: git push origin upstream/4.x:refs/heads/4.x --force
