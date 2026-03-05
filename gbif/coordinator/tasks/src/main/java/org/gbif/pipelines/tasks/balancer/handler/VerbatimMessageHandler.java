@@ -27,7 +27,6 @@ import org.gbif.pipelines.common.configs.StepConfiguration;
 import org.gbif.pipelines.common.utils.HdfsUtils;
 import org.gbif.pipelines.core.pojo.HdfsConfigs;
 import org.gbif.pipelines.tasks.balancer.BalancerConfiguration;
-import org.gbif.pipelines.tasks.occurrences.identifier.IdentifierConfiguration;
 import org.gbif.pipelines.tasks.verbatims.dwca.DwcaToAvroConfiguration;
 
 /**
@@ -100,7 +99,8 @@ public class VerbatimMessageHandler {
           getRecordNumber(
               config,
               m,
-              new IdentifierConfiguration().metaFileName,
+              null,
+              //              new IdentifierConfiguration().metaFileName,
               Metrics.UNIQUE_IDS_COUNT + Metrics.ATTEMPTED);
 
       log.info("The record numbers - occ: {}, er: {}, ids: {}", occCount, erCount, uniqueIdsCount);
@@ -208,7 +208,7 @@ public class VerbatimMessageHandler {
         HdfsConfigs.create(stepConfig.hdfsSiteConfig, stepConfig.coreSiteConfig);
     Optional<Long> fileNumber = HdfsUtils.getLongByKey(hdfsConfigs, metaPath, metricName);
 
-    if (messageNumber == null && !fileNumber.isPresent()) {
+    if (messageNumber == null && fileNumber.isEmpty()) {
       return Optional.empty();
     }
 

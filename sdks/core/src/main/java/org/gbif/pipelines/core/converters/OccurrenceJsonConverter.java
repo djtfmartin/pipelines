@@ -205,12 +205,12 @@ public class OccurrenceJsonConverter {
               .setBed(gx.getBed());
 
       gcb.setLithostratigraphy(
-          Stream.of(gcb.getBed(), gcb.getFormation(), gcb.getGroup(), gcb.getMember())
+          Stream.of(gx.getBed(), gx.getFormation(), gx.getGroup(), gx.getMember())
               .filter(Objects::nonNull)
               .collect(Collectors.toList()));
 
       gcb.setBiostratigraphy(
-          Stream.of(gcb.getLowestBiostratigraphicZone(), gcb.getHighestBiostratigraphicZone())
+          Stream.of(gx.getLowestBiostratigraphicZone(), gx.getHighestBiostratigraphicZone())
               .filter(Objects::nonNull)
               .collect(Collectors.toList()));
 
@@ -427,7 +427,6 @@ public class OccurrenceJsonConverter {
   private void mapCreated(OccurrenceJsonRecord.Builder builder) {
     JsonConverter.getMaxCreationDate(
             metadata,
-            identifier,
             clustering,
             basic,
             temporal,
@@ -440,9 +439,10 @@ public class OccurrenceJsonConverter {
   }
 
   private void mapSortField(OccurrenceJsonRecord.Builder builder) {
+    OccurrenceJsonRecord partial = builder.build(); // partial content needed, to continue build
     builder.setYearMonthGbifIdSort(
         SortUtils.yearDescMonthAscGbifIdAscSortKey(
-            builder.getYear(), builder.getMonth(), builder.getGbifId()));
+            partial.getYear(), partial.getMonth(), partial.getGbifId()));
   }
 
   private void mapMoFFromVerbatim(OccurrenceJsonRecord.Builder builder) {

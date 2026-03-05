@@ -18,17 +18,9 @@ import org.gbif.pipelines.core.pojo.MoFData;
 import org.gbif.pipelines.core.utils.SortUtils;
 import org.gbif.pipelines.io.avro.*;
 import org.gbif.pipelines.io.avro.grscicoll.GrscicollRecord;
-import org.gbif.pipelines.io.avro.json.DerivedMetadataRecord;
-import org.gbif.pipelines.io.avro.json.EventInheritedRecord;
-import org.gbif.pipelines.io.avro.json.EventJsonRecord;
+import org.gbif.pipelines.io.avro.json.*;
 import org.gbif.pipelines.io.avro.json.Humboldt;
-import org.gbif.pipelines.io.avro.json.HumboldtTaxonClassification;
-import org.gbif.pipelines.io.avro.json.LocationInheritedRecord;
-import org.gbif.pipelines.io.avro.json.MetadataJsonRecord;
 import org.gbif.pipelines.io.avro.json.Parent;
-import org.gbif.pipelines.io.avro.json.ParentJsonRecord;
-import org.gbif.pipelines.io.avro.json.TaxonUsage;
-import org.gbif.pipelines.io.avro.json.TemporalInheritedRecord;
 import org.gbif.pipelines.io.avro.json.VocabularyConcept;
 
 @Slf4j
@@ -62,7 +54,7 @@ public class ParentJsonConverter {
             .setInternalId(identifier.getInternalId())
             .setUniqueKey(identifier.getUniqueKey())
             .setType(ConverterConstants.EVENT)
-            .setEventBuilder(convertToEvent())
+            .setEvent(convertToEvent())
             .setAll(JsonConverter.convertFieldAll(verbatim, false))
             .setVerbatim(JsonConverter.convertVerbatimEventRecord(verbatim));
 
@@ -82,14 +74,14 @@ public class ParentJsonConverter {
     ParentJsonRecord.Builder builder =
         ParentJsonRecord.newBuilder()
             .setCrawlId(metadata.getCrawlId())
-            .setMetadataBuilder(mapMetadataJsonRecord());
+            .setMetadata(mapMetadataJsonRecord());
 
     JsonConverter.convertToDate(metadata.getLastCrawled()).ifPresent(builder::setLastCrawled);
 
     return builder;
   }
 
-  private EventJsonRecord.Builder convertToEvent() {
+  private EventJsonRecord convertToEvent() {
 
     EventJsonRecord.Builder builder = EventJsonRecord.newBuilder();
 
@@ -106,10 +98,10 @@ public class ParentJsonConverter {
     mapProjectIds(builder);
     mapMoFFromVerbatim(builder);
 
-    return builder;
+    return builder.build();
   }
 
-  private MetadataJsonRecord.Builder mapMetadataJsonRecord() {
+  private MetadataJsonRecord mapMetadataJsonRecord() {
     return MetadataJsonRecord.newBuilder()
         .setDatasetKey(metadata.getDatasetKey())
         .setDatasetTitle(metadata.getDatasetTitle())
@@ -121,14 +113,17 @@ public class ParentJsonConverter {
         .setProgrammeAcronym(metadata.getProgrammeAcronym())
         .setProtocol(metadata.getProtocol())
         .setPublisherTitle(metadata.getPublisherTitle())
-        .setPublishingOrganizationKey(metadata.getPublishingOrganizationKey());
+        .setPublishingOrganizationKey(metadata.getPublishingOrganizationKey())
+        .build();
   }
 
   private void mapEventCoreRecord(EventJsonRecord.Builder builder) {
 
+    String eventID = extractOptValue(verbatim, DwcTerm.eventID).orElse(null);
+
     if (eventCore.getEventType() != null
         && eventCore.getEventType().getConcept().equalsIgnoreCase(ConverterConstants.SURVEY)) {
-      builder.setSurveyID(builder.getEventID());
+      builder.setSurveyID(eventID);
     }
 
     // Simple
@@ -150,8 +145,10 @@ public class ParentJsonConverter {
     JsonConverter.convertVocabularyConcept(eventCore.getEventType())
         .ifPresent(builder::setEventType);
 
-    builder.setVerbatimEventType(
-        extractOptValue(verbatim, DwcTerm.eventType).orElse(DEFAULT_EVENT_TYPE));
+    String verbatimEventType =
+        extractOptValue(verbatim, DwcTerm.eventType).orElse(DEFAULT_EVENT_TYPE);
+
+    builder.setVerbatimEventType(verbatimEventType);
 
     if (eventCore.getParentsLineage() != null && !eventCore.getParentsLineage().isEmpty()) {
       List<String> eventTypes = getParentsLineageEventTypes();
@@ -168,23 +165,11 @@ public class ParentJsonConverter {
           .setEventHierarchyJoined(String.join(ConverterConstants.DELIMITER, eventIDs))
           .setEventHierarchyLevels(eventIDs.size());
 
-      if (builder.getSurveyID() == null) {
-        List<org.gbif.pipelines.io.avro.Parent> surveys =
-            eventCore.getParentsLineage().stream()
-                .filter(
-                    e ->
-                        e.getEventType() != null
-                            && e.getEventType().equalsIgnoreCase(ConverterConstants.SURVEY))
-                .collect(Collectors.toList());
-        if (!surveys.isEmpty()) {
-          builder.setSurveyID(surveys.get(0).getId());
-        }
-      }
     } else {
       // add the eventID and parentEventID to hierarchy for consistency
       List<String> eventHierarchy = new ArrayList<>();
-      Optional.ofNullable(builder.getParentEventID()).ifPresent(eventHierarchy::add);
-      Optional.ofNullable(builder.getEventID()).ifPresent(eventHierarchy::add);
+      Optional.ofNullable(eventCore.getParentEventID()).ifPresent(eventHierarchy::add);
+      Optional.ofNullable(eventID).ifPresent(eventHierarchy::add);
 
       builder
           .setEventHierarchy(eventHierarchy)
@@ -193,8 +178,8 @@ public class ParentJsonConverter {
 
       // add the single type to hierarchy for consistency
       List<String> eventTypeHierarchy = new ArrayList<>();
-      if (builder.getEventType() != null && builder.getEventType().getConcept() != null) {
-        eventTypeHierarchy.add(builder.getEventType().getConcept());
+      if (eventCore.getEventType() != null && eventCore.getEventType().getConcept() != null) {
+        eventTypeHierarchy.add(eventCore.getEventType().getConcept());
       }
 
       builder
@@ -203,9 +188,7 @@ public class ParentJsonConverter {
               String.join(ConverterConstants.DELIMITER, eventTypeHierarchy));
 
       List<String> verbatimEventTypeHierarchy = new ArrayList<>();
-      if (builder.getVerbatimEventType() != null) {
-        verbatimEventTypeHierarchy.add(builder.getVerbatimEventType());
-      }
+      verbatimEventTypeHierarchy.add(verbatimEventType);
 
       builder
           .setVerbatimEventTypeHierarchy(verbatimEventTypeHierarchy)
@@ -534,19 +517,19 @@ public class ParentJsonConverter {
   }
 
   private void mapLocationInheritedFields(ParentJsonRecord.Builder builder) {
-    if (locationInheritedRecord.getId() != null) {
+    if (locationInheritedRecord != null && locationInheritedRecord.getId() != null) {
       builder.setLocationInherited(locationInheritedRecord);
     }
   }
 
   private void mapTemporalInheritedFields(ParentJsonRecord.Builder builder) {
-    if (temporalInheritedRecord.getId() != null) {
+    if (temporalInheritedRecord != null && temporalInheritedRecord.getId() != null) {
       builder.setTemporalInherited(temporalInheritedRecord);
     }
   }
 
   private void mapEventInheritedFields(ParentJsonRecord.Builder builder) {
-    if (eventInheritedRecord.getId() != null) {
+    if (eventInheritedRecord != null && eventInheritedRecord.getId() != null) {
       builder.setEventInherited(eventInheritedRecord);
     }
   }
@@ -562,8 +545,9 @@ public class ParentJsonConverter {
   }
 
   private void mapSortField(EventJsonRecord.Builder builder) {
+    String eventID = extractOptValue(verbatim, DwcTerm.eventID).orElse(null);
     builder.setYearMonthEventIDSort(
         SortUtils.yearDescMonthAscEventIDAscSortKey(
-            builder.getYear(), builder.getMonth(), builder.getEventID()));
+            temporal.getYear(), temporal.getMonth(), eventID));
   }
 }
