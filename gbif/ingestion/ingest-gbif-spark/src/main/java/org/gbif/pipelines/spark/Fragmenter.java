@@ -38,7 +38,7 @@ import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
-import org.codehaus.jackson.map.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.gbif.api.vocabulary.EndpointType;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;

@@ -552,23 +552,25 @@
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch-spark-30_${scala.binary.version}</artifactId>
             <version>${elasticsearch-spark.version}</version>
+            <exclusions>
+                <!-- ES-Hadoop 7.x transitively requires jackson 1.x; no patched version exists.
+                     Source code in this module has been migrated to com.fasterxml.jackson (2.x).
+                     The shade plugin relocates any remaining codehaus classes to shaded.* -->
+                <exclusion>
+                    <groupId>org.codehaus.jackson</groupId>
+                    <artifactId>jackson-mapper-asl</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.codehaus.jackson</groupId>
+                    <artifactId>jackson-core-asl</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Old Apache Commons HttpClient (needed by ES-Hadoop 7.x) -->
         <dependency>
             <groupId>commons-httpclient</groupId>
             <artifactId>commons-httpclient</artifactId>
             <version>${commons-httpclient.version}</version>
-        </dependency>
-        <!-- Old Jackson 1.x (needed by ES-Hadoop 7.x) -->
-        <dependency>
-            <groupId>org.codehaus.jackson</groupId>
-            <artifactId>jackson-mapper-asl</artifactId>
-            <version>1.9.13</version>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.jackson</groupId>
-            <artifactId>jackson-core-asl</artifactId>
-            <version>1.9.13</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

@@ -35,8 +35,8 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.ThreadContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.spark.sql.SparkSession;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.gbif.api.model.pipelines.*;
 import org.gbif.api.model.pipelines.ws.PipelineProcessParameters;
 import org.gbif.api.vocabulary.DatasetType;
@@ -104,16 +104,13 @@ public abstract class PipelinesCallback<
   public PipelinesCallback(
       PipelinesConfig pipelinesConfig, MessagePublisher publisher, String sparkMaster) {
 
-    com.fasterxml.jackson.databind.ObjectMapper mapper =
-        new com.fasterxml.jackson.databind.ObjectMapper();
-
     this.pipelinesConfig = pipelinesConfig;
     this.publisher = publisher;
     this.historyClient =
         Feign.builder()
             .client(new ApacheHttpClient())
-            .decoder(new JacksonDecoder(mapper))
-            .encoder(new JacksonEncoder(mapper))
+            .decoder(new JacksonDecoder(OBJECT_MAPPER))
+            .encoder(new JacksonEncoder(OBJECT_MAPPER))
             .contract(new Contract.Default())
             .requestInterceptor(
                 new BasicAuthRequestInterceptor(
