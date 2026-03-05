@@ -4,82 +4,28 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.gbif.pipelines</groupId>
-    <version>4.0.0-SNAPSHOT</version>
+    <parent>
+        <groupId>org.gbif.pipelines</groupId>
+        <artifactId>ingestion</artifactId>
+        <version>4.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
     <artifactId>ingest-gbif-spark</artifactId>
     <packaging>jar</packaging>
     <name>Pipelines :: GBIF :: Ingestion :: Ingest-GBIF Spark version</name>
     <description>Apache Spark pipelines for ingestion biodiversity data</description>
     <properties>
-        <spark.version>3.5.6</spark.version>
         <scala.binary.version>2.12</scala.binary.version>
-        <hadoop.version>3.3.6</hadoop.version>
-        <scala.version>2.12.18</scala.version>
-        <lombok.version>1.18.42</lombok.version>
-        <slf4j.version>2.0.7</slf4j.version>
-        <dwca-io.version>3.0.1</dwca-io.version>
-        <gbif-parsers.version>0.68</gbif-parsers.version>
-        <commons-io.version>2.13.0</commons-io.version>
-        <commons-lang3.version>3.12.0</commons-lang3.version>
-        <fastutil.version>8.5.15</fastutil.version>
-        <dwc-api.version>2.1.10</dwc-api.version>
-        <gbif-api.version>2.4.0</gbif-api.version>
-        <gbif-common.version>0.60</gbif-common.version>
-        <gbif-postal-service.version>2.1.3</gbif-postal-service.version>
-        <gbif-wrangler.version>1.0.0</gbif-wrangler.version>
-        <gbif-kvs.version>3.1.0</gbif-kvs.version>
-        <gbif-hdfs-tables.version>1.0-SNAPSHOT</gbif-hdfs-tables.version>
-        <gbif-keygen.version>1.0.0-SNAPSHOT</gbif-keygen.version>
-        <vocabulary-lookup.version>2.0.4</vocabulary-lookup.version>
-        <jackson.version>2.19.4</jackson.version>
-        <geotools.version>20.5</geotools.version>
-        <java.version>17</java.version>
-        <junit4.version>4.13.2</junit4.version>
-        <guava.version>33.5.0-jre</guava.version>
-        <elasticsearch.version>7.9.2</elasticsearch.version>
         <elasticsearch-spark.version>7.17.29</elasticsearch-spark.version>
         <netty.version>4.1.96.Final</netty.version>
         <!-- note: hbase 2.6.0-hadoop3 causes an issue with fragmenter with stackable 24.7 -->
-        <hbase.version>2.5.13-hadoop3</hbase.version>
         <prometheus.version>0.16.0</prometheus.version>
         <log4j-api.version>2.20.0</log4j-api.version>
         <annotations.version>17.0.0</annotations.version>
-        <commons-compress.version>1.23.0</commons-compress.version>
         <scala-collection-compat_2.12.version>2.7.0</scala-collection-compat_2.12.version>
         <commons-csv.version>1.10.0</commons-csv.version>
         <commons-httpclient.version>3.1</commons-httpclient.version>
     </properties>
-    <repositories>
-        <repository>
-            <id>gbif-all</id>
-            <url>https://repository.gbif.org/content/groups/gbif/</url>
-        </repository>
-        <repository>
-            <id>gbif-thirdparty</id>
-            <url>https://repository.gbif.org/content/repositories/thirdparty/</url>
-        </repository>
-        <repository>
-            <id>cloudera-repos</id>
-            <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
-    <distributionManagement>
-        <site>
-            <id>gh-pages</id>
-            <url>https://gbif.github.io/pipelines/</url>
-        </site>
-        <repository>
-            <id>gbif-release</id>
-            <url>https://repository.gbif.org/content/repositories/releases</url>
-        </repository>
-        <snapshotRepository>
-            <id>gbif-deploy</id>
-            <url>https://repository.gbif.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-    </distributionManagement>
     <dependencies>
         <dependency>
             <groupId>org.gbif.common</groupId>
